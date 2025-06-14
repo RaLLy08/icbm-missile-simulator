@@ -1,0 +1,9 @@
+{
+    "recommendations": [
+        "dbaeumer.vscode-eslint",
+        "eamodio.gitlens",
+        "donjayamanne.githistory",
+        "esbenp.prettier-vscode",
+        "clinyong.vscode-css-modules"
+    ]
+}
