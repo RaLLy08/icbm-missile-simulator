@@ -1,7 +1,7 @@
-import CakeCustomizer from './OrbitalVelocity';
+import OrbitalVelocity from './OrbitalVelocity';
 
 const App = () => {
-  return <CakeCustomizer />;
+  return <OrbitalVelocity />;
 };
 
 export default App;
