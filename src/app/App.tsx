@@ -1,7 +1,11 @@
 import OrbitalVelocity from './OrbitalVelocity';
 
 const App = () => {
-  return <OrbitalVelocity />;
+  return (
+    <>
+      <OrbitalVelocity />
+    </>
+  );
 };
 
 export default App;

@@ -3,7 +3,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useEffect, useId } from 'react';
 import { Pane } from 'tweakpane';
 
-// import earth2kTextureJpg from 'public/textures/2k_earth_daymap.jpg';
 import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
 
 const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
@@ -21,7 +20,10 @@ camera.position.z = 12200;
 camera.position.y = 0;
 camera.position.x = 0;
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  logarithmicDepthBuffer: true,
+});
 renderer.setSize(WIDTH, HEIGHT);
 
 renderer.setClearColor(0x000000, 1); // Set background color to black
@@ -46,8 +48,8 @@ scene.add(directionalLight);
 const EARTH_RADIUS_KM = 6378; // in km
 
 const earth = new THREE.Mesh(
-  new THREE.SphereGeometry(EARTH_RADIUS_KM, 32, 32),
-  new THREE.MeshStandardMaterial({
+  new THREE.SphereGeometry(EARTH_RADIUS_KM, 128, 128),
+  new THREE.MeshPhongMaterial({
     map: earthTexture,
   })
 );
@@ -55,26 +57,74 @@ earth.position.set(0, 0, 0);
 earth.name = 'EARTH';
 earth.castShadow = true;
 earth.receiveShadow = true;
-
-const box = new THREE.BoxHelper(earth, 0xffff00);
-scene.add(box);
+earth.renderOrder = 0; // Ensure Earth is rendered first
 
 scene.add(earth);
 
-const satilliteGeometry = new THREE.CylinderGeometry(
-  10,
-  10,
-  20,
-  32, // Height segments
-  32
+function createAtmosphereLayer(radius: number, color: number, opacity: number) {
+  const geometry = new THREE.SphereGeometry(radius, 128, 128);
+  const material = new THREE.MeshPhongMaterial({
+    color: color,
+    transparent: true,
+    opacity: opacity,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  return new THREE.Mesh(geometry, material);
+}
+
+const atmosphereLayers = [
+  // Troposphere (~0–12 km)
+  createAtmosphereLayer(EARTH_RADIUS_KM + 12, 0x87ceeb, 0.25), // Sky blue, fairly visible
+
+  // Stratosphere (~12–50 km)
+  createAtmosphereLayer(EARTH_RADIUS_KM + 50, 0x4682b4, 0.15), // Steel blue, thinner
+
+  // Mesosphere (~50–85 km)
+  createAtmosphereLayer(EARTH_RADIUS_KM + 85, 0x1e90ff, 0.1), // Dodger blue, very faint
+
+  // Thermosphere (~85–600 km)
+  createAtmosphereLayer(EARTH_RADIUS_KM + 600, 0x4169e1, 0.05), // Royal blue, extremely faint
+
+  // Exosphere (~600–10,000 km)
+  createAtmosphereLayer(EARTH_RADIUS_KM + 10000, 0x191970, 0.02), // Midnight blue, barely visible
+];
+
+atmosphereLayers.forEach((layer, i) => {
+  layer.renderOrder = 1 + i; // Ensure atmosphere is rendered after the Earth
+  scene.add(layer);
+});
+
+function createAtmosphereBorder(radius: number, color: number) {
+  const geo = new THREE.EdgesGeometry(
+    new THREE.SphereGeometry(radius, 128, 128)
+  );
+  const mat = new THREE.LineBasicMaterial({ color: color, linewidth: 1 });
+  return new THREE.LineSegments(geo, mat);
+}
+
+const atmosphereBorders = {
+  troposphere: createAtmosphereBorder(EARTH_RADIUS_KM + 12, 0x87ceeb), // Troposphere
+  stratosphere: createAtmosphereBorder(EARTH_RADIUS_KM + 50, 0x4682b4), // Stratosphere
+  mesosphere: createAtmosphereBorder(EARTH_RADIUS_KM + 85, 0x1e90ff), // Mesosphere
+  thermosphere: createAtmosphereBorder(EARTH_RADIUS_KM + 600, 0x4169e1), // Thermosphere
+  exosphere: createAtmosphereBorder(EARTH_RADIUS_KM + 10000, 0x191970), // Exosphere
+};
+
+const satteliteHeigth = 0.2;
+const satilliteGeometry = new THREE.ConeGeometry(
+  satteliteHeigth,
+  satteliteHeigth * 2,
+  32,
+  1
 );
 
 const satilliteMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 const satellite = new THREE.Mesh(satilliteGeometry, satilliteMaterial);
 satellite.name = 'SATELLITE';
-const SATELLITE_ALTITUDE = 408; // in km
+const SATELLITE_ALTITUDE = satteliteHeigth / 2; // in km
 
-satellite.rotateZ(Math.PI / 2); // Rotate to align with the Earth's equator
+satellite.rotateZ(-Math.PI / 2); // Rotate to align with the Earth's equator
 
 const satteliteInitialPosition = new THREE.Vector3(
   EARTH_RADIUS_KM + SATELLITE_ALTITUDE,
@@ -103,11 +153,9 @@ for (let i = 0; i < maxPoints; i++) {
 
 trailLine.frustumCulled = false;
 
-
 scene.add(trailLine);
 
 trailLine.name = 'TRAIL';
-
 
 const gravityLine = new THREE.Line(
   new THREE.BufferGeometry(),
@@ -121,36 +169,205 @@ const tangentLine = new THREE.Line(
 );
 scene.add(tangentLine);
 tangentLine.frustumCulled = false;
-const satelliteInitialVelocity = new THREE.Vector3(0, 7.67, 0);
+const satelliteInitialVelocity = new THREE.Vector3(0, 0, 0);
 const satelliteVelocity = new THREE.Vector3(0, 0, 0).add(
   satelliteInitialVelocity
 );
 const satelliteAcceleration = new THREE.Vector3(0, 0, 0);
 
-const TIME_MULTIPLAYER = 1000;
+const pane = new Pane({
+  container: document.getElementById('guiControls')!,
+});
 
-const pane = new Pane();
+const EARTH_MASS_KG = 5.972e24; // kg (mass of the Earth)
+const EARTH_G = 6.6743e-11; // Gravitational constant with a small random variation
 
-const satelliteFolder = pane.addFolder({
-  title: 'Satellite Controls',
+const globalParams: {
+  timeMultiplier: number;
+  timeDeltaTimeMs: number | null;
+  timePassedSeconds: number;
+} = {
+  timeMultiplier: 1,
+  timeDeltaTimeMs: 0,
+  timePassedSeconds: 0,
+};
+
+pane
+  .addButton({
+    title: 'Stop Time',
+  })
+  .on('click', (ev) => {
+    const isRunning = globalParams.timeMultiplier !== 0;
+
+    globalParams.timeMultiplier = isRunning ? 0 : 1;
+    ev.target.title = isRunning ? 'Start Time' : 'Stop Time';
+  });
+
+const guiTimeMultiplier = pane.addBinding(globalParams, 'timeMultiplier', {
+  label: 'Time Multiplier',
+  min: 1,
+  max: 2000,
+  step: 1,
+});
+
+const guiDeltaTime = pane.addBinding(globalParams, 'timeDeltaTimeMs', {
+  label: 'Delta Time Between Frames (ms)',
+  readonly: true,
+  format: (v) => (v != null ? v.toFixed(3) : 'N/A'),
+});
+
+const guiTimePassedSeconds = pane.addBinding(
+  globalParams,
+  'timePassedSeconds',
+  {
+    label: 'Time Passed (s)',
+    readonly: true,
+    format: (v) => (v != null ? v.toFixed(3) : 'N/A'),
+  }
+);
+
+const earthFolder = pane.addFolder({
+  title: 'Earth',
   expanded: true,
 });
 
-const params = {
-  altitudeKm: 0,
-};
-
-let guiAltitudeKm = satelliteFolder.addBinding(params, 'altitudeKm', {
-  label: 'Altitude (km)',
+const satelliteFolder = pane.addFolder({
+  title: 'Satellite',
+  expanded: true,
 });
 
+const guiEarthParams = {
+  massKg: EARTH_MASS_KG,
+  gravityConst: EARTH_G,
+};
 
-function updateSatellitePosition(deltaTime: number | null) {
-  if (deltaTime == null) {
+const guiEarthMassKg = earthFolder.addBinding(guiEarthParams, 'massKg', {
+  label: 'Mass (kg)',
+  readonly: true,
+});
+
+const guiEarthGravityConst = earthFolder.addBinding(
+  guiEarthParams,
+  'gravityConst',
+  {
+    label: 'Grav. Const.',
+    format: (v) => v,
+    readonly: true,
+  }
+);
+
+const guiEarthAtmosphereBordersParams = {
+  troposphere: false,
+  stratosphere: false,
+  mesosphere: false,
+  thermosphere: false,
+  exosphere: false,
+};
+
+const earthAtmosphereBordersFolder = earthFolder.addFolder({
+  title: 'Atmosphere Borders',
+  expanded: true,
+});
+
+(
+  [
+    'troposphere',
+    'stratosphere',
+    'mesosphere',
+    'thermosphere',
+    'exosphere',
+  ] as const
+).forEach((label) => {
+  earthAtmosphereBordersFolder
+    .addBinding(guiEarthAtmosphereBordersParams, label, {
+      label,
+    })
+    .on('change', (ev) => {
+      const border = atmosphereBorders[label];
+      if (ev.value) {
+        scene.add(border);
+      } else {
+        scene.remove(border);
+      }
+    });
+});
+
+const guiSatelliteParams = {
+  altitudeKm: 0,
+  gravitiAcceleration: 0,
+  pitch: 0,
+};
+
+const guiAltitudeKm = satelliteFolder.addBinding(
+  guiSatelliteParams,
+  'altitudeKm',
+  {
+    label: 'Altitude (km)',
+  }
+);
+
+const guiPitch = satelliteFolder.addBinding(guiSatelliteParams, 'pitch', {
+  label: 'Pitch (deqrees)',
+  readonly: true,
+});
+
+const guiGravitiAcceleration = satelliteFolder.addBinding(
+  guiSatelliteParams,
+  'gravitiAcceleration',
+  {
+    label: 'Grav. Acceleration (km/s²)',
+    readonly: true,
+    format: (v) => v.toExponential(5),
+  }
+);
+// save launch time, create rocket, missle class
+
+function updateSatellitePosition(deltaTimeMs: number | null) {
+  if (deltaTimeMs == null) {
     return;
   }
-  const earthMass = 5.972e24; // kg (mass of the Earth)
-  const G = 6.6743e-11; // Gravitational constant with a small random variation
+  const deltaTimeS = deltaTimeMs / 1000;
+  const tick = deltaTimeS * globalParams.timeMultiplier;
+
+  globalParams.timePassedSeconds += tick;
+
+  const maxAcceleration = 30 / 1000; // km/s²
+  const burnTimeS = 535; // Time in seconds for the burn
+
+  let xAcceleration = 0;
+
+  if (burnTimeS > globalParams.timePassedSeconds) {
+    xAcceleration =
+      maxAcceleration *
+      Math.sin((globalParams.timePassedSeconds * Math.PI) / burnTimeS);
+  } else {
+    xAcceleration = 0;
+  }
+
+  satelliteAcceleration.set(xAcceleration, 0, 0);
+
+  let thrustAngleIncline = 0;
+
+
+  if (guiSatelliteParams.altitudeKm < 1) {
+    thrustAngleIncline = THREE.MathUtils.degToRad(0);
+  } else if (guiSatelliteParams.altitudeKm < 10) {
+    thrustAngleIncline = THREE.MathUtils.degToRad(5);
+  } else if (guiSatelliteParams.altitudeKm < 30) {
+    thrustAngleIncline = THREE.MathUtils.degToRad(20);
+  } else if (guiSatelliteParams.altitudeKm < 80) {
+    thrustAngleIncline = THREE.MathUtils.degToRad(45);
+  } else if (guiSatelliteParams.altitudeKm < 150) {
+    thrustAngleIncline = THREE.MathUtils.degToRad(70);
+  } else {
+    thrustAngleIncline = THREE.MathUtils.degToRad(85);
+  }
+
+  satelliteAcceleration.applyAxisAngle(
+    new THREE.Vector3(0, 0, 1),
+    thrustAngleIncline
+  ); // Rotate to align with the Earth's equator
+
   const earthGravityVector = new THREE.Vector3()
     .subVectors(earth.position, satellite.position) // Earth - Satellite
     .normalize();
@@ -158,8 +375,7 @@ function updateSatellitePosition(deltaTime: number | null) {
 
   const distanceToSurface = distanceMeters - EARTH_RADIUS_KM * 1000;
 
-  params.altitudeKm = distanceToSurface / 1000;
-  guiAltitudeKm.refresh();
+  guiSatelliteParams.altitudeKm = distanceToSurface / 1000;
 
   for (let i = maxPoints - 1; i > 0; i--) {
     trailPositions[i * 3] = trailPositions[(i - 1) * 3];
@@ -181,35 +397,32 @@ function updateSatellitePosition(deltaTime: number | null) {
     return; // Exit the function to avoid further calculations
   }
 
-
-  const gravityForceMagnitude = (G * earthMass) / distanceMeters ** 2;
+  const gravityForceMagnitude = (EARTH_G * EARTH_MASS_KG) / distanceMeters ** 2;
 
   const gravityForce = earthGravityVector.multiplyScalar(
     gravityForceMagnitude * 0.001
   ); // Convert to km/s^2
 
-  tangentLine.geometry.setFromPoints([
-    satellite.position,
-    earth.position,
-  ]);
+  guiSatelliteParams.gravitiAcceleration = gravityForce.length();
 
-  satelliteAcceleration.copy(gravityForce);
+  tangentLine.geometry.setFromPoints([satellite.position, earth.position]);
 
-  satelliteVelocity.add(
-    satelliteAcceleration.clone().multiplyScalar(deltaTime * TIME_MULTIPLAYER)
-  );
+  satelliteVelocity
+    .add(gravityForce.clone().multiplyScalar(tick))
+    .add(satelliteAcceleration.clone().multiplyScalar(tick));
 
   satellite.rotateZ(
     satellite.position
       .clone()
-      .angleTo(satellite.position.clone().add(satelliteVelocity.clone())) *
-      deltaTime *
-      TIME_MULTIPLAYER
+      .angleTo(satellite.position.clone().add(satelliteVelocity.clone())) * tick
   );
 
-  satellite.position.add(
-    satelliteVelocity.clone().multiplyScalar(deltaTime * TIME_MULTIPLAYER)
+  guiSatelliteParams.pitch = THREE.MathUtils.radToDeg(
+    Math.PI / 2 -
+      satelliteVelocity.clone().angleTo(earthGravityVector.clone())
   );
+
+  satellite.position.add(satelliteVelocity.clone().multiplyScalar(tick));
 }
 
 const focusOnObject = (object3D: THREE.Object3D) => {
@@ -258,12 +471,13 @@ function onClick(event) {
 
 window.addEventListener('click', onClick, false);
 
-
-satelliteFolder.addButton({
-  title: 'Focus on Satellite',
-}).on('click', () => {
-  focusOnObject(satellite);
-});
+satelliteFolder
+  .addButton({
+    title: 'Focus on Satellite',
+  })
+  .on('click', () => {
+    focusOnObject(satellite);
+  });
 
 satelliteFolder.addBlade({
   view: 'separator',
@@ -276,70 +490,63 @@ satelliteFolder.addBlade({
   });
 });
 
-const velocityControls = [
-  satelliteFolder.addBinding(satelliteVelocity, 'x', {
-    label: 'vel. x',
+const satVelocityFolder = satelliteFolder.addFolder({
+  title: 'Velocity (km/s)',
+  expanded: true,
+});
+
+(['x', 'y', 'z'] as const).forEach((label) => {
+  satVelocityFolder.addBinding(satelliteVelocity, label, {
+    label,
     readonly: true,
-  }),
-  satelliteFolder.addBinding(satelliteVelocity, 'y', {
-    label: 'vel. y',
+    format: (v) => v.toExponential(5),
+  });
+});
+
+satVelocityFolder.addBinding(
+  {
+    length: satelliteVelocity.length(),
+  },
+  'length',
+  {
+    label: 'Magnitude',
     readonly: true,
-  }),
-  satelliteFolder.addBinding(satelliteVelocity, 'z', {
-    label: 'vel. z',
+  }
+);
+
+const satAccelerationFolder = satelliteFolder.addFolder({
+  title: 'Acceleration (km/s²)',
+  expanded: true,
+});
+
+(['x', 'y', 'z'] as const).forEach((label) => {
+  satAccelerationFolder.addBinding(satelliteAcceleration, label, {
+    label,
     readonly: true,
-  }),
-  satelliteFolder.addBinding(
-    {
-      length: satelliteVelocity.length(),
-    },
-    'length',
-    {
-      label: 'Orbital Velocity',
-      readonly: true,
-    },
-  ),
-];
+    format: (v) => v.toExponential(5),
+  });
+});
 
+satAccelerationFolder.addBinding(
+  {
+    length: satelliteAcceleration.length(),
+  },
+  'length',
+  {
+    label: 'Magnitude (km/s²)',
+    format: (v) => v,
+    readonly: true,
+  }
+);
 
-
-// const velocityControls = [
-//   satelliteFolder.add(satelliteVelocity, 'x', -1000, 1000).name('Velocity X'),
-//   satelliteFolder.add(satelliteVelocity, 'y', -1000, 1000).name('Velocity Y'),
-//   satelliteFolder.add(satelliteVelocity, 'z', -1000, 1000).name('Velocity Z'),
-// ];
-
-// // focus on the satellite
-// satelliteFolder
-//   .add({ focus: () => focusOnObject(satellite) }, 'focus')
-//   .name('Focus on Satellite');
-
-// satelliteFolder.add(satelliteAcceleration, 'x', -1, 1).name('Acceleration X');
-// satelliteFolder.add(satelliteAcceleration, 'y', -1, 1).name('Acceleration Y');
-// satelliteFolder.add(satelliteAcceleration, 'z', -1, 1).name('Acceleration Z');
-
-
-
-
-
-function animate(deltaTime: number | null) {
+function animate(deltaTimeMs: number | null) {
   controls.update();
   renderer.render(scene, camera);
+  pane.refresh();
 
-  // const [xPosControl, yPosControl, zPosControl] = positionControls;
-  // const [xVelControl, yVelControl, zVelControl] = velocityControls;
+  globalParams.timeDeltaTimeMs = deltaTimeMs;
 
-  // xPosControl.setValue(satellite.position.x);
-  // yPosControl.setValue(satellite.position.y);
-  // zPosControl.setValue(satellite.position.z);
-
-  // xVelControl.setValue(satelliteVelocity.x);
-  // yVelControl.setValue(satelliteVelocity.y);
-  // zVelControl.setValue(satelliteVelocity.z);
-
-  // focusOnObject(satellite);
-
-  updateSatellitePosition(deltaTime);
+  updateSatellitePosition(deltaTimeMs);
 }
 
 const OrbitalVelocity = () => {
@@ -359,7 +566,7 @@ const OrbitalVelocity = () => {
       const currentTime = performance.now();
 
       if (lastFrameTime != null) {
-        animate((currentTime - lastFrameTime) / 1000);
+        animate(currentTime - lastFrameTime);
       } else {
         animate(null);
       }
