@@ -4,6 +4,8 @@ import { useEffect, useId } from 'react';
 import { Pane } from 'tweakpane';
 
 import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
+import Earth from './Earth';
+import Rocket from './Rocket';
 
 const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
 
@@ -47,20 +49,6 @@ scene.add(directionalLight);
 
 const EARTH_RADIUS_KM = 6378; // in km
 
-const earth = new THREE.Mesh(
-  new THREE.SphereGeometry(EARTH_RADIUS_KM, 128, 128),
-  new THREE.MeshPhongMaterial({
-    map: earthTexture,
-  })
-);
-earth.position.set(0, 0, 0);
-earth.name = 'EARTH';
-earth.castShadow = true;
-earth.receiveShadow = true;
-earth.renderOrder = 0; // Ensure Earth is rendered first
-
-scene.add(earth);
-
 function createAtmosphereLayer(radius: number, color: number, opacity: number) {
   const geometry = new THREE.SphereGeometry(radius, 128, 128);
   const material = new THREE.MeshPhongMaterial({
@@ -90,10 +78,10 @@ const atmosphereLayers = [
   createAtmosphereLayer(EARTH_RADIUS_KM + 10000, 0x191970, 0.02), // Midnight blue, barely visible
 ];
 
-atmosphereLayers.forEach((layer, i) => {
-  layer.renderOrder = 1 + i; // Ensure atmosphere is rendered after the Earth
-  scene.add(layer);
-});
+// atmosphereLayers.forEach((layer, i) => {
+//   layer.renderOrder = 1 + i; // Ensure atmosphere is rendered after the Earth
+//   scene.add(layer);
+// });
 
 function createAtmosphereBorder(radius: number, color: number) {
   const geo = new THREE.EdgesGeometry(
@@ -126,13 +114,20 @@ const SATELLITE_ALTITUDE = satteliteHeigth / 2; // in km
 
 satellite.rotateZ(-Math.PI / 2); // Rotate to align with the Earth's equator
 
-const satteliteInitialPosition = new THREE.Vector3(
-  EARTH_RADIUS_KM + SATELLITE_ALTITUDE,
-  0,
-  0
-);
+const satteliteInitialPosition = new THREE.Vector3(EARTH_RADIUS_KM, 0, 0);
 satellite.position.copy(satteliteInitialPosition); // Initial position of the satellite
 scene.add(satellite);
+
+const earth = new Earth(scene);
+
+const rocket = new Rocket(
+  earth,
+  scene,
+  earth.geoCoordinatesToPosition(0, 0),
+  // new THREE.Vector3(20, 20, 20)
+);
+
+
 
 const maxPoints = 1000;
 const trailPositions = new Float32Array(maxPoints * 3); // x, y, z for each point
@@ -329,6 +324,9 @@ function updateSatellitePosition(deltaTimeMs: number | null) {
   const deltaTimeS = deltaTimeMs / 1000;
   const tick = deltaTimeS * globalParams.timeMultiplier;
 
+  rocket.update(tick);
+  earth.update(tick);
+
   globalParams.timePassedSeconds += tick;
 
   const maxAcceleration = 30 / 1000; // km/s²
@@ -347,7 +345,6 @@ function updateSatellitePosition(deltaTimeMs: number | null) {
   satelliteAcceleration.set(xAcceleration, 0, 0);
 
   let thrustAngleIncline = 0;
-
 
   if (guiSatelliteParams.altitudeKm < 1) {
     thrustAngleIncline = THREE.MathUtils.degToRad(0);
@@ -368,14 +365,14 @@ function updateSatellitePosition(deltaTimeMs: number | null) {
     thrustAngleIncline
   ); // Rotate to align with the Earth's equator
 
-  const earthGravityVector = new THREE.Vector3()
-    .subVectors(earth.position, satellite.position) // Earth - Satellite
-    .normalize();
-  const distanceMeters = earth.position.distanceTo(satellite.position) * 1000; // Convert km to meters
+  // const earthGravityVector = new THREE.Vector3()
+  //   .subVectors(earth.position, satellite.position) // Earth - Satellite
+  //   .normalize();
+  // const distanceMeters = earth.position.distanceTo(satellite.position) * 1000; // Convert km to meters
 
-  const distanceToSurface = distanceMeters - EARTH_RADIUS_KM * 1000;
+  // const distanceToSurface = distanceMeters - EARTH_RADIUS_KM * 1000;
 
-  guiSatelliteParams.altitudeKm = distanceToSurface / 1000;
+  // guiSatelliteParams.altitudeKm = distanceToSurface / 1000;
 
   for (let i = maxPoints - 1; i > 0; i--) {
     trailPositions[i * 3] = trailPositions[(i - 1) * 3];
@@ -389,40 +386,43 @@ function updateSatellitePosition(deltaTimeMs: number | null) {
 
   trailGeometry.attributes.position.needsUpdate = true;
 
-  if (distanceToSurface < 0) {
-    // If the satellite is below the Earth's surface, reset its position
-    satellite.position.copy(satteliteInitialPosition);
-    satelliteVelocity.copy(satelliteInitialVelocity);
-    satelliteAcceleration.set(0, 0, 0); // Reset acceleration
-    return; // Exit the function to avoid further calculations
-  }
+  // if (distanceToSurface < 0) {
+  //   // If the satellite is below the Earth's surface, reset its position
+  //   satellite.position.copy(satteliteInitialPosition);
+  //   satelliteVelocity.copy(satelliteInitialVelocity);
+  //   satelliteAcceleration.set(0, 0, 0); // Reset acceleration
+  //   return; // Exit the function to avoid further calculations
+  // }
 
-  const gravityForceMagnitude = (EARTH_G * EARTH_MASS_KG) / distanceMeters ** 2;
+  // const gravityForceMagnitude = (EARTH_G * EARTH_MASS_KG) / distanceMeters ** 2;
 
-  const gravityForce = earthGravityVector.multiplyScalar(
-    gravityForceMagnitude * 0.001
-  ); // Convert to km/s^2
+  // const gravityForce = earthGravityVector.multiplyScalar(
+  //   gravityForceMagnitude * 0.001
+  // ); // Convert to km/s^2
 
-  guiSatelliteParams.gravitiAcceleration = gravityForce.length();
+  // guiSatelliteParams.gravitiAcceleration = gravityForce.length();
 
-  tangentLine.geometry.setFromPoints([satellite.position, earth.position]);
+  // tangentLine.geometry.setFromPoints([satellite.position, earth.position]);
 
-  satelliteVelocity
-    .add(gravityForce.clone().multiplyScalar(tick))
-    .add(satelliteAcceleration.clone().multiplyScalar(tick));
+  // satelliteVelocity
+  //   .add(gravityForce.clone().multiplyScalar(tick))
+  //   .add(satelliteAcceleration.clone().multiplyScalar(tick));
 
-  satellite.rotateZ(
-    satellite.position
-      .clone()
-      .angleTo(satellite.position.clone().add(satelliteVelocity.clone())) * tick
-  );
+  // satellite.rotateZ(
+  //   satellite.position
+  //     .clone()
+  //     .angleTo(satellite.position.clone().add(satelliteVelocity.clone())) * tick
+  // );
+  // satellite.lookAt(
+  //   satellite.position.clone().add(satelliteAcceleration.clone())
+  // )
 
-  guiSatelliteParams.pitch = THREE.MathUtils.radToDeg(
-    Math.PI / 2 -
-      satelliteVelocity.clone().angleTo(earthGravityVector.clone())
-  );
+  // guiSatelliteParams.pitch = THREE.MathUtils.radToDeg(
+  //   Math.PI / 2 -
+  //     satelliteVelocity.clone().angleTo(earthGravityVector.clone())
+  // );
 
-  satellite.position.add(satelliteVelocity.clone().multiplyScalar(tick));
+  // satellite.position.add(satelliteVelocity.clone().multiplyScalar(tick));
 }
 
 const focusOnObject = (object3D: THREE.Object3D) => {
@@ -476,7 +476,7 @@ satelliteFolder
     title: 'Focus on Satellite',
   })
   .on('click', () => {
-    focusOnObject(satellite);
+    focusOnObject(rocket.mesh);
   });
 
 satelliteFolder.addBlade({
