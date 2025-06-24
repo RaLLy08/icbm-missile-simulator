@@ -64,6 +64,9 @@ class Earth {
     return earthGravityVector.multiplyScalar(gravityForceMagnitude * 0.001); // Convert to km/s^2
   }
 
+  /**
+   * @returns The distance to the surface of the Earth in kilometers.
+   */
   distanceToSurface(position: THREE.Vector3): number {
     const distanceToEarthCenters = this.mesh.position.distanceTo(position);
     return distanceToEarthCenters - Earth.RADIUS; 

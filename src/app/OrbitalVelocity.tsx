@@ -1,13 +1,14 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import { useEffect, useId } from 'react';
 import { Pane } from 'tweakpane';
+import Stats from 'three/examples/jsm/libs/stats.module';
 
-import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
 import Earth from './Earth';
 import Rocket from './Rocket';
 
-const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
+const stats = new Stats();
+document.body.appendChild(stats.dom);
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -31,10 +32,6 @@ renderer.setSize(WIDTH, HEIGHT);
 renderer.setClearColor(0x000000, 1); // Set background color to black
 
 renderer.setPixelRatio(window.devicePixelRatio);
-
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.update();
 
 const axesHelper = new THREE.AxesHelper(3);
 axesHelper.position.set(3, -3, 0);
@@ -99,35 +96,39 @@ const atmosphereBorders = {
   exosphere: createAtmosphereBorder(EARTH_RADIUS_KM + 10000, 0x191970), // Exosphere
 };
 
-const satteliteHeigth = 0.2;
-const satilliteGeometry = new THREE.ConeGeometry(
-  satteliteHeigth,
-  satteliteHeigth * 2,
-  32,
-  1
-);
-
-const satilliteMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-const satellite = new THREE.Mesh(satilliteGeometry, satilliteMaterial);
-satellite.name = 'SATELLITE';
-const SATELLITE_ALTITUDE = satteliteHeigth / 2; // in km
-
-satellite.rotateZ(-Math.PI / 2); // Rotate to align with the Earth's equator
-
-const satteliteInitialPosition = new THREE.Vector3(EARTH_RADIUS_KM, 0, 0);
-satellite.position.copy(satteliteInitialPosition); // Initial position of the satellite
-scene.add(satellite);
+const createMarker = (position: THREE.Vector3, color: number) => {
+  const geometry = new THREE.SphereGeometry(50, 4, 16);
+  const material = new THREE.MeshBasicMaterial({ color: color });
+  const marker = new THREE.Mesh(geometry, material);
+  marker.position.copy(position);
+  return marker;
+};
 
 const earth = new Earth(scene);
 
+const rocketInitialPosition = earth.geoCoordinatesToPosition(0, 0);
+const rocketTargetPosition = earth.geoCoordinatesToPosition(45, 0);
+
 const rocket = new Rocket(
   earth,
-  scene,
-  earth.geoCoordinatesToPosition(0, 0),
-  // new THREE.Vector3(20, 20, 20)
+  rocketInitialPosition,
+  rocketTargetPosition.clone().sub(rocketInitialPosition).normalize() // consider the earth curvate later (draw the tragectory as well)
 );
 
+scene.add(createMarker(rocketInitialPosition, 0xff0000));
+scene.add(createMarker(rocketTargetPosition, 0x00ff00));
 
+const heigth = 2;
+
+const rocketGeometry = new THREE.CylinderGeometry(2, 2, heigth * 2, 32);
+// this.geometry.scale(this.scale.x, this.scale.y, this.scale.z);
+const rocketMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+const rocketMesh = new THREE.Mesh(rocketGeometry, rocketMaterial);
+rocketMesh.position.copy(rocket.position);
+// this.mesh.frustumCulled = false;
+rocketMesh.name = 'Rocket';
+
+scene.add(rocketMesh);
 
 const maxPoints = 1000;
 const trailPositions = new Float32Array(maxPoints * 3); // x, y, z for each point
@@ -140,35 +141,17 @@ const trailMaterial = new THREE.LineBasicMaterial({ color: 0x00ffcc });
 const trailLine = new THREE.Line(trailGeometry, trailMaterial);
 scene.add(trailLine);
 
-for (let i = 0; i < maxPoints; i++) {
-  trailPositions[i * 3] = satellite.position.x;
-  trailPositions[i * 3 + 1] = satellite.position.y;
-  trailPositions[i * 3 + 2] = satellite.position.z;
-}
+// for (let i = 0; i < maxPoints; i++) {
+//   trailPositions[i * 3] = satellite.position.x;
+//   trailPositions[i * 3 + 1] = satellite.position.y;
+//   trailPositions[i * 3 + 2] = satellite.position.z;
+// }
 
 trailLine.frustumCulled = false;
 
 scene.add(trailLine);
 
 trailLine.name = 'TRAIL';
-
-const gravityLine = new THREE.Line(
-  new THREE.BufferGeometry(),
-  new THREE.LineBasicMaterial({ color: 0x00ff00 })
-);
-scene.add(gravityLine);
-
-const tangentLine = new THREE.Line(
-  new THREE.BufferGeometry(),
-  new THREE.LineBasicMaterial({ color: 0xffff00 })
-);
-scene.add(tangentLine);
-tangentLine.frustumCulled = false;
-const satelliteInitialVelocity = new THREE.Vector3(0, 0, 0);
-const satelliteVelocity = new THREE.Vector3(0, 0, 0).add(
-  satelliteInitialVelocity
-);
-const satelliteAcceleration = new THREE.Vector3(0, 0, 0);
 
 const pane = new Pane({
   container: document.getElementById('guiControls')!,
@@ -315,6 +298,48 @@ const guiGravitiAcceleration = satelliteFolder.addBinding(
     format: (v) => v.toExponential(5),
   }
 );
+
+const arrows: THREE.ArrowHelper[] = [];
+
+function updateArrow(
+  name: string,
+  position: THREE.Vector3,
+  direction: THREE.Vector3,
+  magnitude: number = 1
+) {
+  const arrow = arrows.find((a) => a.name === name);
+
+  if (!arrow) return;
+  const scale = 100;
+  const length = magnitude * scale;
+
+  arrow.setDirection(direction);
+  arrow.setLength(length, length * 0.1, length * 0.1);
+  arrow.position.copy(position);
+}
+
+function addArrow(
+  name: string,
+  color = 0x00ff00,
+  position = new THREE.Vector3(0, 0, 0),
+  direction = new THREE.Vector3(0, 0, 0)
+) {
+  const scale = 100;
+  const length = direction.length() * scale;
+  const arrow = new THREE.ArrowHelper(direction, position, length, color);
+  arrow.name = name;
+  arrow.frustumCulled = false;
+  arrow.setLength(length, length * 0.1, length * 0.1);
+  arrow.setDirection(direction);
+  arrow.setColor(color);
+  scene.add(arrow);
+  arrows.push(arrow);
+}
+
+addArrow('velocity', 0xff0000);
+addArrow('gravity', 0x0000ff);
+addArrow('thrust', 0x00ff00);
+
 // save launch time, create rocket, missle class
 
 function updateSatellitePosition(deltaTimeMs: number | null) {
@@ -327,222 +352,169 @@ function updateSatellitePosition(deltaTimeMs: number | null) {
   rocket.update(tick);
   earth.update(tick);
 
+  rocketMesh.position.copy(rocket.position);
+
+  updateArrow(
+    'gravity',
+    rocket.position,
+    rocket.gravityForce.clone().normalize(),
+    rocket.gravityForce.length() * 10
+  );
+
+  updateArrow(
+    'velocity',
+    rocket.position,
+    rocket.velocity.clone().normalize(),
+    rocket.velocity.length()
+  );
+
+  updateArrow(
+    'thrust',
+    rocket.position,
+    rocket.thrust.clone().normalize(),
+    rocket.thrust.length() * 10
+  );
+
   globalParams.timePassedSeconds += tick;
 
-  const maxAcceleration = 30 / 1000; // km/s²
-  const burnTimeS = 535; // Time in seconds for the burn
-
-  let xAcceleration = 0;
-
-  if (burnTimeS > globalParams.timePassedSeconds) {
-    xAcceleration =
-      maxAcceleration *
-      Math.sin((globalParams.timePassedSeconds * Math.PI) / burnTimeS);
-  } else {
-    xAcceleration = 0;
-  }
-
-  satelliteAcceleration.set(xAcceleration, 0, 0);
-
-  let thrustAngleIncline = 0;
-
-  if (guiSatelliteParams.altitudeKm < 1) {
-    thrustAngleIncline = THREE.MathUtils.degToRad(0);
-  } else if (guiSatelliteParams.altitudeKm < 10) {
-    thrustAngleIncline = THREE.MathUtils.degToRad(5);
-  } else if (guiSatelliteParams.altitudeKm < 30) {
-    thrustAngleIncline = THREE.MathUtils.degToRad(20);
-  } else if (guiSatelliteParams.altitudeKm < 80) {
-    thrustAngleIncline = THREE.MathUtils.degToRad(45);
-  } else if (guiSatelliteParams.altitudeKm < 150) {
-    thrustAngleIncline = THREE.MathUtils.degToRad(70);
-  } else {
-    thrustAngleIncline = THREE.MathUtils.degToRad(85);
-  }
-
-  satelliteAcceleration.applyAxisAngle(
-    new THREE.Vector3(0, 0, 1),
-    thrustAngleIncline
-  ); // Rotate to align with the Earth's equator
-
-  // const earthGravityVector = new THREE.Vector3()
-  //   .subVectors(earth.position, satellite.position) // Earth - Satellite
-  //   .normalize();
-  // const distanceMeters = earth.position.distanceTo(satellite.position) * 1000; // Convert km to meters
-
-  // const distanceToSurface = distanceMeters - EARTH_RADIUS_KM * 1000;
-
-  // guiSatelliteParams.altitudeKm = distanceToSurface / 1000;
-
-  for (let i = maxPoints - 1; i > 0; i--) {
-    trailPositions[i * 3] = trailPositions[(i - 1) * 3];
-    trailPositions[i * 3 + 1] = trailPositions[(i - 1) * 3 + 1];
-    trailPositions[i * 3 + 2] = trailPositions[(i - 1) * 3 + 2];
-  }
-
-  trailPositions[0] = satellite.position.x;
-  trailPositions[1] = satellite.position.y;
-  trailPositions[2] = satellite.position.z;
-
-  trailGeometry.attributes.position.needsUpdate = true;
-
-  // if (distanceToSurface < 0) {
-  //   // If the satellite is below the Earth's surface, reset its position
-  //   satellite.position.copy(satteliteInitialPosition);
-  //   satelliteVelocity.copy(satelliteInitialVelocity);
-  //   satelliteAcceleration.set(0, 0, 0); // Reset acceleration
-  //   return; // Exit the function to avoid further calculations
+  // for (let i = maxPoints - 1; i > 0; i--) {
+  //   trailPositions[i * 3] = trailPositions[(i - 1) * 3];
+  //   trailPositions[i * 3 + 1] = trailPositions[(i - 1) * 3 + 1];
+  //   trailPositions[i * 3 + 2] = trailPositions[(i - 1) * 3 + 2];
   // }
 
-  // const gravityForceMagnitude = (EARTH_G * EARTH_MASS_KG) / distanceMeters ** 2;
+  // trailPositions[0] = satellite.position.x;
+  // trailPositions[1] = satellite.position.y;
+  // trailPositions[2] = satellite.position.z;
 
-  // const gravityForce = earthGravityVector.multiplyScalar(
-  //   gravityForceMagnitude * 0.001
-  // ); // Convert to km/s^2
-
-  // guiSatelliteParams.gravitiAcceleration = gravityForce.length();
-
-  // tangentLine.geometry.setFromPoints([satellite.position, earth.position]);
-
-  // satelliteVelocity
-  //   .add(gravityForce.clone().multiplyScalar(tick))
-  //   .add(satelliteAcceleration.clone().multiplyScalar(tick));
-
-  // satellite.rotateZ(
-  //   satellite.position
-  //     .clone()
-  //     .angleTo(satellite.position.clone().add(satelliteVelocity.clone())) * tick
-  // );
-  // satellite.lookAt(
-  //   satellite.position.clone().add(satelliteAcceleration.clone())
-  // )
-
-  // guiSatelliteParams.pitch = THREE.MathUtils.radToDeg(
-  //   Math.PI / 2 -
-  //     satelliteVelocity.clone().angleTo(earthGravityVector.clone())
-  // );
-
-  // satellite.position.add(satelliteVelocity.clone().multiplyScalar(tick));
+  // trailGeometry.attributes.position.needsUpdate = true;
 }
+let i = 0;
+export function focusOnObject(
+  object3D: THREE.Object3D,
+  controls: TrackballControls,
+  fitOffset: number = 1.2
+) {
+  // Get the object's world position
+  const objectWorldPosition = new THREE.Vector3();
+  object3D.getWorldPosition(objectWorldPosition);
 
-const focusOnObject = (object3D: THREE.Object3D) => {
-  const boundingBox = new THREE.Box3().setFromObject(object3D);
-  const center = boundingBox.getCenter(new THREE.Vector3());
-  const size = boundingBox.getSize(new THREE.Vector3());
+  // Calculate direction from sphere center to object (surface normal)
+  const normalDirection = new THREE.Vector3()
+    .subVectors(objectWorldPosition, earth.mesh.position)
+    .normalize();
+  i += 10;
+  normalDirection.applyAxisAngle(
+    new THREE.Vector3(0, 0, 1),
+    THREE.MathUtils.degToRad(80)
+  );
 
-  // Calculate an appropriate distance (zoom out enough to see the object)
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const fov = camera.fov * (Math.PI / 180); // convert vertical FOV to radians
-  let distance = maxDim / (2 * Math.tan(fov / 2));
+  // normalDirection.applyAxisAngle(
+  //   new THREE.Vector3(0, 1, 0),
+  //   THREE.MathUtils.degToRad(90)
+  // );
 
-  // Optional: add a buffer
-  distance *= 6;
+  // Position the camera just above the object in the normal direction
+  const cameraPosition = new THREE.Vector3()
+    .copy(objectWorldPosition)
+    .addScaledVector(normalDirection, 10);
 
-  // Set camera position (here along Z axis; adjust as needed)
-  const direction = new THREE.Vector3(0, 0, 1); // camera looks from positive Z
-  const newPosition = center.clone().add(direction.multiplyScalar(distance));
-  camera.position.copy(newPosition);
+  camera.position.copy(cameraPosition);
 
-  // Focus and render
-  controls.target.copy(center);
+  // Aim the camera to look at the object
+  controls.target.copy(objectWorldPosition);
+
+  // Update camera projection matrix (in case you move far from center)
+  camera.updateProjectionMatrix();
+
+  // Update controls
   controls.update();
-  camera.lookAt(center);
-  renderer.render(scene, camera);
-};
-function onClick(event) {
-  // Convert mouse to normalized device coordinates (-1 to +1)
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  // Update the picking ray with the camera and mouse position
-  raycaster.setFromCamera(mouse, camera);
-
-  // Calculate objects intersecting the ray
-  const intersects = raycaster.intersectObjects(scene.children, true);
-
-  if (intersects.length > 0) {
-    // focus on the first intersected object
-    if (intersects[0].object.name === 'SATELLITE') {
-      const intersectedObject = intersects[0].object;
-      focusOnObject(intersectedObject);
-    }
-  }
 }
 
-window.addEventListener('click', onClick, false);
+// function onClick(event) {
+//   // Convert mouse to normalized device coordinates (-1 to +1)
+//   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+//   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-satelliteFolder
-  .addButton({
-    title: 'Focus on Satellite',
-  })
-  .on('click', () => {
-    focusOnObject(rocket.mesh);
-  });
+//   // Update the picking ray with the camera and mouse position
+//   raycaster.setFromCamera(mouse, camera);
 
-satelliteFolder.addBlade({
-  view: 'separator',
-});
+//   // Calculate objects intersecting the ray
+//   const intersects = raycaster.intersectObjects(scene.children, true);
 
-(['x', 'y', 'z'] as const).forEach((label) => {
-  satelliteFolder.addBinding(satellite.position, label, {
-    label,
-    readonly: true,
-  });
-});
+//   if (intersects.length > 0) {
+//     // focus on the first intersected object
+//     if (intersects[0].object.name === 'SATELLITE') {
+//       const intersectedObject = intersects[0].object;
+//       focusOnObject(intersectedObject);
+//     }
+//   }
+// }
 
-const satVelocityFolder = satelliteFolder.addFolder({
-  title: 'Velocity (km/s)',
-  expanded: true,
-});
+// window.addEventListener('click', onClick, false);
 
-(['x', 'y', 'z'] as const).forEach((label) => {
-  satVelocityFolder.addBinding(satelliteVelocity, label, {
-    label,
-    readonly: true,
-    format: (v) => v.toExponential(5),
-  });
-});
+// (['x', 'y', 'z'] as const).forEach((label) => {
+//   satelliteFolder.addBinding(satellite.position, label, {
+//     label,
+//     readonly: true,
+//   });
+// });
 
-satVelocityFolder.addBinding(
-  {
-    length: satelliteVelocity.length(),
-  },
-  'length',
-  {
-    label: 'Magnitude',
-    readonly: true,
-  }
-);
+// const satVelocityFolder = satelliteFolder.addFolder({
+//   title: 'Velocity (km/s)',
+//   expanded: true,
+// });
+
+// (['x', 'y', 'z'] as const).forEach((label) => {
+//   satVelocityFolder.addBinding(satelliteVelocity, label, {
+//     label,
+//     readonly: true,
+//     format: (v) => v.toExponential(5),
+//   });
+// });
+
+// satVelocityFolder.addBinding(
+//   {
+//     length: satelliteVelocity.length(),
+//   },
+//   'length',
+//   {
+//     label: 'Magnitude',
+//     readonly: true,
+//   }
+// );
 
 const satAccelerationFolder = satelliteFolder.addFolder({
   title: 'Acceleration (km/s²)',
   expanded: true,
 });
 
-(['x', 'y', 'z'] as const).forEach((label) => {
-  satAccelerationFolder.addBinding(satelliteAcceleration, label, {
-    label,
-    readonly: true,
-    format: (v) => v.toExponential(5),
-  });
-});
+// (['x', 'y', 'z'] as const).forEach((label) => {
+//   satAccelerationFolder.addBinding(satelliteAcceleration, label, {
+//     label,
+//     readonly: true,
+//     format: (v) => v.toExponential(5),
+//   });
+// });
 
-satAccelerationFolder.addBinding(
-  {
-    length: satelliteAcceleration.length(),
-  },
-  'length',
-  {
-    label: 'Magnitude (km/s²)',
-    format: (v) => v,
-    readonly: true,
-  }
-);
+// satAccelerationFolder.addBinding(
+//   {
+//     length: satelliteAcceleration.length(),
+//   },
+//   'length',
+//   {
+//     label: 'Magnitude (km/s²)',
+//     format: (v) => v,
+//     readonly: true,
+//   }
+// );
 
 function animate(deltaTimeMs: number | null) {
-  controls.update();
+  // controls.update();
   renderer.render(scene, camera);
   pane.refresh();
+
+  stats.update();
 
   globalParams.timeDeltaTimeMs = deltaTimeMs;
 
@@ -558,6 +530,23 @@ const OrbitalVelocity = () => {
 
     sceneContainer.appendChild(renderer.domElement);
 
+    const controls = new TrackballControls(camera, renderer.domElement);
+    controls.noRotate = false;
+    controls.noPan = false;
+    controls.noZoom = false;
+
+    satelliteFolder
+      .addButton({
+        title: 'Focus on Satellite',
+      })
+      .on('click', () => {
+        focusOnObject(rocketMesh, controls);
+      });
+
+    satelliteFolder.addBlade({
+      view: 'separator',
+    });
+
     let lastFrameTime: number;
     let animationId: number;
 
@@ -566,6 +555,7 @@ const OrbitalVelocity = () => {
       const currentTime = performance.now();
 
       if (lastFrameTime != null) {
+        controls.update(); // Move this inside the loop
         animate(currentTime - lastFrameTime);
       } else {
         animate(null);
