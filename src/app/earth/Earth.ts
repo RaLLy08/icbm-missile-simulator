@@ -1,8 +1,5 @@
+import { atmosphereLayerKeys } from './earth.consts';
 import * as THREE from 'three';
-import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
-import Rocket from './Rocket';
-
-const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
 
 
 class Earth {
@@ -16,28 +13,15 @@ class Earth {
    */
   static readonly MASS = 5.972e24;
 
-  private geometry: THREE.SphereGeometry;
-  private material: THREE.MeshPhongMaterial;
-  mesh: THREE.Mesh;
+  static readonly atmosphereLayersHeights = Object.freeze({
+    [atmosphereLayerKeys.TROPOSPHERE]: 10,
+    [atmosphereLayerKeys.STRATOSPHERE]: 50,
+    [atmosphereLayerKeys.MESOSPHERE]: 85,
+    [atmosphereLayerKeys.THERMOSPHERE]: 600,
+    [atmosphereLayerKeys.EXOSPHERE]: 1000,
+  });
 
-  constructor(private readonly scene: THREE.Scene) {
-    const segments = 128;
-
-    this.geometry = new THREE.SphereGeometry(Earth.RADIUS, segments, segments);
-    this.material = new THREE.MeshPhongMaterial({
-      map: earthTexture,
-    });
-
-    this.mesh = new THREE.Mesh(this.geometry, this.material);
-
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
-
-    this.mesh.name = Earth.name;
-    this.mesh.position.set(0, 0, 0);
-
-    this.scene.add(this.mesh);
-  }
+  constructor(public position = new THREE.Vector3(0, 0, 0)) {}
 
   // private createSphereEdges(radius: number, color: number, segmentCount: number = 128): THREE.LineSegments {
   //   const geo = new THREE.EdgesGeometry(
@@ -49,13 +33,12 @@ class Earth {
   //   return lineSegments;
   // }
 
-
   gravityForce(target: THREE.Vector3): THREE.Vector3 {
     const earthGravityVector = new THREE.Vector3()
-      .subVectors(this.mesh.position, target) // Earth - Rocket
+      .subVectors(this.position, target) // Earth - Rocket
       .normalize();
 
-    const distanceToRocketMeters = this.mesh.position.distanceTo(target) * 1000; // Convert km to meters
+    const distanceToRocketMeters = this.position.distanceTo(target) * 1000; // Convert km to meters
 
     // Calculate gravitational force
     const gravityForceMagnitude =
@@ -67,14 +50,12 @@ class Earth {
   /**
    * @returns The distance to the surface of the Earth in kilometers.
    */
-  distanceToSurface(position: THREE.Vector3): number {
-    const distanceToEarthCenters = this.mesh.position.distanceTo(position);
-    return distanceToEarthCenters - Earth.RADIUS; 
+  calcAltitude(position: THREE.Vector3): number {
+    const distanceToEarthCenters = this.position.distanceTo(position);
+    return distanceToEarthCenters - Earth.RADIUS;
   }
 
-  update(tick: number) {
-      
-  }
+  update(tick: number) {}
 
   geoCoordinatesToPosition(latitude: number, longitude: number): THREE.Vector3 {
     const phi = (90 - latitude) * (Math.PI / 180); // Convert latitude to polar angle
@@ -87,9 +68,14 @@ class Earth {
     return new THREE.Vector3(x, y, z);
   }
 
-  positionToGeoCoordinates(position: THREE.Vector3): { latitude: number; longitude: number } {
-    const latitude = 90 - (Math.acos(position.y / Earth.RADIUS) * (180 / Math.PI));
-    const longitude = (Math.atan2(position.z, position.x) * (180 / Math.PI)) - 180;
+  positionToGeoCoordinates(position: THREE.Vector3): {
+    latitude: number;
+    longitude: number;
+  } {
+    const latitude =
+      90 - Math.acos(position.y / Earth.RADIUS) * (180 / Math.PI);
+    const longitude =
+      Math.atan2(position.z, position.x) * (180 / Math.PI) - 180;
 
     return { latitude, longitude };
   }

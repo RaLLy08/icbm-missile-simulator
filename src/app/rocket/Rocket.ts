@@ -1,9 +1,7 @@
 import * as THREE from 'three';
-import Earth from './Earth';
+import Earth from '../earth/Earth';
 
 class Rocket {
-  scale = new THREE.Vector3(1, 1, 1);
-
   /**
    * Unit: km
    */
@@ -21,12 +19,10 @@ class Rocket {
 
   gravityForce = new THREE.Vector3(0, 0, 0);
 
-  timeAfterLaunchMs = 0;
-
   /**
    * Unit: km
    */
-  distanceToSurface = 0;
+  altitude = 0;
 
   /**
    * Unit: kg
@@ -40,7 +36,7 @@ class Rocket {
   launchTime = 0;
 
   /**
-   * Indicates whether the rocket has finished its flight. (has displacement > 0.5 and distanceToSurface < 0)
+   * Indicates whether the rocket has finished its flight. (has displacement > 0.5 and altitude < 0)
    */
   hasLanded = false;
 
@@ -97,22 +93,16 @@ class Rocket {
 
     // --- 3. Gradual interpolation between gravity-opposite and toTarget ---
     if (
-      this.distanceToSurface > this.startInclineAfterDistance &&
-      this.currentThrustInclineDuration < this.thrustInclineMaxDuration
+      this.altitude > this.startInclineAfterDistance &&
+      this.currentThrustInclineDuration <= this.thrustInclineMaxDuration
     ) {
       this.currentThrustInclineDuration += tick;
     }
 
-    // Clamp total duration to max duration
-    const totalInclineTime = Math.min(
-      this.currentThrustInclineDuration,
-      this.thrustInclineMaxDuration
-    );
-
     // How far to interpolate between base and target direction
     const maxAngle = baseThrustDirection.angleTo(targetFlatThrustDirection);
-    const currentAngle = Math.min(
-      this.thrustInclineVelocity * totalInclineTime,
+    this.thrustInclineAngle = Math.min(
+      this.thrustInclineVelocity * this.currentThrustInclineDuration,
       maxAngle
     );
 
@@ -125,15 +115,14 @@ class Rocket {
     // Apply the rotation
     const inclinedThrustDirection = baseThrustDirection
       .clone()
-      .applyAxisAngle(rotationAxis, currentAngle);
+      .applyAxisAngle(rotationAxis, this.thrustInclineAngle);
 
     // Final thrust vector
     this.thrust = inclinedThrustDirection.multiplyScalar(thrust);
   }
 
   update(tick: number) {
-    this.launchTime += tick;
-    this.distanceToSurface = this.earth.distanceToSurface(this.position);
+    this.altitude = this.earth.calcAltitude(this.position);
     this.gravityForce = this.earth.gravityForce(this.position);
 
     this.setThrust(tick, this.targetFlatThrustDirection);
@@ -143,7 +132,7 @@ class Rocket {
     // todo fix (if too high time multipliyer)
     if (
       displacementMagnitude > 0.5 &&
-      this.distanceToSurface < this.velocity.length() * tick
+      this.altitude < this.velocity.length() * tick
     ) {
       this.velocity.set(0, 0, 0);
       this.thrust.set(0, 0, 0);
@@ -152,7 +141,7 @@ class Rocket {
       return;
     }
 
-    if (this.distanceToSurface < 0 && !this.hasLanded) {
+    if (this.altitude < 0 && !this.hasLanded) {
       this.position.copy(this.initialPosition);
       this.velocity.set(0, 0, 0);
       this.thrust.set(0, 0, 0);
@@ -163,7 +152,7 @@ class Rocket {
       this.position.add(this.velocity.clone().multiplyScalar(tick));
     }
 
-    // this.lookAtVelocity();
+    this.launchTime += tick;
   }
 
   // private lookAtVelocity(): void {
