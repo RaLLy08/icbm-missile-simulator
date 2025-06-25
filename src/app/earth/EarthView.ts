@@ -193,6 +193,10 @@ export default class EarthView {
     }
   }
 
+  setVisibility(show: boolean) {
+    this.mesh.visible = show;
+  }
+
   renderAtmosphereLayer(name: atmosphereLayerKeys) {
     const atmosphereLayer = this.atmosphereLayers.get(name);
     if (atmosphereLayer) {

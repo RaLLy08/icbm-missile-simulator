@@ -8,6 +8,7 @@ export default class EarthGui {
   private atmosphereLayersFolder: FolderApi;
   private atmosphereBordersFolder: FolderApi;
 
+  showEarth = true;
   massKg = Earth.MASS;
   gravityConst = Earth.G;
 
@@ -52,13 +53,14 @@ export default class EarthGui {
     });
 
     this.folder.addBinding(this, 'massKg', {
-      label: 'Mass (kg)',
+      label: 'Mass',
       readonly: true,
+      format: (v) => v + ' kg',
     });
 
     this.folder.addBinding(this, 'gravityConst', {
       label: 'Grav. Const.',
-      format: (v) => v,
+      format: (v) => v + ' m³/(kg·s²)',
       readonly: true,
     });
 
@@ -102,6 +104,14 @@ export default class EarthGui {
             this.earthView.removeAtmosphereBorder(key);
           }
         });
+    });
+
+    this.folder.addBinding(this, 'showEarth', {
+      label: 'Show Earth',
+      input: 'checkbox',
+      view: 'checkbox',
+    }).on('change', (ev) => {
+      this.earthView.setVisibility(ev.value);
     });
     
   }

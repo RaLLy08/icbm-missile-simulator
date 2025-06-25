@@ -1,6 +1,9 @@
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls';
 import Rocket from './Rocket';
 import * as THREE from 'three';
+// import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
+// import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+
 
 export default class RocketView {
   private geometry: THREE.CylinderGeometry;
@@ -8,6 +11,8 @@ export default class RocketView {
   private mesh: THREE.Mesh;
 
   private arrows: THREE.ArrowHelper[] = [];
+  // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
+  private arrowScale = 100;
 
   private trailLine: THREE.Line | null = null;
   private trailGeometry = new THREE.BufferGeometry();
@@ -16,9 +21,11 @@ export default class RocketView {
     this.trailMaxPoints * 3
   ); // x, y, z for each point
 
+
   constructor(
     private readonly rocket: Rocket,
-    private readonly scene: THREE.Scene
+    private readonly scene: THREE.Scene,
+    private readonly camera: THREE.PerspectiveCamera,
   ) {
     const heigth = 2;
 
@@ -57,7 +64,7 @@ export default class RocketView {
       'gravity',
       this.rocket.position,
       this.rocket.gravityForce.clone().normalize(),
-      this.rocket.gravityForce.length() * 10
+      this.rocket.gravityForce.length()
     );
 
     this.updateArrow(
@@ -71,7 +78,7 @@ export default class RocketView {
       'thrust',
       this.rocket.position,
       this.rocket.thrust.clone().normalize(),
-      this.rocket.thrust.length() * 10
+      this.rocket.thrust.length()
     );
   }
 
@@ -81,15 +88,30 @@ export default class RocketView {
     direction: THREE.Vector3,
     magnitude: number = 1
   ) {
-    const arrow = this.arrows.find((a) => a.name === name);
+    const arrow = this.arrows.find((a) => a.name === `${name}-arrow`);
 
     if (!arrow) return;
-    const scale = 100;
-    const length = magnitude * scale;
-
+    const length = magnitude * this.arrowScale;
+  
     arrow.setDirection(direction);
-    arrow.setLength(length, length * 0.1, length * 0.1);
+    arrow.setLength(
+      length,
+      Math.min(length * 0.2, 20),
+      Math.min(length * 0.1, 10)
+    );
     arrow.position.copy(position);
+
+    // const label = this.arrowsLabels.find((l) => l.name === `${name}-label`);
+    // if (label) {
+    //   const midpoint = new THREE.Vector3().addVectors(
+    //     position,
+    //     direction.clone().multiplyScalar(length)
+    //   );
+    //   label.position.copy(midpoint);
+    //   label.position.y += 0.2; // slightly above the arrow
+    //   label.lookAt(this.camera.position); // make it face the arrow
+    // }
+
   }
 
   private addArrow(
@@ -101,13 +123,40 @@ export default class RocketView {
     const scale = 100;
     const length = direction.length() * scale;
     const arrow = new THREE.ArrowHelper(direction, position, length, color);
-    arrow.name = name;
+    arrow.name = `${name}-arrow`;
     arrow.frustumCulled = false;
     arrow.setLength(length, length * 0.1, length * 0.1);
     arrow.setDirection(direction);
     arrow.setColor(color);
     this.scene.add(arrow);
     this.arrows.push(arrow);
+
+    
+    // const loader = new FontLoader();
+    // loader.load(
+    //   'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
+    //   (font) => {
+    //     const textGeometry = new TextGeometry('Middle', {
+    //       font: font,
+    //       size: 10,
+    //     });
+    //     const textMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    //     const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+
+    //     const midpoint = new THREE.Vector3().addVectors(
+    //       position,
+    //       direction.clone().multiplyScalar(length / 2)
+    //     );
+
+    //     textMesh.position.copy(midpoint);
+    //     textMesh.position.y += 0.2; // slightly above the arrow
+    //     textMesh.lookAt(this.camera.position); // make it face the camera
+    //     textMesh.name = `${name}-label`;
+    //     this.arrowsLabels.push(textMesh);
+
+    //     this.scene.add(textMesh);
+    //   }
+    // );
   }
 
   private initTrail() {
@@ -163,6 +212,10 @@ export default class RocketView {
     if (!this.rocket.hasLanded) {
       this.updateTrail();
     }
+  }
+
+  applyScaleToArrows(scale: number) {
+    this.arrowScale = scale;
   }
 
   focusCamera(controls: TrackballControls, camera: THREE.PerspectiveCamera) {

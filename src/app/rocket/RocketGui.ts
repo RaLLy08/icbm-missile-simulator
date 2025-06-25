@@ -3,32 +3,8 @@ import Rocket from './Rocket';
 import RocketView from './RocketView';
 import * as THREE from 'three';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls';
+import { formatSeconds } from 'app/utils';
 
-
-
-
-// const guiAltitudeKm = satelliteFolder.addBinding(
-//   guiSatelliteParams,
-//   'altitudeKm',
-//   {
-//     label: 'Altitude (km)',
-//   }
-// );
-
-// const guiPitch = satelliteFolder.addBinding(guiSatelliteParams, 'pitch', {
-//   label: 'Pitch (deqrees)',
-//   readonly: true,
-// });
-
-// const guiGravitiAcceleration = satelliteFolder.addBinding(
-//   guiSatelliteParams,
-//   'gravitiAcceleration',
-//   {
-//     label: 'Grav. Acceleration (km/s²)',
-//     readonly: true,
-//     format: (v) => v.toExponential(5),
-//   }
-// );
 
 
 export default class RocketGui {
@@ -38,6 +14,7 @@ export default class RocketGui {
   displacement = 0;
   gravityForce = 0;
   percentOfFuel = 0;
+  forcesArrowViewScale = 100; 
 
   constructor(
     private readonly pane: Pane,
@@ -60,36 +37,36 @@ export default class RocketGui {
       });
 
     this.folder.addBinding(this, 'velocity', {
-      label: 'Velocity (km/s)',
+      label: 'Velocity',
       readonly: true,
-      format: (v) => v.toFixed(5),
+      format: (v) => v.toFixed(5) + ' km/s',
     });
 
     this.folder.addBinding(this, 'thrust', {
-      label: 'Thurst (km/s²)',
+      label: 'Thurst',
       readonly: true,
       view: 'graph',
       min: 0,
       max: this.rocket.maxThrust,
-      format: (v) => v.toFixed(5),
+      format: (v) => v.toFixed(5) + ' km/s²',
     });
 
     this.folder.addBinding(this, 'displacement', {
-      label: 'Displacement (km)',
+      label: 'Displacement',
       readonly: true,
-      format: (v) => v.toFixed(5),
+      format: (v) => v.toFixed(5) + ' km',
     });
 
     this.folder.addBinding(this.rocket, 'altitude', {
-      label: 'Altitude (km)',
+      label: 'Altitude',
       readonly: true,
-      format: (v) => v.toFixed(5),
+      format: (v) => v.toFixed(5) + ' km',
     });
 
     this.folder.addBinding(this, 'gravityForce', {
-      label: 'Gravity Force (km/s²)',
+      label: 'Gravity Force',
       readonly: true,
-      format: (v) => v.toExponential(5),
+      format: (v) => v.toExponential(5) + ' km/s²',
     });
 
     this.folder.addBinding(this.rocket, 'thrustInclineAngle', {
@@ -99,16 +76,41 @@ export default class RocketGui {
     });
 
     this.folder.addBinding(this, 'percentOfFuel', {
-      label: 'Percent of Fuel (%)',
+      label: 'Percent of Fuel',
       readonly: true,
-      format: (v) => v.toFixed(2),
+      format: (v) => v.toFixed(2) + '%',
     });
 
     this.folder.addBinding(this.rocket, 'launchTime', {
-      label: 'Launch Time (s)',
+      label: 'Launch Time',
       readonly: true,
-      format: (v) => v.toFixed(1),
+      format: (v) => {
+        const formatted = formatSeconds(v);
+
+        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
+      },
     });
+
+    this.folder.addBinding(this.rocket, 'fuelCombustionTimeS', {
+      label: 'Fuel Combustion Time',
+      readonly: true,
+      format: (v) => {
+        const formatted = formatSeconds(v);
+
+        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
+      },
+    });
+
+    this.folder.addBinding(this, 'forcesArrowViewScale', {
+      label: 'Forces Arrow View Scale',
+      min: 100,
+      max: 3000,
+      step: 1,
+    }).on('change', () => {
+      this.rocketView.applyScaleToArrows(
+        this.forcesArrowViewScale
+      );
+    })
 
 
   }
@@ -119,7 +121,10 @@ export default class RocketGui {
     this.displacement = this.rocket.displacement.length();
     this.gravityForce = this.rocket.gravityForce.length();
     this.percentOfFuel =
-      100 - (this.rocket.launchTime / this.rocket.fuelCombustionTimeS) * 100;
+      100 -
+      (Math.min(this.rocket.launchTime, this.rocket.fuelCombustionTimeS) /
+        this.rocket.fuelCombustionTimeS) *
+        100;
 
 
     this.folder.refresh();

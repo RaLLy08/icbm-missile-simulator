@@ -10,6 +10,7 @@ import EarthView from './earth/EarthView';
 import RocketView from './rocket/RocketView';
 import EarthGui from './earth/EarthGui';
 import RocketGui from './rocket/RocketGui';
+import { formatSeconds } from './utils';
 
 const stats = new Stats();
 document.body.appendChild(stats.dom);
@@ -59,17 +60,43 @@ const createMarker = (position: THREE.Vector3, color: number) => {
 const earth = new Earth();
 const earthView = new EarthView(earth, scene);
 
+const rocketInitialPosition = earth.geoCoordinatesToPosition(60, 0);
+const rocketTargetPosition = earth.geoCoordinatesToPosition(120, 0);
+const rocket2Target = rocketTargetPosition
+  .clone()
+  .sub(rocketInitialPosition)
+  .normalize();
 
-const rocketInitialPosition = earth.geoCoordinatesToPosition(0, 0);
-const rocketTargetPosition = earth.geoCoordinatesToPosition(45, 0);
+const gravityDir = earth.gravityForce(rocketInitialPosition);
+const gravityNorm = gravityDir.clone().normalize();
+
+// 3. Project toTarget onto the plane perpendicular to gravity
+const thrustDirectionToIncline = rocket2Target
+  .clone()
+  .projectOnPlane(gravityNorm)
+  .normalize();
+
+// draw arrow
+// scene.add(
+//   new THREE.ArrowHelper(
+//     thrustDirectionToIncline,
+//     rocketInitialPosition,
+//     rocketInitialPosition.distanceTo(rocketTargetPosition),
+//     0xff0000,
+//     50,
+//     20
+//   )
+// );
 
 const rocket = new Rocket(
   earth,
   rocketInitialPosition,
-  rocketTargetPosition.clone().sub(rocketInitialPosition).normalize() // consider the earth curvate later (draw the tragectory as well)
+  thrustDirectionToIncline
 );
 
-const rocketView = new RocketView(rocket, scene);
+const rocketView = new RocketView(rocket, scene, camera);
+
+
 
 scene.add(createMarker(rocketInitialPosition, 0xff0000));
 scene.add(createMarker(rocketTargetPosition, 0x00ff00));
@@ -77,7 +104,6 @@ scene.add(createMarker(rocketTargetPosition, 0x00ff00));
 const pane = new Pane({
   container: document.getElementById('guiControls')!,
 });
-
 
 const globalParams: {
   timeMultiplier: number;
@@ -88,7 +114,6 @@ const globalParams: {
   timeDeltaTimeMs: 0,
   timePassedSeconds: 0,
 };
-
 
 pane
   .addButton({
@@ -120,7 +145,11 @@ const guiTimePassedSeconds = pane.addBinding(
   {
     label: 'Time Passed (s)',
     readonly: true,
-    format: (v) => (v != null ? v.toFixed(3) : 'N/A'),
+    format: (v) => {
+      const formatted = formatSeconds(v);
+
+      return `${formatted.value.toFixed(1)} ${formatted.unit}`;
+    },
   }
 );
 
@@ -168,9 +197,6 @@ const earthGui = new EarthGui(pane, earth, earthView);
 //   controls.update();
 // }
 
-
-
-
 function animate(deltaTimeMs: number | null) {
   // controls.update();
   renderer.render(scene, camera);
@@ -208,22 +234,9 @@ const OrbitalVelocity = () => {
     const controls = new TrackballControls(camera, renderer.domElement);
     const rocketGui = new RocketGui(pane, rocket, rocketView, camera, controls);
 
-
     controls.noRotate = false;
     controls.noPan = false;
     controls.noZoom = false;
-
-    // satelliteFolder
-    //   .addButton({
-    //     title: 'Focus on Satellite',
-    //   })
-    //   .on('click', () => {
-    //     rocketView.focusCamera(controls, camera);
-    //   });
-
-    // satelliteFolder.addBlade({
-    //   view: 'separator',
-    // });
 
     let lastFrameTime: number;
     let animationId: number;
