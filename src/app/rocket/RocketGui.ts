@@ -5,8 +5,6 @@ import * as THREE from 'three';
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls';
 import { formatSeconds } from 'app/utils';
 
-
-
 export default class RocketGui {
   private folder: FolderApi;
   velocity = 0;
@@ -14,7 +12,8 @@ export default class RocketGui {
   displacement = 0;
   gravityForce = 0;
   percentOfFuel = 0;
-  forcesArrowViewScale = 100; 
+  forcesArrowViewScale = 100;
+  travelledDistance = 0;
 
   constructor(
     private readonly pane: Pane,
@@ -54,13 +53,13 @@ export default class RocketGui {
     this.folder.addBinding(this, 'displacement', {
       label: 'Displacement',
       readonly: true,
-      format: (v) => v.toFixed(5) + ' km',
+      format: (v) => v.toFixed(1) + ' km',
     });
 
     this.folder.addBinding(this.rocket, 'altitude', {
       label: 'Altitude',
       readonly: true,
-      format: (v) => v.toFixed(5) + ' km',
+      format: (v) => v.toFixed(1) + ' km',
     });
 
     this.folder.addBinding(this, 'gravityForce', {
@@ -101,18 +100,22 @@ export default class RocketGui {
       },
     });
 
-    this.folder.addBinding(this, 'forcesArrowViewScale', {
-      label: 'Forces Arrow View Scale',
-      min: 100,
-      max: 3000,
-      step: 1,
-    }).on('change', () => {
-      this.rocketView.applyScaleToArrows(
-        this.forcesArrowViewScale
-      );
-    })
+    this.folder
+      .addBinding(this, 'forcesArrowViewScale', {
+        label: 'Forces Arrow View Scale',
+        min: 100,
+        max: 3000,
+        step: 1,
+      })
+      .on('change', () => {
+        this.rocketView.applyScaleToArrows(this.forcesArrowViewScale);
+      });
 
-
+    this.folder.addBinding(this, 'travelledDistance', {
+      label: 'Travelled Distance',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' km',
+    });
   }
 
   update() {
@@ -120,12 +123,12 @@ export default class RocketGui {
     this.thrust = this.rocket.thrust.length();
     this.displacement = this.rocket.displacement.length();
     this.gravityForce = this.rocket.gravityForce.length();
+    this.travelledDistance = this.rocket.travelledDistance.length();
     this.percentOfFuel =
       100 -
       (Math.min(this.rocket.launchTime, this.rocket.fuelCombustionTimeS) /
         this.rocket.fuelCombustionTimeS) *
         100;
-
 
     this.folder.refresh();
   }

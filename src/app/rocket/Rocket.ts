@@ -6,6 +6,10 @@ class Rocket {
    * Unit: km
    */
   position = new THREE.Vector3(0, 0, 0);
+  /**
+   * Unit: km
+   */
+  travelledDistance = new THREE.Vector3(0, 0, 0);
 
   /**
    * Unit: km/s
@@ -150,6 +154,16 @@ class Rocket {
       this.velocity.add(this.thrust.clone().multiplyScalar(tick));
 
       this.position.add(this.velocity.clone().multiplyScalar(tick));
+
+      this.travelledDistance.add(
+        new THREE.Vector3().set(
+          Math.abs(this.velocity.x),
+          Math.abs(this.velocity.y),
+          Math.abs(this.velocity.z)
+        )
+        .multiplyScalar(tick)
+      );
+      
     }
 
     this.launchTime += tick;
