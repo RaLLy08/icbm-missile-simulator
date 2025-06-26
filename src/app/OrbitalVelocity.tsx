@@ -88,11 +88,7 @@ const thrustDirectionToIncline = rocket2Target
 //   )
 // );
 
-const rocket = new Rocket(
-  earth,
-  rocketInitialPosition,
-  thrustDirectionToIncline
-);
+const rocket = new Rocket(earth, rocketInitialPosition, rocketTargetPosition);
 
 const rocketView = new RocketView(rocket, scene, camera);
 

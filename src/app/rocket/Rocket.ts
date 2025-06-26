@@ -48,7 +48,7 @@ class Rocket {
    * Creates a new Rocket instance.
    * @param earth The Earth instance to which the rocket is associated.
    * @param initialPosition The initial position of the rocket in 3D space.
-   * @param targetFlatThrustDirection Thrust straight-line direction (Euclidean) towards the target.
+   * @param targetPosition Thrust straight-line direction (Euclidean) towards the target.
    * @param startInclineAfterDistance The distance after which the rocket starts to incline (default is 8 km).
    * @param thrustInclineMaxDuration The maximum duration for the thrust incline (default is 160 seconds).
    * @param thrustInclineVelocity The velocity of the thrust incline in radians per second (
@@ -59,10 +59,10 @@ class Rocket {
   constructor(
     private earth: Earth,
     public readonly initialPosition: THREE.Vector3,
-    public readonly targetFlatThrustDirection: THREE.Vector3,
+    public readonly targetPosition: THREE.Vector3,
     public readonly startInclineAfterDistance: number = 8,
     public readonly thrustInclineMaxDuration: number = 160,
-    public readonly thrustInclineVelocity: number = THREE.MathUtils.degToRad(1),
+    public readonly thrustInclineVelocity: number = THREE.MathUtils.degToRad(0.5),
     public readonly fuelCombustionTimeS = 535,
     public readonly maxThrust = 0.03 // km/s²
   ) {
@@ -125,11 +125,27 @@ class Rocket {
     this.thrust = inclinedThrustDirection.multiplyScalar(thrust);
   }
 
+  calcThrustDirectionToIncline() {
+    const rocket2Target = this.targetPosition
+      .clone()
+      .sub(this.position)
+      .normalize();
+
+    const gravityDir = this.earth.gravityForce(this.position);
+    const gravityNorm = gravityDir.clone().normalize();
+
+    // 3. Project toTarget onto the plane perpendicular to gravity
+    return rocket2Target
+      .clone()
+      .projectOnPlane(gravityNorm)
+      .normalize();
+  }
+
   update(tick: number) {
     this.altitude = this.earth.calcAltitude(this.position);
     this.gravityForce = this.earth.gravityForce(this.position);
 
-    this.setThrust(tick, this.targetFlatThrustDirection);
+    this.setThrust(tick, this.calcThrustDirectionToIncline());
 
     const displacementMagnitude = this.displacement.length();
 
@@ -156,14 +172,14 @@ class Rocket {
       this.position.add(this.velocity.clone().multiplyScalar(tick));
 
       this.travelledDistance.add(
-        new THREE.Vector3().set(
-          Math.abs(this.velocity.x),
-          Math.abs(this.velocity.y),
-          Math.abs(this.velocity.z)
-        )
-        .multiplyScalar(tick)
+        new THREE.Vector3()
+          .set(
+            Math.abs(this.velocity.x),
+            Math.abs(this.velocity.y),
+            Math.abs(this.velocity.z)
+          )
+          .multiplyScalar(tick)
       );
-      
     }
 
     this.launchTime += tick;

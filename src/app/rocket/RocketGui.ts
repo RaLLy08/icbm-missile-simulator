@@ -74,6 +74,12 @@ export default class RocketGui {
       format: (v) => THREE.MathUtils.radToDeg(v).toFixed(5),
     });
 
+    this.folder.addBinding(this.rocket, 'currentThrustInclineDuration', {
+      label: 'Thrust Gravity Turn Duration',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' s',
+    });
+
     this.folder.addBinding(this, 'percentOfFuel', {
       label: 'Percent of Fuel',
       readonly: true,
