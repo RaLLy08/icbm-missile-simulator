@@ -5,6 +5,156 @@ import * as THREE from 'three';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
 
+export class TrailView {
+  private line: THREE.Line | null = null;
+  private geometry = new THREE.BufferGeometry();
+  private positions: Float32Array = new Float32Array();
+  private colors: Float32Array = new Float32Array();
+
+  /**
+   * @param positions - Position (x,y,z) based of which the trail will be drawn.
+   * @param positionsCount - Number of positions in the trail. (x,y,z) - is one position.
+   */
+  constructor(
+    private readonly scene: THREE.Scene,
+    private readonly initialVectorPositions: THREE.Vector3[] = [],
+    private readonly initialColors: THREE.Color[] = [],
+    private readonly vectorsLimit: number = 5000
+  ) {
+    this.init();
+  }
+
+  extendFromVectors(
+    vectors: THREE.Vector3[] | THREE.Vector3,
+    colors: THREE.Color[] | THREE.Color = []
+  ) {
+    if (!Array.isArray(vectors)) {
+      vectors = [vectors];
+    }
+
+    if (!Array.isArray(colors)) {
+      colors = [colors];
+    }
+
+    if (vectors.length === 0) return;
+
+    const newPositions = this.vectorPositionsToFloatArray(vectors);
+
+    this.extendPositions(newPositions);
+
+    if (colors.length > 0) {
+      const newColors = this.colorToFloatArray(colors);
+
+      this.extendColors(newColors);
+    }
+  }
+
+  private extendPositions(newPositions: Float32Array) {
+    this.positions = this.getExtendedFloatArray(this.positions, newPositions);
+
+    this.geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(this.positions, 3)
+    );
+    this.geometry.attributes.position.needsUpdate = true;
+  }
+
+  private extendColors(newColors: Float32Array) {
+    this.colors = this.getExtendedFloatArray(this.colors, newColors);
+
+    this.geometry.setAttribute(
+      'color',
+      new THREE.BufferAttribute(this.colors, 3)
+    );
+    this.geometry.attributes.color.needsUpdate = true;
+  }
+
+  private vectorPositionsToFloatArray(vectors: THREE.Vector3[]): Float32Array {
+    const array = new Float32Array(vectors.length * 3);
+
+    for (let i = 0; i < vectors.length; i++) {
+      array[i * 3] = vectors[i].x;
+      array[i * 3 + 1] = vectors[i].y;
+      array[i * 3 + 2] = vectors[i].z;
+    }
+    return array;
+  }
+
+  private colorToFloatArray(colors: THREE.Color[]): Float32Array {
+    const array = new Float32Array(colors.length * 3);
+    for (let i = 0; i < colors.length; i++) {
+      array[i * 3] = colors[i].r;
+      array[i * 3 + 1] = colors[i].g;
+      array[i * 3 + 2] = colors[i].b;
+    }
+    return array;
+  }
+
+  private getExtendedFloatArray(origin: Float32Array, add: Float32Array) {
+    if (origin.length === 0) return add;
+    const totalLength = origin.length + add.length;
+    const limit = this.vectorsLimit * 3;
+
+    const newPositions = new Float32Array(Math.min(totalLength, limit));
+
+    if (totalLength > limit) {
+      const excess = totalLength - limit;
+
+      newPositions.set(origin.subarray(excess), 0);
+
+      newPositions.set(add, origin.length - excess);
+    } else {
+      newPositions.set(origin);
+      newPositions.set(add, origin.length);
+    }
+
+    return newPositions;
+  }
+
+  private init() {
+    this.geometry = new THREE.BufferGeometry();
+
+    if (this.initialVectorPositions.length > 0) {
+      this.positions = this.vectorPositionsToFloatArray(
+        this.initialVectorPositions
+      )
+    }
+
+    if (this.initialColors.length > 0) {
+      this.colors = this.colorToFloatArray(this.initialColors);
+    }
+
+    this.geometry.setAttribute(
+      'color',
+      new THREE.BufferAttribute(this.colors, 3)
+    );
+
+    this.geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(this.positions, 3)
+    );
+
+    const material = new THREE.LineBasicMaterial({
+      vertexColors: true,
+    });
+    this.line = new THREE.Line(this.geometry, material);
+
+    this.line.frustumCulled = false;
+    this.line.name = 'TRAIL-LINE';
+
+    this.scene.add(this.line);
+  }
+
+  remove() {
+    if (!this.line) return;
+
+    this.scene.remove(this.line);
+    this.line.geometry.dispose();
+    this.line = null;
+  }
+}
+
+
 export default class RocketView {
   private geometry: THREE.CylinderGeometry;
   private material: THREE.MeshStandardMaterial;
@@ -13,19 +163,12 @@ export default class RocketView {
   private arrows: THREE.ArrowHelper[] = [];
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private arrowScale = 100;
-
-  private trailLine: THREE.Line | null = null;
-  private trailGeometry = new THREE.BufferGeometry();
-  private readonly trailMaxPoints = 1000;
-  private trailPositions: Float32Array = new Float32Array(
-    this.trailMaxPoints * 3
-  ); // x, y, z for each point
-
+  private trailView: TrailView | null = null;
 
   constructor(
     private readonly rocket: Rocket,
     private readonly scene: THREE.Scene,
-    private readonly camera: THREE.PerspectiveCamera,
+    private readonly camera: THREE.PerspectiveCamera
   ) {
     const heigth = 2;
 
@@ -40,8 +183,9 @@ export default class RocketView {
     this.scene.add(this.mesh);
 
     this.initArrows();
-    this.initTrail();
+    this.trailView = new TrailView(this.scene);
   }
+
 
   private initArrows() {
     this.addArrow(
@@ -92,7 +236,7 @@ export default class RocketView {
 
     if (!arrow) return;
     const length = magnitude * this.arrowScale;
-  
+
     arrow.setDirection(direction);
     arrow.setLength(
       length,
@@ -111,7 +255,6 @@ export default class RocketView {
     //   label.position.y += 0.2; // slightly above the arrow
     //   label.lookAt(this.camera.position); // make it face the arrow
     // }
-
   }
 
   private addArrow(
@@ -131,7 +274,6 @@ export default class RocketView {
     this.scene.add(arrow);
     this.arrows.push(arrow);
 
-    
     // const loader = new FontLoader();
     // loader.load(
     //   'https://threejs.org/examples/fonts/helvetiker_regular.typeface.json',
@@ -159,50 +301,15 @@ export default class RocketView {
     // );
   }
 
-  private initTrail() {
-    this.trailGeometry = new THREE.BufferGeometry();
-    this.trailGeometry.setAttribute(
-      'position',
-      new THREE.BufferAttribute(this.trailPositions, 3)
+  updateTrail() {
+    if (!this.trailView) return;
+
+    const yellowColor = this.rocket.thrust.length() / this.rocket.maxThrust;
+ 
+    this.trailView.extendFromVectors(
+      this.rocket.position.clone(),
+      new THREE.Color(1, yellowColor, 1 - yellowColor)
     );
-
-    const material = new THREE.LineBasicMaterial({ color: 0x00ffcc });
-    this.trailLine = new THREE.Line(this.trailGeometry, material);
-    this.scene.add(this.trailLine);
-
-    for (let i = 0; i < this.trailMaxPoints; i++) {
-      this.trailPositions[i * 3] = this.rocket.position.x;
-      this.trailPositions[i * 3 + 1] = this.rocket.position.y;
-      this.trailPositions[i * 3 + 2] = this.rocket.position.z;
-    }
-
-    this.trailLine.frustumCulled = false;
-
-    this.scene.add(this.trailLine);
-
-    this.trailLine.name = 'TRAIL';
-  }
-
-  private removeTrail() {
-    if (this.trailLine) {
-      this.scene.remove(this.trailLine);
-      this.trailLine.geometry.dispose();
-      this.trailLine = null;
-    }
-  }
-
-  private updateTrail() {
-    for (let i = this.trailMaxPoints - 1; i > 0; i--) {
-      this.trailPositions[i * 3] = this.trailPositions[(i - 1) * 3];
-      this.trailPositions[i * 3 + 1] = this.trailPositions[(i - 1) * 3 + 1];
-      this.trailPositions[i * 3 + 2] = this.trailPositions[(i - 1) * 3 + 2];
-    }
-
-    this.trailPositions[0] = this.rocket.position.x;
-    this.trailPositions[1] = this.rocket.position.y;
-    this.trailPositions[2] = this.rocket.position.z;
-
-    this.trailGeometry.attributes.position.needsUpdate = true;
   }
 
   update(): void {
@@ -210,6 +317,7 @@ export default class RocketView {
     this.updateArrows();
 
     if (!this.rocket.hasLanded) {
+      
       this.updateTrail();
     }
   }
