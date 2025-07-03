@@ -3,6 +3,7 @@ import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls
 import { useEffect, useId } from 'react';
 import { Pane } from 'tweakpane';
 import Stats from 'three/examples/jsm/libs/stats.module';
+import s from './OrbitalVelocity.module.scss';
 
 import Earth from './earth/Earth';
 import EarthView from './earth/EarthView';
@@ -13,9 +14,6 @@ import Launcher from './launcher/Launcher';
 import LauncherView from './launcher/LauncherView';
 import LauncherGui from './launcher/LauncherGui';
 import RocketGui from './rocket/RocketGui';
-
-const stats = new Stats();
-document.body.appendChild(stats.dom);
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -39,7 +37,6 @@ renderer.setClearColor(0x000000, 1); // Set background color to black
 
 renderer.setPixelRatio(window.devicePixelRatio);
 
-
 const ambientLight = new THREE.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
 
@@ -49,23 +46,29 @@ scene.add(directionalLight);
 
 const clock = new THREE.Clock();
 
+const stats = new Stats();
+stats.showPanel(0);
 
-const pane = new Pane({
-  container: document.getElementById('guiControls')!,
-  title: 'Orbital Velocity Controls',
-});
 
 const updateTriggers: {
   [key: string]: any;
   update: () => void;
 }[] = [stats];
 
+
 const OrbitalVelocity = () => {
   const sceneContainerId = useId();
+  const controlsId = useId();
 
   useEffect(() => {
     const sceneContainer = document.getElementById(sceneContainerId);
+
     if (!sceneContainer) return;
+
+    const pane = new Pane({
+      title: 'Orbital Velocity Controls',
+      container: document.getElementById(controlsId)!,
+    });
 
     sceneContainer.appendChild(renderer.domElement);
 
@@ -103,12 +106,11 @@ const OrbitalVelocity = () => {
         rocket,
         rocketView,
         camera,
-        controls,
-      )
+        controls
+      );
 
       updateTriggers.push(rocketGui);
     };
-
 
     const onClick = (event: MouseEvent) => {
       // Convert mouse to normalized device coordinates
@@ -130,7 +132,6 @@ const OrbitalVelocity = () => {
       // controls.update();
       renderer.render(scene, camera);
 
-
       const deltaTime = clock.getDelta();
 
       // const tick = deltaTime * worldGui.timeMultiplier;
@@ -138,7 +139,7 @@ const OrbitalVelocity = () => {
 
       for (const trigger of updateTriggers) {
         // for (let i = 0; i < worldGui.timeMultiplier; i++) {
-         
+
         // }
         trigger.update();
       }
@@ -152,7 +153,15 @@ const OrbitalVelocity = () => {
     };
   }, [sceneContainerId]);
 
-  return <div id={sceneContainerId}></div>;
+  return (
+    <div id={sceneContainerId} className={s.container}>
+      <div id={controlsId} className={s.controls}></div>
+      <div
+        className={s.stats}
+        ref={(el) => el && el.appendChild(stats.dom)}
+      ></div>
+    </div>
+  );
 };
 
 export default OrbitalVelocity;
