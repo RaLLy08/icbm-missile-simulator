@@ -108,12 +108,8 @@ class Rocket {
       this.currentThrustInclineDuration += tick;
     }
 
-    // How far to interpolate between base and target direction
-    const maxAngle = baseThrustDirection.angleTo(targetFlatThrustDirection);
-    this.thrustInclineAngle = Math.min(
-      this.thrustInclineVelocity * this.currentThrustInclineDuration,
-      maxAngle
-    );
+    this.thrustInclineAngle =
+      this.thrustInclineVelocity * this.currentThrustInclineDuration;
 
     // Compute axis of rotation
     const rotationAxis = baseThrustDirection
@@ -152,7 +148,7 @@ class Rocket {
     // todo fix (if too high time multipliyer)
     if (
       displacementMagnitude > 10 &&
-      this.altitude < this.velocity.length() * tick
+      this.altitude <= 0
     ) {
       this.velocity.set(0, 0, 0);
       this.thrust.set(0, 0, 0);

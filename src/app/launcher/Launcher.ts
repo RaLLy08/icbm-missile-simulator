@@ -39,16 +39,16 @@ export default class Launcher {
       this.rocketTargetPosition,
       {
         startInclineAfterDistance: {
-          min: 0,
+          min: 1,
           max: 1000,
         },
         thrustInclineMaxDuration: {
-          min: 2,
+          min: 10,
           max: 40 * 60,
         },
         thrustInclineVelocity: {
           min: 0,
-          max: THREE.MathUtils.degToRad(30),
+          max: THREE.MathUtils.degToRad(20),
         },
         fuelCombustionTime: {
           min: 60 * 1,
@@ -86,12 +86,13 @@ export default class Launcher {
     const rocket = genome.rocket;
 
     this.launcherGui.startInclineAfterDistance = this.startInclineAfterDistance;
-    this.launcherGui.thrustInclineMaxDuration = this.thrustInclineMaxDuration
+    this.launcherGui.currentThrustInclineDuration =
+      rocket.currentThrustInclineDuration;
     this.launcherGui.thrustInclineVelocity = this.thrustInclineVelocity;
     this.launcherGui.fuelCombustionTime = this.fuelCombustionTime;
 
     this.launcherGui.maxAltitude = rocket.maxAltitude;
-    this.launcherGui.travelledDistance = rocket.travelledDistance;
+    this.launcherGui.travelledDistance = rocket.travelledDistance.length();
     this.launcherGui.flightTime = rocket.flightTime;
   };
 

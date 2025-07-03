@@ -13,7 +13,7 @@ export default class LauncherGui {
   private launchButton: ButtonApi;
 
   startInclineAfterDistance = 0;
-  thrustInclineMaxDuration = 0;
+  currentThrustInclineDuration = 0;
   thrustInclineVelocity = 0;
   fuelCombustionTime = 0;
   maxAltitude = 0;
@@ -44,7 +44,7 @@ export default class LauncherGui {
 
   setCalcTrajectoryButtonDisabled = (disabled: boolean) => {
     this.calcTrajectoryButton.disabled = disabled;
-  }
+  };
 
   setTargetPosition = ({
     latitude,
@@ -132,8 +132,8 @@ export default class LauncherGui {
       },
     });
 
-    this.folder.addBinding(this, 'thrustInclineMaxDuration', {
-      label: 'Gravity Turn Max Duration',
+    this.folder.addBinding(this, 'currentThrustInclineDuration', {
+      label: 'Gravity Turn Duration',
       readonly: true,
       format: (v) => {
         const formatted = formatSeconds(v);
@@ -195,14 +195,16 @@ export default class LauncherGui {
       },
     });
 
-    this.launchButton = this.folder.addButton({
-      title: 'Launch Rocket',
-      // disabled: !this.isPositionsFilled(),
-    }).on('click', (e) => {
-      e.native.stopPropagation();
+    this.launchButton = this.folder
+      .addButton({
+        title: 'Launch Rocket',
+        // disabled: !this.isPositionsFilled(),
+      })
+      .on('click', (e) => {
+        e.native.stopPropagation();
 
-      this.onLaunchRocket();
-    });
+        this.onLaunchRocket();
+      });
   }
 
   private toggleStartPositionClick = () => {
