@@ -211,4 +211,21 @@ export default class EarthView {
       this.scene.remove(atmosphereLayer);
     }
   }
+
+
+  clickToGeoCoordinates(
+    mouse: THREE.Vector2,
+    camera: THREE.PerspectiveCamera
+  ): THREE.Vector3 | null {
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    const intersects = raycaster.intersectObject(this.mesh);
+
+    if (intersects.length > 0) {
+      return intersects[0].point;
+    }
+
+    return null;
+  }
 }

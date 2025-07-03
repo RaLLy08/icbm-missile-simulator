@@ -55,9 +55,12 @@ class Earth {
     return distanceToEarthCenters - Earth.RADIUS;
   }
 
-  update(tick: number) {}
+  update(tick = 0) {
+    // rotate the Earth around its axis
 
-  geoCoordinatesToPosition(latitude: number, longitude: number): THREE.Vector3 {
+  }
+
+  static geoCoordinatesToPosition(latitude: number, longitude: number): THREE.Vector3 {
     const phi = (90 - latitude) * (Math.PI / 180); // Convert latitude to polar angle
     const theta = (longitude + 180) * (Math.PI / 180); // Convert longitude to azimuthal angle
 
@@ -68,7 +71,7 @@ class Earth {
     return new THREE.Vector3(x, y, z);
   }
 
-  positionToGeoCoordinates(position: THREE.Vector3): {
+  static positionToGeoCoordinates(position: THREE.Vector3): {
     latitude: number;
     longitude: number;
   } {

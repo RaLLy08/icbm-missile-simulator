@@ -86,7 +86,7 @@ export default class RocketGui {
       format: (v) => v.toFixed(2) + '%',
     });
 
-    this.folder.addBinding(this.rocket, 'launchTime', {
+    this.folder.addBinding(this.rocket, 'flightTime', {
       label: 'Launch Time',
       readonly: true,
       format: (v) => {
@@ -96,7 +96,7 @@ export default class RocketGui {
       },
     });
 
-    this.folder.addBinding(this.rocket, 'fuelCombustionTimeS', {
+    this.folder.addBinding(this.rocket, 'fuelCombustionTime', {
       label: 'Fuel Combustion Time',
       readonly: true,
       format: (v) => {
@@ -132,8 +132,8 @@ export default class RocketGui {
     this.travelledDistance = this.rocket.travelledDistance.length();
     this.percentOfFuel =
       100 -
-      (Math.min(this.rocket.launchTime, this.rocket.fuelCombustionTimeS) /
-        this.rocket.fuelCombustionTimeS) *
+      (Math.min(this.rocket.flightTime, this.rocket.fuelCombustionTime) /
+        this.rocket.fuelCombustionTime) *
         100;
 
     this.folder.refresh();

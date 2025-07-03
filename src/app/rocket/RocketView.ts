@@ -201,6 +201,13 @@ export default class RocketView {
       this.rocket.position,
       this.rocket.gravityForce
     );
+
+    this.addArrow(
+      'targetIncline',
+      0xcc00cc,
+      this.rocket.position,
+      this.rocket.calcThrustDirectionToIncline()
+    );
   }
 
   private updateArrows() {
@@ -223,6 +230,13 @@ export default class RocketView {
       this.rocket.position,
       this.rocket.thrust.clone().normalize(),
       this.rocket.thrust.length()
+    );
+
+    this.updateArrow(
+      'targetIncline',
+      this.rocket.position,
+      this.rocket.calcThrustDirectionToIncline().clone().normalize(),
+      this.rocket.calcThrustDirectionToIncline().length()
     );
   }
 

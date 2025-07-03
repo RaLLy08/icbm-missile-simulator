@@ -1,0 +1,167 @@
+import type Earth from './earth/Earth';
+import DE from './ga/DE';
+import Rocket from './rocket/Rocket';
+import * as THREE from 'three';
+
+const randFloat = (min: number, max: number) => {
+  return Math.random() * (max - min) + min;
+};
+
+type ParamConstrain = {
+  min: number;
+  max: number;
+};
+
+type DEParams = {
+  maxGenerations: number;
+  populationSize: number;
+  mutationRate: number;
+  bestSurvivePercent: number;
+  elite: number;
+  genomeLength: number;
+  fitnessFunction: (genome: number[]) => number;
+  genomeConstraints: ParamConstrain[];
+  randMutationFunction: () => number;
+  CR: number;
+  scalingFactor: number;
+};
+
+export class FlightTrajectory {
+  private de: DE | null = null;
+  public onProgress: (bestGenome: any, progress: number) => void = () => {};
+  ellapsedTime: number = 0;
+
+  constructor(
+    private earth: Earth,
+    private start: THREE.Vector3,
+    private target: THREE.Vector3,
+    private rocketConstrains: {
+      startInclineAfterDistance: ParamConstrain;
+      thrustInclineMaxDuration: ParamConstrain;
+      thrustInclineVelocity: ParamConstrain;
+      fuelCombustionTime: ParamConstrain;
+    },
+    private flightConstraints: {
+      maxDistanceThreshold: number; // minimize
+      maxFlightTimeSeconds: number;
+      maxAltitude?: number;
+    }
+  ) {}
+
+  async calcTrajectory(delayBetweenGenerationsMs: number | null = null) {
+    if (!this.earth || !this.start || !this.target) {
+      throw new Error(
+        'Earth, start position, and target position must be set before calculating the trajectory.'
+      );
+    }
+      
+    this.ellapsedTime = 0;
+    const startTime = performance.now();
+
+    const bestGenome = await this.runDe(
+      {
+        maxGenerations: 50,
+        populationSize: 120,
+        mutationRate: 0.96,
+        bestSurvivePercent: 0.9,
+        elite: 0.1,
+        genomeLength: 4,
+        fitnessFunction: this.fitnessFunction,
+        genomeConstraints: [
+          this.rocketConstrains.startInclineAfterDistance,
+          this.rocketConstrains.thrustInclineMaxDuration,
+          this.rocketConstrains.thrustInclineVelocity,
+          this.rocketConstrains.fuelCombustionTime,
+        ],
+        randMutationFunction: () => randFloat(-2, 2),
+        CR: 0.9,
+        scalingFactor: 0.4,
+      },
+      delayBetweenGenerationsMs
+    );
+
+    this.ellapsedTime = (performance.now() - startTime) / 1000;
+
+    return bestGenome;
+  }
+
+  private runDe = async (
+    deParams: DEParams,
+    delayBetweenGenerationsMs?: number | null
+  ) => {
+    this.de = new DE(deParams);
+
+    if (!this.de) {
+      throw new Error('DE instance is not set. Call setDe() first.');
+    }
+
+    return new Promise<any>((resolve) => {
+      this.de.run(delayBetweenGenerationsMs, (generation: number) => {
+        const bestGenome = this.de.population[0];
+
+        this.onProgress(
+          bestGenome,
+          (generation * 100) / (deParams.maxGenerations - 1)
+        );
+
+        const isFinished = generation + 1 === deParams.maxGenerations;
+
+        if (isFinished) {
+          resolve(this.de.population[0]);
+        }
+      });
+    });
+  };
+
+  private fitnessFunction = (genome: any) => {
+    const [
+      startInclineAfterDistance,
+      thrustInclineMaxDuration,
+      thrustInclineVelocity,
+      fuelCombustionTime,
+    ] = genome;
+
+
+    const rocket = new Rocket(
+      this.earth,
+      this.start,
+      this.target,
+      startInclineAfterDistance,
+      thrustInclineMaxDuration,
+      thrustInclineVelocity,
+      fuelCombustionTime
+    );
+
+    this.simulateFlight(rocket);
+
+    genome.rocket = rocket;
+
+    const distanceToTarget = rocket.position.clone().distanceTo(this.target);
+
+    return distanceToTarget;
+  };
+
+  private simulateFlight = (rocket: Rocket, stepInSeconds = 1) => {
+    const { maxFlightTimeSeconds, maxDistanceThreshold } =
+      this.flightConstraints;
+
+    for (let i = 0; i < maxFlightTimeSeconds / stepInSeconds; i++) {
+      rocket.update(stepInSeconds);
+
+      const traveledDistance = rocket.travelledDistance.length();
+
+      if (traveledDistance > maxDistanceThreshold) {
+        // console.log(
+        //   `Rocket traveled too far: ${traveledDistance} > ${constraints.maxDistanceThreshold}`
+        // );
+        break;
+      }
+
+      if (rocket.hasLanded) {
+        // console.log(`Rocket landed after ${i} iterations.`);
+        break;
+      }
+    }
+  };
+
+}
