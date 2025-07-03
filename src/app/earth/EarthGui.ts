@@ -1,6 +1,5 @@
 import { FolderApi, Pane } from 'tweakpane';
 import Earth from './Earth';
-import EarthView from './EarthView';
 import { atmosphereLayerKeys } from './earth.consts';
 
 export default class EarthGui {
@@ -12,12 +11,12 @@ export default class EarthGui {
   massKg = Earth.MASS;
   gravityConst = Earth.G;
 
-  private readonly atmosphereLayersStates = {
+  readonly atmosphereLayersStates = {
     [atmosphereLayerKeys.TROPOSPHERE]: false,
     [atmosphereLayerKeys.STRATOSPHERE]: false,
-    [atmosphereLayerKeys.MESOSPHERE]: false,
-    [atmosphereLayerKeys.THERMOSPHERE]: false,
-    [atmosphereLayerKeys.EXOSPHERE]: false,
+    [atmosphereLayerKeys.MESOSPHERE]: true,
+    [atmosphereLayerKeys.THERMOSPHERE]: true,
+    [atmosphereLayerKeys.EXOSPHERE]: true,
   };
   private readonly atmosphereLayersLabels = {
     [atmosphereLayerKeys.TROPOSPHERE]: 'Troposphere',
@@ -27,7 +26,7 @@ export default class EarthGui {
     [atmosphereLayerKeys.EXOSPHERE]: 'Exosphere',
   };
 
-  private readonly atmosphereBordersStates = {
+  readonly atmosphereBordersStates = {
     [atmosphereLayerKeys.TROPOSPHERE]: false,
     [atmosphereLayerKeys.STRATOSPHERE]: false,
     [atmosphereLayerKeys.MESOSPHERE]: false,
@@ -42,10 +41,19 @@ export default class EarthGui {
     [atmosphereLayerKeys.EXOSPHERE]: 'Exosphere',
   };
 
+  onAddAtmosphereLayerClicked: (layerKey: atmosphereLayerKeys) => void =
+    () => {};
+  onRemoveAtmosphereLayerClicked: (layerKey: atmosphereLayerKeys) => void =
+    () => {};
+  onAddAtmosphereBorderClicked: (layerKey: atmosphereLayerKeys) => void =
+    () => {};
+  onRemoveAtmosphereBorderClicked: (layerKey: atmosphereLayerKeys) => void =
+    () => {};
+  onShowEarthClicked: (show: boolean) => void = () => {};
+
   constructor(
     private readonly pane: Pane,
-    private readonly earth: Earth,
-    private readonly earthView: EarthView
+    private readonly earth: Earth
   ) {
     this.folder = pane.addFolder({
       title: 'Earth',
@@ -69,51 +77,56 @@ export default class EarthGui {
       expanded: false,
     });
 
-    this.earthView.atmosphereLayers.forEach((layer, key) => {
-      this.atmosphereLayersFolder
-        .addBinding(this.atmosphereLayersStates, key, {
-          label: this.atmosphereLayersLabels[key],
-          input: 'checkbox',
-          view: 'checkbox',
-        })
-        .on('change', (ev) => {
-          if (ev.value) {
-            this.earthView.renderAtmosphereLayer(key);
-          } else {
-            this.earthView.removeAtmosphereLayer(key);
-          }
-        });
-    });
+    Object.keys(this.atmosphereLayersStates).forEach(
+      (key: atmosphereLayerKeys) => {
+        this.atmosphereLayersFolder
+          .addBinding(this.atmosphereLayersStates, key, {
+            label: this.atmosphereLayersLabels[key],
+            input: 'checkbox',
+            view: 'checkbox',
+          })
+          .on('change', (ev) => {
+            if (ev.value) {
+              this.onAddAtmosphereLayerClicked(key);
+            } else {
+              this.onRemoveAtmosphereLayerClicked(key);
+            }
+          });
+      }
+    );
 
     this.atmosphereBordersFolder = this.folder.addFolder({
       title: 'Atmosphere Borders',
       expanded: true,
     });
 
-    this.earthView.atmostphereBorders.forEach((border, key) => {
-      this.atmosphereBordersFolder
-        .addBinding(this.atmosphereBordersStates, key, {
-          label: this.atmosphereBordersLabels[key],
-          input: 'checkbox',
-          view: 'checkbox',
-        })
-        .on('change', (ev) => {
-          if (ev.value) {
-            this.earthView.renderAtmosphereBorder(key);
-          } else {
-            this.earthView.removeAtmosphereBorder(key);
-          }
-        });
-    });
+    Object.keys(this.atmosphereBordersStates).forEach(
+      (key: atmosphereLayerKeys) => {
+        this.atmosphereBordersFolder
+          .addBinding(this.atmosphereBordersStates, key, {
+            label: this.atmosphereBordersLabels[key],
+            input: 'checkbox',
+            view: 'checkbox',
+          })
+          .on('change', (ev) => {
+            if (ev.value) {
+              this.onAddAtmosphereBorderClicked(key);
+            } else {
+              this.onRemoveAtmosphereBorderClicked(key);
+            }
+          });
+      }
+    );
 
-    this.folder.addBinding(this, 'showEarth', {
-      label: 'Show Earth',
-      input: 'checkbox',
-      view: 'checkbox',
-    }).on('change', (ev) => {
-      this.earthView.setVisibility(ev.value);
-    });
-    
+    this.folder
+      .addBinding(this, 'showEarth', {
+        label: 'Show Earth',
+        input: 'checkbox',
+        view: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.onShowEarthClicked(ev.value);
+      });
   }
 
   update() {}

@@ -23,7 +23,6 @@ const HEIGHT = window.innerHeight;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, WIDTH / HEIGHT, 0.1, 1000000);
 
-const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 camera.position.z = 12200;
@@ -40,15 +39,12 @@ renderer.setClearColor(0x000000, 1); // Set background color to black
 
 renderer.setPixelRatio(window.devicePixelRatio);
 
-const axesHelper = new THREE.AxesHelper(3);
-axesHelper.position.set(3, -3, 0);
-scene.add(axesHelper);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+const ambientLight = new THREE.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(5, 5, 5);
+directionalLight.position.set(0, 0, 0);
 scene.add(directionalLight);
 
 const clock = new THREE.Clock();
@@ -61,7 +57,7 @@ const pane = new Pane({
 
 const updateTriggers: {
   [key: string]: any;
-  update: (tick?: number) => void;
+  update: () => void;
 }[] = [stats];
 
 const OrbitalVelocity = () => {
@@ -80,10 +76,10 @@ const OrbitalVelocity = () => {
     const earth = new Earth();
     updateTriggers.push(earth);
 
-    const earthView = new EarthView(earth, scene);
+    const earthGui = new EarthGui(pane, earth);
+    const earthView = new EarthView(earth, scene, earthGui);
 
     const worldGui = new WorldGui(pane, clock);
-    const earthGui = new EarthGui(pane, earth, earthView);
     // const rocketGui = new RocketGui(pane, rocket, rocketView, camera, controls);
 
     updateTriggers.push(worldGui);
@@ -137,10 +133,13 @@ const OrbitalVelocity = () => {
 
       const deltaTime = clock.getDelta();
 
-      const tick = deltaTime * worldGui.timeMultiplier;
+      // const tick = deltaTime * worldGui.timeMultiplier;
       // fix tick more 1 second
 
       for (const trigger of updateTriggers) {
+        // for (let i = 0; i < worldGui.timeMultiplier; i++) {
+         
+        // }
         trigger.update();
       }
     };

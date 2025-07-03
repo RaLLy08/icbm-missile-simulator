@@ -38,7 +38,7 @@ export default class WorldGui {
     const guiTimeMultiplier = this.folder.addBinding(this, 'timeMultiplier', {
       label: 'Time Multiplier',
       min: 1,
-      max: 500,
+      max: 10,
       step: 1,
     });
 

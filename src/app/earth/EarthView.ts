@@ -2,6 +2,7 @@ import Earth from './Earth';
 import * as THREE from 'three';
 import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
 import { atmosphereLayerKeys } from './earth.consts';
+import EarthGui from './EarthGui';
 
 const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
 
@@ -18,7 +19,8 @@ export default class EarthView {
 
   constructor(
     private readonly earth: Earth,
-    private readonly scene: THREE.Scene
+    private readonly scene: THREE.Scene,
+    private readonly earthGui: EarthGui
   ) {
     const segments = 128;
 
@@ -39,6 +41,22 @@ export default class EarthView {
 
     this.initAtmosphereLayers();
     this.initAtmosphereBorders();
+
+    earthGui.onAddAtmosphereLayerClicked = (layerKey) => {
+      this.renderAtmosphereLayer(layerKey);
+    };
+    earthGui.onRemoveAtmosphereLayerClicked = (layerKey) => {
+      this.removeAtmosphereLayer(layerKey);
+    };
+    earthGui.onAddAtmosphereBorderClicked = (layerKey) => {
+      this.renderAtmosphereBorder(layerKey);
+    };
+    earthGui.onRemoveAtmosphereBorderClicked = (layerKey) => {
+      this.removeAtmosphereBorder(layerKey);
+    };
+    earthGui.onShowEarthClicked = (show) => {
+      this.setVisibility(show);
+    };
   }
 
   private createAtmosphereLayer(
@@ -122,6 +140,14 @@ export default class EarthView {
       layer.castShadow = false;
       layer.receiveShadow = false;
     });
+
+    Object.entries(this.earthGui.atmosphereLayersStates).forEach(
+      ([key, isVisible]: [atmosphereLayerKeys, boolean]) => {
+        if (isVisible) {
+          this.renderAtmosphereLayer(key);
+        }
+      }
+    );
   }
 
   private initAtmosphereBorders() {
@@ -176,6 +202,14 @@ export default class EarthView {
       border.castShadow = false;
       border.receiveShadow = false;
     });
+
+    Object.entries(this.earthGui.atmosphereBordersStates).forEach(
+      ([key, isVisible]: [atmosphereLayerKeys, boolean]) => {
+        if (isVisible) {
+          this.renderAtmosphereBorder(key);
+        }
+      }
+    );
   }
 
   renderAtmosphereBorder(name: atmosphereLayerKeys) {
@@ -211,7 +245,6 @@ export default class EarthView {
       this.scene.remove(atmosphereLayer);
     }
   }
-
 
   clickToGeoCoordinates(
     mouse: THREE.Vector2,

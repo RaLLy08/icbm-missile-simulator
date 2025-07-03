@@ -55,7 +55,7 @@ class Earth {
     return distanceToEarthCenters - Earth.RADIUS;
   }
 
-  update(tick = 0) {
+  update(tick = 1) {
     // rotate the Earth around its axis
 
   }
