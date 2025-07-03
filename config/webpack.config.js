@@ -17,6 +17,8 @@ const icons = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'public/inline-icons.svg')
 );
 
+const REPO_NAME = 'orbital-motion';
+
 const config = {
   entry: {
     app: './src/index',
@@ -116,6 +118,8 @@ module.exports = (env, argv) => {
       test: /\.css$/,
       use: [MiniCssExtractPlugin.loader, 'css-loader'],
     });
+    
+    config.output.publicPath = `/${REPO_NAME}/`;
 
     plugins.push(
       new MiniCssExtractPlugin({
