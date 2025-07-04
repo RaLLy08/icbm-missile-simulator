@@ -42,10 +42,11 @@ export class FlightTrajectory {
       fuelCombustionTime: ParamConstrain;
     },
     private flightConstraints: {
-      maxDistanceThreshold: number; // minimize
+      maxDistanceThreshold?: number; // minimize
       maxFlightTimeSeconds: number;
-      maxAltitude?: number;
-    }
+      maxAltitude?: number; // optional, not used in current implementation
+    },
+    private minimizeFlightTime: boolean = false
   ) {}
 
   async calcTrajectory(delayBetweenGenerationsMs: number | null = null) {
@@ -60,7 +61,7 @@ export class FlightTrajectory {
 
     const bestGenome = await this.runDe(
       {
-        maxGenerations: 50,
+        maxGenerations: 70,
         populationSize: 120,
         mutationRate: 0.96,
         bestSurvivePercent: 0.9,
@@ -136,13 +137,17 @@ export class FlightTrajectory {
 
     genome.rocket = rocket;
 
-    const distanceToTarget = rocket.position.clone().distanceTo(this.target);
+    let fitness = rocket.position.clone().distanceTo(this.target);
 
-    return distanceToTarget;
+    if (this.minimizeFlightTime) {
+      fitness += rocket.flightTime;
+    }
+
+    return fitness;
   };
 
   private simulateFlight = (rocket: Rocket, stepInSeconds = 1) => {
-    const { maxFlightTimeSeconds, maxDistanceThreshold } =
+    const { maxFlightTimeSeconds, maxDistanceThreshold, maxAltitude } =
       this.flightConstraints;
 
     for (let i = 0; i < maxFlightTimeSeconds / stepInSeconds; i++) {
@@ -150,12 +155,19 @@ export class FlightTrajectory {
 
       const traveledDistance = rocket.travelledDistance.length();
 
-      if (traveledDistance > maxDistanceThreshold) {
+      if (maxDistanceThreshold != null &&traveledDistance > maxDistanceThreshold) {
         // console.log(
         //   `Rocket traveled too far: ${traveledDistance} > ${constraints.maxDistanceThreshold}`
         // );
         break;
       }
+
+      if (maxAltitude != null && rocket.altitude > maxAltitude) {
+        // console.log(`Rocket reached too high altitude: ${rocket.altitude} > ${maxAltitude}`);
+        break;
+      }
+
+      
 
       if (rocket.hasLanded) {
         // console.log(`Rocket landed after ${i} iterations.`);

@@ -3,21 +3,46 @@ import { FlightTrajectory } from '../FlightTrajectory';
 import Earth from '../earth/Earth';
 import LauncherGui from './LauncherGui';
 import Rocket from 'app/rocket/Rocket';
+import LauncherView from './LauncherView';
 
 export default class Launcher {
-  rocketStartPosition: THREE.Vector3 = Earth.geoCoordinatesToPosition(0, 0);
-  rocketTargetPosition: THREE.Vector3 = Earth.geoCoordinatesToPosition(180, 0);
+  rocketStartPosition: THREE.Vector3 | null = null;
+  rocketTargetPosition: THREE.Vector3 | null = null;
   startInclineAfterDistance = 8; // km
   thrustInclineMaxDuration = 160; // seconds
   thrustInclineVelocity = THREE.MathUtils.degToRad(0.5); // radians per second
   fuelCombustionTime = 180; // seconds
 
   constructor(
+    private launcherView: LauncherView,
     private launcherGui: LauncherGui,
     private earth: Earth
   ) {
     this.launcherGui.onCalculateTrajectory = this.calcTrajectory;
   }
+
+  handleEarthClick = (coordinates: THREE.Vector3) => {
+    if (this.launcherGui.startPositionSetIsActive) {
+      this.launcherView.setStartPosition(coordinates);
+
+      this.launcherGui.setStartPosition(
+        Earth.positionToGeoCoordinates(coordinates)
+      );
+      this.setStartPosition(coordinates);
+    } else if (this.launcherGui.targetPositionSetIsActive) {
+      this.launcherView.setTargetPosition(coordinates);
+
+      this.launcherGui.setTargetPosition(
+        Earth.positionToGeoCoordinates(coordinates)
+      );
+      this.setTargetPosition(coordinates);
+    }
+
+    if (this.rocketStartPosition && this.rocketTargetPosition) {
+      this.launcherGui.setCalcTrajectoryButtonDisabled(false);
+      this.launcherGui.setLaunchButtonDisabled(false);
+    }
+  };
 
   setStartPosition = (coordinates: THREE.Vector3) => {
     this.rocketStartPosition = coordinates.clone();
@@ -28,6 +53,13 @@ export default class Launcher {
   };
 
   private calcTrajectory = async () => {
+    if (
+      !this.rocketStartPosition ||
+      !this.rocketTargetPosition
+    ) {
+      return;
+    }
+
     const euclideanDistance = this.rocketStartPosition
       .clone()
       .sub(this.rocketTargetPosition)
@@ -40,7 +72,7 @@ export default class Launcher {
       {
         startInclineAfterDistance: {
           min: 1,
-          max: 1000,
+          max: 4,
         },
         thrustInclineMaxDuration: {
           min: 10,
@@ -56,13 +88,16 @@ export default class Launcher {
         },
       },
       {
-        maxDistanceThreshold: euclideanDistance * 4,
-        maxFlightTimeSeconds: 60 * 60, // 45 minutes
-        maxAltitude: 4000,
-      }
+        maxDistanceThreshold: euclideanDistance * 6,
+        maxFlightTimeSeconds: 60 * 120,
+        maxAltitude: 5000,
+      },
+      this.launcherGui.minimizeFlightTime
     );
 
     flightTrajectory.onProgress = (bestGenome, progress) => {
+      // Update the trail view with the new path
+
       // console.log(
       //   `Progress: ${progress.toFixed(1)}% Best fitness = ${bestGenome.fitness.toFixed(1)}`
       // );
@@ -71,13 +106,16 @@ export default class Launcher {
     const bestGenome = await flightTrajectory.calcTrajectory(0);
 
     this.setRocketParams(bestGenome);
-
   };
 
-
   private setRocketParams = (genome: any) => {
-    const [startInclineAfterDistance, thrustInclineMaxDuration, thrustInclineVelocity, fuelCombustionTime] = genome;
-    
+    const [
+      startInclineAfterDistance,
+      thrustInclineMaxDuration,
+      thrustInclineVelocity,
+      fuelCombustionTime,
+    ] = genome;
+
     this.startInclineAfterDistance = startInclineAfterDistance;
     this.thrustInclineMaxDuration = thrustInclineMaxDuration;
     this.thrustInclineVelocity = thrustInclineVelocity;
@@ -97,6 +135,10 @@ export default class Launcher {
   };
 
   createRocket = () => {
+    if (!this.rocketStartPosition || !this.rocketTargetPosition) {
+      return;
+    }
+
     const targetInclineVector = this.rocketTargetPosition
       .clone()
       .sub(this.rocketStartPosition)

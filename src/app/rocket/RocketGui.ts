@@ -17,19 +17,20 @@ export default class RocketGui {
 
   constructor(
     private readonly pane: Pane,
+    private readonly paneContainer: HTMLElement,
     private readonly rocket: Rocket,
     private readonly rocketView: RocketView,
     private readonly camera: THREE.PerspectiveCamera,
     private readonly controls: TrackballControls
   ) {
     this.folder = this.pane.addFolder({
-      title: 'Rocket',
+      title: `Rocket ${this.rocket.id}`,
       expanded: true,
     });
 
     this.folder
       .addButton({
-        title: 'Focus on Satellite',
+        title: 'Focus on Missile',
       })
       .on('click', () => {
         this.rocketView.focusCamera(this.controls, this.camera);
@@ -63,7 +64,7 @@ export default class RocketGui {
     });
 
     this.folder.addBinding(this, 'gravityForce', {
-      label: 'Gravity Force',
+      label: 'Gravity',
       readonly: true,
       format: (v) => v.toExponential(5) + ' km/s²',
     });
@@ -87,7 +88,7 @@ export default class RocketGui {
     });
 
     this.folder.addBinding(this.rocket, 'flightTime', {
-      label: 'Launch Time',
+      label: 'Fligth Time',
       readonly: true,
       format: (v) => {
         const formatted = formatSeconds(v);
@@ -122,6 +123,11 @@ export default class RocketGui {
       readonly: true,
       format: (v) => v.toFixed(1) + ' km',
     });
+
+    this.paneContainer.scrollTo(
+      0,
+      this.paneContainer.scrollHeight
+    );
   }
 
   update() {

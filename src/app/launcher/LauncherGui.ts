@@ -19,6 +19,7 @@ export default class LauncherGui {
   maxAltitude = 0;
   travelledDistance = 0;
   flightTime = 0;
+  minimizeFlightTime = false;
 
   startLongitude: number | string = 'N/A';
   startLatitude: number | string = 'N/A';
@@ -45,6 +46,10 @@ export default class LauncherGui {
   setCalcTrajectoryButtonDisabled = (disabled: boolean) => {
     this.calcTrajectoryButton.disabled = disabled;
   };
+
+  setLaunchButtonDisabled = (disabled: boolean) => {
+    this.launchButton.disabled = disabled;
+  }
 
   setTargetPosition = ({
     latitude,
@@ -109,6 +114,16 @@ export default class LauncherGui {
       label: 'Target Latitude',
       readonly: true,
     });
+
+    this.folder
+      .addBinding(this, 'minimizeFlightTime', {
+        label: 'Minimize Flight Time',
+        view: 'checkbox',
+        input: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.minimizeFlightTime = ev.value;
+      });
 
     this.calcTrajectoryButton = this.folder
       .addButton({
@@ -198,7 +213,7 @@ export default class LauncherGui {
     this.launchButton = this.folder
       .addButton({
         title: 'Launch Rocket',
-        // disabled: !this.isPositionsFilled(),
+        disabled: true,
       })
       .on('click', (e) => {
         e.native.stopPropagation();

@@ -50,6 +50,7 @@ const stats = new Stats();
 stats.showPanel(0);
 
 
+
 const updateTriggers: {
   [key: string]: any;
   update: () => void;
@@ -58,16 +59,23 @@ const updateTriggers: {
 
 const OrbitalVelocity = () => {
   const sceneContainerId = useId();
-  const controlsId = useId();
+  const mainGuiContainerId = useId();
+  const rocketGuiContainerId = useId();
 
   useEffect(() => {
     const sceneContainer = document.getElementById(sceneContainerId);
+    const mainGuiContainer = document.getElementById(mainGuiContainerId);
+    const rocketGuiContainer = document.getElementById(rocketGuiContainerId);
 
     if (!sceneContainer) return;
 
-    const pane = new Pane({
+    const mainPane = new Pane({
       title: 'Orbital Velocity Controls',
-      container: document.getElementById(controlsId)!,
+      container: mainGuiContainer!,
+    });
+    const rocketGuiPane = new Pane({
+      title: 'Rocket Controls',
+      container: rocketGuiContainer!,
     });
 
     sceneContainer.appendChild(renderer.domElement);
@@ -79,22 +87,26 @@ const OrbitalVelocity = () => {
     const earth = new Earth();
     updateTriggers.push(earth);
 
-    const earthGui = new EarthGui(pane, earth);
+    const earthGui = new EarthGui(mainPane, earth);
     const earthView = new EarthView(earth, scene, earthGui);
 
-    const worldGui = new WorldGui(pane, clock);
+    const worldGui = new WorldGui(mainPane, clock);
     // const rocketGui = new RocketGui(pane, rocket, rocketView, camera, controls);
 
     updateTriggers.push(worldGui);
 
-    const launcherGui = new LauncherGui(pane);
+    const launcherGui = new LauncherGui(mainPane);
+    const launcherView = new LauncherView(earth, scene);
+    const launcher = new Launcher(launcherView, launcherGui, earth);
 
-    const launcher = new Launcher(launcherGui, earth);
-
-    const launcherView = new LauncherView(launcher, launcherGui, earth, scene);
 
     launcherGui.onLaunchRocket = () => {
       const rocket = launcher.createRocket();
+
+      if (!rocket) {
+        console.error('Rocket could not be created. Check launcher settings.');
+        return;
+      }
 
       const rocketView = new RocketView(rocket, scene, camera);
 
@@ -102,7 +114,8 @@ const OrbitalVelocity = () => {
       updateTriggers.push(rocketView);
 
       const rocketGui = new RocketGui(
-        pane,
+        rocketGuiPane,
+        rocketGuiContainer!,
         rocket,
         rocketView,
         camera,
@@ -123,7 +136,7 @@ const OrbitalVelocity = () => {
         return;
       }
 
-      launcherView.handleEarthClick(earthIntersection);
+      launcher.handleEarthClick(earthIntersection);
     };
     window.addEventListener('click', onClick, false);
 
@@ -155,7 +168,8 @@ const OrbitalVelocity = () => {
 
   return (
     <div id={sceneContainerId} className={s.container}>
-      <div id={controlsId} className={s.controls}></div>
+      <div id={rocketGuiContainerId} className={s.rocketGui}></div>
+      <div id={mainGuiContainerId} className={s.mainGui}></div>
       <div
         className={s.stats}
         ref={(el) => el && el.appendChild(stats.dom)}

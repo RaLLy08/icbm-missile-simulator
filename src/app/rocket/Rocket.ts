@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import Earth from '../earth/Earth';
 
 class Rocket {
+  id = Math.random().toString(36).substring(2, 15);
+
   /**
    * Unit: km
    */

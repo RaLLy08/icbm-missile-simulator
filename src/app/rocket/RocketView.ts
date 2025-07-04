@@ -4,7 +4,6 @@ import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
-
 export class TrailView {
   private line: THREE.Line | null = null;
   private geometry = new THREE.BufferGeometry();
@@ -117,7 +116,7 @@ export class TrailView {
     if (this.initialVectorPositions.length > 0) {
       this.positions = this.vectorPositionsToFloatArray(
         this.initialVectorPositions
-      )
+      );
     }
 
     if (this.initialColors.length > 0) {
@@ -154,7 +153,6 @@ export class TrailView {
   }
 }
 
-
 export default class RocketView {
   private geometry: THREE.CylinderGeometry;
   private material: THREE.MeshStandardMaterial;
@@ -162,7 +160,7 @@ export default class RocketView {
 
   private arrows: THREE.ArrowHelper[] = [];
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
-  private arrowScale = 100;
+  private arrowLength = 100;
   private trailView: TrailView | null = null;
 
   constructor(
@@ -186,15 +184,14 @@ export default class RocketView {
     this.trailView = new TrailView(this.scene);
   }
 
-
   private initArrows() {
     this.addArrow(
       'velocity',
-      0x00ff00,
+      0xff0000,
       this.rocket.position,
       this.rocket.velocity
     );
-    this.addArrow('thrust', 0xff0000, this.rocket.position, this.rocket.thrust);
+    this.addArrow('thrust', 0x00ff00, this.rocket.position, this.rocket.thrust);
     this.addArrow(
       'gravity',
       0x0000ff,
@@ -249,7 +246,11 @@ export default class RocketView {
     const arrow = this.arrows.find((a) => a.name === `${name}-arrow`);
 
     if (!arrow) return;
-    const length = magnitude * this.arrowScale;
+    let length = this.arrowLength;
+
+    if (magnitude === 0) {
+      length = 0;
+    }
 
     arrow.setDirection(direction);
     arrow.setLength(
@@ -319,7 +320,7 @@ export default class RocketView {
     if (!this.trailView) return;
 
     const yellowColor = this.rocket.thrust.length() / this.rocket.maxThrust;
- 
+
     this.trailView.extendFromVectors(
       this.rocket.position.clone(),
       new THREE.Color(1, yellowColor, 1 - yellowColor)
@@ -331,13 +332,12 @@ export default class RocketView {
     this.updateArrows();
 
     if (!this.rocket.hasLanded) {
-      
       this.updateTrail();
     }
   }
 
   applyScaleToArrows(scale: number) {
-    this.arrowScale = scale;
+    this.arrowLength = scale;
   }
 
   focusCamera(controls: TrackballControls, camera: THREE.PerspectiveCamera) {

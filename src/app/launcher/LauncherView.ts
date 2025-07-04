@@ -1,7 +1,5 @@
 import * as THREE from 'three';
 import Earth from '../earth/Earth';
-import LauncherGui from './LauncherGui';
-import Launcher from './Launcher';
 
 const createMarker = (
   position: THREE.Vector3,
@@ -31,31 +29,9 @@ export default class LauncherView {
   targetMarker: THREE.Object3D | null = null;
 
   constructor(
-    private launcher: Launcher,
-    private launcherGui: LauncherGui,
     private earth: Earth,
     private scene: THREE.Scene
   ) {}
-
-  handleEarthClick = (coordinates: THREE.Vector3) => {
-    if (this.launcherGui.startPositionSetIsActive) {
-      this.setStartPosition(coordinates);
-  
-      this.launcherGui.setStartPosition(Earth.positionToGeoCoordinates(coordinates));
-      this.launcher.setStartPosition(coordinates);
-      
-
-    } else if (this.launcherGui.targetPositionSetIsActive) {
-      this.setTargetPosition(coordinates);
-
-      this.launcherGui.setTargetPosition(Earth.positionToGeoCoordinates(coordinates));
-      this.launcher.setTargetPosition(coordinates);
-    }
-
-    if (this.startMarker && this.targetMarker) {
-      this.launcherGui.setCalcTrajectoryButtonDisabled(false);
-    }
-  };
 
   setStartPosition(position: THREE.Vector3) {
     this.removeStartPositionIfExist();
