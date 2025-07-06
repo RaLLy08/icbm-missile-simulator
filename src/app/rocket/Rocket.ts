@@ -59,7 +59,7 @@ class Rocket {
    * @param thrustInclineMaxDuration The maximum duration for the thrust incline (default is 160 seconds).
    * @param thrustInclineVelocity The velocity of the thrust incline in radians per second
    * @param fuelCombustionTime The total time for fuel combustion in seconds (default is 535 seconds).
-   * @param maxThrust The maximum thrust of the rocket in km/s² (default is 0.03 km/s²).
+   * @param maxThrust The maximum thrust of the rocket in km/s² (default is 0.05 km/s²).
    */
   constructor(
     private earth: Earth,

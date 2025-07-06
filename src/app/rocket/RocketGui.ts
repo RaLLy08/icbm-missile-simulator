@@ -14,6 +14,7 @@ export default class RocketGui {
   percentOfFuel = 0;
   forcesArrowViewScale = 100;
   travelledDistance = 0;
+  velocityToGravityAngle = 0;
 
   constructor(
     private readonly pane: Pane,
@@ -124,6 +125,12 @@ export default class RocketGui {
       format: (v) => v.toFixed(1) + ' km',
     });
 
+    this.folder.addBinding(this, 'velocityToGravityAngle', {
+      label: 'Velocity to Gravity Angle',
+      readonly: true,
+      format: (v) => v.toFixed(2) + '°',
+    });
+
     this.paneContainer.scrollTo(
       0,
       this.paneContainer.scrollHeight
@@ -141,6 +148,11 @@ export default class RocketGui {
       (Math.min(this.rocket.flightTime, this.rocket.fuelCombustionTime) /
         this.rocket.fuelCombustionTime) *
         100;
+
+    this.velocityToGravityAngle = this.rocket.velocity.length() > 0 ? THREE.MathUtils.radToDeg(
+      this.rocket.velocity
+      .clone()
+      .angleTo(this.rocket.gravityForce)) : 0;
 
     this.folder.refresh();
   }
