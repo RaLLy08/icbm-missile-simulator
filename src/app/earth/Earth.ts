@@ -13,6 +13,13 @@ class Earth {
    */
   static readonly MASS = 5.972e24;
 
+  /**
+   * Unit: m/s²
+   * Gravitational acceleration at the surface of the Earth.
+   */
+  // static readonly GRAVITY_AT_SURFACE =
+  //   (Earth.G * Earth.MASS * 0.001) / (Earth.RADIUS * 1000) ** 2;
+
   static readonly atmosphereLayersHeights = Object.freeze({
     [atmosphereLayerKeys.TROPOSPHERE]: 10,
     [atmosphereLayerKeys.STRATOSPHERE]: 50,
@@ -57,10 +64,12 @@ class Earth {
 
   update(tick = 1) {
     // rotate the Earth around its axis
-
   }
 
-  static geoCoordinatesToPosition(latitude: number, longitude: number): THREE.Vector3 {
+  static geoCoordinatesToPosition(
+    latitude: number,
+    longitude: number
+  ): THREE.Vector3 {
     const phi = (90 - latitude) * (Math.PI / 180); // Convert latitude to polar angle
     const theta = (longitude + 180) * (Math.PI / 180); // Convert longitude to azimuthal angle
 

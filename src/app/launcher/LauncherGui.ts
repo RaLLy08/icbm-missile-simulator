@@ -1,16 +1,9 @@
 import { formatSeconds } from 'app/utils';
 import * as THREE from 'three';
-import { ButtonApi, FolderApi, Pane } from 'tweakpane';
+import { FolderApi, Pane } from 'tweakpane';
 
 export default class LauncherGui {
   private folder: FolderApi;
-  startPositionSetIsActive = false;
-  targetPositionSetIsActive = false;
-
-  private setStartButton: ButtonApi;
-  private setTargetButton: ButtonApi;
-  private calcTrajectoryButton: ButtonApi;
-  private launchButton: ButtonApi;
 
   startInclineAfterDistance = 0;
   currentThrustInclineDuration = 0;
@@ -24,95 +17,10 @@ export default class LauncherGui {
   startLongitude: number | string = 'N/A';
   startLatitude: number | string = 'N/A';
 
-  targetLongitude: number | string = 'N/A';
-  targetLatitude: number | string = 'N/A';
-
-  onCalculateTrajectory = () => {};
-  onLaunchRocket = () => {};
-
-  setStartPosition = ({
-    latitude,
-    longitude,
-  }: {
-    latitude: number;
-    longitude: number;
-  }) => {
-    this.startLatitude = `${latitude.toFixed(2)}°`;
-    this.startLongitude = `${longitude.toFixed(2)}°`;
-
-    this.toggleStartPositionClick();
-  };
-
-  setCalcTrajectoryButtonDisabled = (disabled: boolean) => {
-    this.calcTrajectoryButton.disabled = disabled;
-  };
-
-  setLaunchButtonDisabled = (disabled: boolean) => {
-    this.launchButton.disabled = disabled;
-  }
-
-  setTargetPosition = ({
-    latitude,
-    longitude,
-  }: {
-    latitude: number;
-    longitude: number;
-  }) => {
-    this.targetLatitude = `${latitude.toFixed(2)}°`;
-    this.targetLongitude = `${longitude.toFixed(2)}°`;
-    this.toggleTargetPositionClick();
-  };
-
-  readonly startPositionLabels = [
-    'Set Start Position',
-    'Click on Earth to set Start Position',
-  ];
-  readonly targetPositionLabels = [
-    'Set Target Position',
-    'Click on Earth to set Target Position',
-  ];
-
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
       title: 'Launcher',
       expanded: true,
-    });
-
-    this.setStartButton = this.folder
-      .addButton({
-        title: this.startPositionLabels[0],
-      })
-      .on('click', (e) => {
-        e.native.stopPropagation();
-        this.toggleStartPositionClick();
-      });
-
-    this.folder.addBinding(this, 'startLongitude', {
-      label: 'Start Longitude',
-      readonly: true,
-    });
-    this.folder.addBinding(this, 'startLatitude', {
-      label: 'Start Latitude',
-      readonly: true,
-    });
-
-    this.setTargetButton = this.folder
-      .addButton({
-        title: this.targetPositionLabels[0],
-      })
-      .on('click', (e) => {
-        e.native.stopPropagation();
-        this.toggleTargetPositionClick();
-      });
-
-    this.folder.addBinding(this, 'targetLongitude', {
-      label: 'Target Longitude',
-      readonly: true,
-    });
-
-    this.folder.addBinding(this, 'targetLatitude', {
-      label: 'Target Latitude',
-      readonly: true,
     });
 
     this.folder
@@ -123,17 +31,6 @@ export default class LauncherGui {
       })
       .on('change', (ev) => {
         this.minimizeFlightTime = ev.value;
-      });
-
-    this.calcTrajectoryButton = this.folder
-      .addButton({
-        title: 'Calculate Trajectory',
-        disabled: true,
-      })
-      .on('click', async (e) => {
-        e.native.stopPropagation();
-
-        this.onCalculateTrajectory();
       });
 
     this.folder.addBinding(this, 'startInclineAfterDistance', {
@@ -209,42 +106,5 @@ export default class LauncherGui {
         return `${formatted.value.toFixed(1)} ${formatted.unit}`;
       },
     });
-
-    this.launchButton = this.folder
-      .addButton({
-        title: 'Launch Rocket',
-        disabled: true,
-      })
-      .on('click', (e) => {
-        e.native.stopPropagation();
-
-        this.onLaunchRocket();
-      });
   }
-
-  private toggleStartPositionClick = () => {
-    this.startPositionSetIsActive = !this.startPositionSetIsActive;
-
-    if (!this.startPositionSetIsActive) {
-      this.setStartButton.title = this.startPositionLabels[0];
-      this.setTargetButton.disabled = false;
-    } else {
-      this.setTargetButton.disabled = true;
-
-      this.setStartButton.title = this.startPositionLabels[1];
-    }
-  };
-
-  private toggleTargetPositionClick = () => {
-    this.targetPositionSetIsActive = !this.targetPositionSetIsActive;
-
-    if (!this.targetPositionSetIsActive) {
-      this.setTargetButton.title = this.targetPositionLabels[0];
-      this.setStartButton.disabled = false;
-    } else {
-      this.setStartButton.disabled = true;
-
-      this.setTargetButton.title = this.targetPositionLabels[1];
-    }
-  };
 }

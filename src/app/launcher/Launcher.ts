@@ -3,7 +3,6 @@ import { FlightTrajectory } from '../FlightTrajectory';
 import Earth from '../earth/Earth';
 import LauncherGui from './LauncherGui';
 import Rocket from 'app/rocket/Rocket';
-import LauncherView from './LauncherView';
 
 export default class Launcher {
   rocketStartPosition: THREE.Vector3 | null = null;
@@ -14,35 +13,10 @@ export default class Launcher {
   fuelCombustionTime = 180; // seconds
 
   constructor(
-    private launcherView: LauncherView,
     private launcherGui: LauncherGui,
     private earth: Earth
   ) {
-    this.launcherGui.onCalculateTrajectory = this.calcTrajectory;
   }
-
-  handleEarthClick = (coordinates: THREE.Vector3) => {
-    if (this.launcherGui.startPositionSetIsActive) {
-      this.launcherView.setStartPosition(coordinates);
-
-      this.launcherGui.setStartPosition(
-        Earth.positionToGeoCoordinates(coordinates)
-      );
-      this.setStartPosition(coordinates);
-    } else if (this.launcherGui.targetPositionSetIsActive) {
-      this.launcherView.setTargetPosition(coordinates);
-
-      this.launcherGui.setTargetPosition(
-        Earth.positionToGeoCoordinates(coordinates)
-      );
-      this.setTargetPosition(coordinates);
-    }
-
-    if (this.rocketStartPosition && this.rocketTargetPosition) {
-      this.launcherGui.setCalcTrajectoryButtonDisabled(false);
-      this.launcherGui.setLaunchButtonDisabled(false);
-    }
-  };
 
   setStartPosition = (coordinates: THREE.Vector3) => {
     this.rocketStartPosition = coordinates.clone();
@@ -52,7 +26,7 @@ export default class Launcher {
     this.rocketTargetPosition = coordinates.clone();
   };
 
-  private calcTrajectory = async () => {
+  calcTrajectory = async (onProgress = (bestGenome: any, progress: number) => {}) => {
     if (
       !this.rocketStartPosition ||
       !this.rocketTargetPosition
@@ -95,13 +69,7 @@ export default class Launcher {
       this.launcherGui.minimizeFlightTime
     );
 
-    flightTrajectory.onProgress = (bestGenome, progress) => {
-      // Update the trail view with the new path
-
-      // console.log(
-      //   `Progress: ${progress.toFixed(1)}% Best fitness = ${bestGenome.fitness.toFixed(1)}`
-      // );
-    };
+    flightTrajectory.onProgress = onProgress;
 
     const bestGenome = await flightTrajectory.calcTrajectory(0);
 

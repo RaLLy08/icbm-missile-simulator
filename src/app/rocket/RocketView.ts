@@ -319,11 +319,11 @@ export default class RocketView {
   updateTrail() {
     if (!this.trailView) return;
 
-    const yellowColor = this.rocket.thrust.length() / this.rocket.maxThrust;
+    const thrustPercentage = this.rocket.thrust.length() / this.rocket.maxThrust;
 
     this.trailView.extendFromVectors(
       this.rocket.position.clone(),
-      new THREE.Color(1, yellowColor, 1 - yellowColor)
+      new THREE.Color(1, thrustPercentage, 1 - thrustPercentage)
     );
   }
 
