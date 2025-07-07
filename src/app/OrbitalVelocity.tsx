@@ -417,12 +417,27 @@ const OrbitalVelocity = () => {
         })}
       >
         <div className={s.coordBox}>
-          <span className={s.coordItem}>
-            ↔ {startPositionGeo?.longitude.toFixed(1)}
-          </span>
-          <span className={s.coordItem}>
-            ↕ {startPositionGeo?.latitude.toFixed(1)}
-          </span>
+          {setStartPositionActive && (
+            <>
+              <span className={s.coordItem}>
+                ↔ {startPositionGeo?.longitude.toFixed(1)}
+              </span>
+              <span className={s.coordItem}>
+                ↕ {startPositionGeo?.latitude.toFixed(1)}
+              </span>
+            </>
+          )}
+          {setTargetPositionActive && (
+            <>
+              <span className={s.coordItem}>
+                ↔ {targetPositionGeo?.longitude.toFixed(1)}
+              </span>
+              <span className={s.coordItem}>
+                ↕ {targetPositionGeo?.latitude.toFixed(1)}
+              </span>
+            </>
+          )}
+
         </div>
       </div>
     </>
