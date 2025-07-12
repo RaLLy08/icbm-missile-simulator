@@ -15,12 +15,10 @@ import Launcher from './launcher/Launcher';
 import LauncherView from './launcher/LauncherView';
 import LauncherGui from './launcher/LauncherGui';
 import RocketGui from './rocket/RocketGui';
-import Rocket from './rocket/Rocket';
 import FrameTimeManager from './FrameTimeManager';
 import { toExponentGrowth, normalizeBetween } from './utils';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
-
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -71,10 +69,9 @@ const updateTriggers: {
   update: () => void;
 }[] = [stats];
 
-
 const updateControlSpeed = (
   camera: THREE.PerspectiveCamera,
-  controls: OrbitControls,
+  controls: OrbitControls
 ) => {
   const distance = camera.position.length(); // Assuming planet center at (0, 0, 0)
 
@@ -110,9 +107,7 @@ const updateControlSpeed = (
     maxZoomSpeed
   );
   controls.zoomSpeed = zoomFactor;
-
 };
-
 
 const OrbitalVelocity = () => {
   const launchPadListenersRef = useRef({
@@ -173,10 +168,7 @@ const OrbitalVelocity = () => {
     sceneContainer.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    const mouseTracker = new MouseTracker(
-      window,
-    );
-
+    const mouseTracker = new MouseTracker(window);
 
     controls.minDistance = MIN_EARTH_CAMERA_DISTANCE;
     controls.maxDistance = MAX_EARTH_CAMERA_DISTANCE;
@@ -202,7 +194,7 @@ const OrbitalVelocity = () => {
 
     // const _rocketView = new RocketView(_rocket, scene, camera);
     // updateTriggers.push(_rocketView);
-  
+
     // const _rocketGui = new RocketGui(
     //   rocketGuiPane,
     //   rocketGuiContainer!,
@@ -220,7 +212,6 @@ const OrbitalVelocity = () => {
 
     const mouseTrackedGui = new MouseTrackerGui(worldGui.folder, mouseTracker);
     updateTriggers.push(mouseTrackedGui);
-
 
     const launcherGui = new LauncherGui(mainPane);
     const launcherView = new LauncherView(earth, scene);
@@ -277,7 +268,6 @@ const OrbitalVelocity = () => {
     //     trigger.remove();
     //   });
     // };
-
 
     const onMouseDown = () => {
       const earthIntersection = earthView.clickToGeoCoordinates(
@@ -498,7 +488,7 @@ const OrbitalVelocity = () => {
               )}
             </div>
           </div>
-{/* 
+          {/* 
           <div className={s.timeManager}>
             <div>FPS*Sec</div>
             <button>⏮</button>
