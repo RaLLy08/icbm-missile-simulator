@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FlightTrajectory } from '../FlightTrajectory';
 import Earth from '../earth/Earth';
-import LauncherGui from './LauncherGui';
+import LauncherGui from './Launcher.gui';
 import Rocket from 'app/rocket/Rocket';
 
 export default class Launcher {
@@ -15,8 +15,7 @@ export default class Launcher {
   constructor(
     private launcherGui: LauncherGui,
     private earth: Earth
-  ) {
-  }
+  ) {}
 
   setStartPosition = (coordinates: THREE.Vector3) => {
     this.rocketStartPosition = coordinates.clone();
@@ -26,11 +25,10 @@ export default class Launcher {
     this.rocketTargetPosition = coordinates.clone();
   };
 
-  calcTrajectory = async (onProgress = (bestGenome: any, progress: number) => {}) => {
-    if (
-      !this.rocketStartPosition ||
-      !this.rocketTargetPosition
-    ) {
+  calcTrajectory = async (
+    onProgress = (bestGenome: any, progress: number) => {}
+  ) => {
+    if (!this.rocketStartPosition || !this.rocketTargetPosition) {
       return;
     }
 

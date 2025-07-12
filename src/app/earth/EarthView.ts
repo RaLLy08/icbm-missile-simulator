@@ -2,7 +2,7 @@ import Earth from './Earth';
 import * as THREE from 'three';
 import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
 import { atmosphereLayerKeys } from './earth.consts';
-import EarthGui from './EarthGui';
+import EarthGui from './Earth.gui';
 
 const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
 
