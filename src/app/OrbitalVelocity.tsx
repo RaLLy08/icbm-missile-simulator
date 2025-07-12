@@ -172,7 +172,7 @@ const OrbitalVelocity = () => {
 
     controls.minDistance = MIN_EARTH_CAMERA_DISTANCE;
     controls.maxDistance = MAX_EARTH_CAMERA_DISTANCE;
-    // controls.enablePan = false;
+    controls.enablePan = false;
 
     updateTriggers.push(controls);
 
