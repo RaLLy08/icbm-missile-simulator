@@ -70,12 +70,17 @@ class Earth {
     latitude: number,
     longitude: number
   ): THREE.Vector3 {
-    const phi = (90 - latitude) * (Math.PI / 180); // Convert latitude to polar angle
-    const theta = (longitude + 180) * (Math.PI / 180); // Convert longitude to azimuthal angle
+    const latRad = latitude * (Math.PI / 180);
+    const lonRad = longitude * (Math.PI / 180);
 
-    const x = Earth.RADIUS * Math.sin(phi) * Math.cos(theta);
-    const y = Earth.RADIUS * Math.cos(phi);
-    const z = Earth.RADIUS * Math.sin(phi) * Math.sin(theta);
+    const cosLat = Math.cos(latRad);
+    const sinLat = Math.sin(latRad);
+    const cosLon = Math.cos(lonRad);
+    const sinLon = Math.sin(lonRad);
+
+    const x = Earth.RADIUS * cosLat * cosLon;
+    const y = Earth.RADIUS * sinLat;
+    const z = Earth.RADIUS * cosLat * sinLon;
 
     return new THREE.Vector3(x, y, z);
   }
@@ -84,10 +89,10 @@ class Earth {
     latitude: number;
     longitude: number;
   } {
-    const latitude =
-      90 - Math.acos(position.y / Earth.RADIUS) * (180 / Math.PI);
-    const longitude =
-      Math.atan2(position.z, position.x) * (180 / Math.PI) - 180;
+    const radius = position.length(); // distance from Earth's center
+
+    const latitude = Math.asin(position.y / radius) * (180 / Math.PI);
+    const longitude = Math.atan2(position.z, position.x) * (180 / Math.PI);
 
     return { latitude, longitude };
   }

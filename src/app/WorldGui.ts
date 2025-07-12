@@ -3,7 +3,7 @@ import { FolderApi, Pane } from 'tweakpane';
 import { formatSeconds } from './utils';
 
 export default class WorldGui {
-  private folder: FolderApi;
+  folder: FolderApi;
   timeMultiplier = 1;
   timeDeltaTime = 0;
   timePassedSeconds = 0;
@@ -38,7 +38,7 @@ export default class WorldGui {
     const guiTimeMultiplier = this.folder.addBinding(this, 'timeMultiplier', {
       label: 'Time Multiplier',
       min: 1,
-      max: 10,
+      max: 100,
       step: 1,
     });
 

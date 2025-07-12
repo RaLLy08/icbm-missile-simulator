@@ -2,8 +2,8 @@ import { FolderApi, Pane } from 'tweakpane';
 import Rocket from './Rocket';
 import RocketView from './RocketView';
 import * as THREE from 'three';
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls';
 import { formatSeconds } from 'app/utils';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 export default class RocketGui {
   private folder: FolderApi;
@@ -22,7 +22,7 @@ export default class RocketGui {
     private readonly rocket: Rocket,
     private readonly rocketView: RocketView,
     private readonly camera: THREE.PerspectiveCamera,
-    private readonly controls: TrackballControls
+    private readonly controls: OrbitControls
   ) {
     this.folder = this.pane.addFolder({
       title: `Rocket ${this.rocket.id}`,
@@ -44,12 +44,36 @@ export default class RocketGui {
     });
 
     this.folder.addBinding(this, 'thrust', {
-      label: 'Thurst',
+      label: 'Thrust Graph',
       readonly: true,
       view: 'graph',
       min: 0,
       max: this.rocket.maxThrust,
       format: (v) => v.toFixed(5) + ' km/s²',
+    });
+
+    this.folder.addBinding(this, 'thrust', {
+      label: 'Thrust (G)',
+      readonly: true,
+      min: 0,
+      max: this.rocket.maxThrust,
+      format: (v) => (v / this.gravityForce).toFixed(2) + ' g',
+    });
+
+    this.folder.addBinding(this, 'percentOfFuel', {
+      label: 'Percent of Fuel',
+      readonly: true,
+      format: (v) => v.toFixed(2) + '%',
+    });
+
+    this.folder.addBinding(this.rocket, 'fuelCombustionTime', {
+      label: 'Fuel Combustion Time',
+      readonly: true,
+      format: (v) => {
+        const formatted = formatSeconds(v);
+
+        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
+      },
     });
 
     this.folder.addBinding(this, 'displacement', {
@@ -82,24 +106,8 @@ export default class RocketGui {
       format: (v) => v.toFixed(1) + ' s',
     });
 
-    this.folder.addBinding(this, 'percentOfFuel', {
-      label: 'Percent of Fuel',
-      readonly: true,
-      format: (v) => v.toFixed(2) + '%',
-    });
-
     this.folder.addBinding(this.rocket, 'flightTime', {
       label: 'Fligth Time',
-      readonly: true,
-      format: (v) => {
-        const formatted = formatSeconds(v);
-
-        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
-      },
-    });
-
-    this.folder.addBinding(this.rocket, 'fuelCombustionTime', {
-      label: 'Fuel Combustion Time',
       readonly: true,
       format: (v) => {
         const formatted = formatSeconds(v);
@@ -131,10 +139,7 @@ export default class RocketGui {
       format: (v) => v.toFixed(2) + '°',
     });
 
-    this.paneContainer.scrollTo(
-      0,
-      this.paneContainer.scrollHeight
-    );
+    this.paneContainer.scrollTo(0, this.paneContainer.scrollHeight);
   }
 
   update() {
@@ -149,11 +154,17 @@ export default class RocketGui {
         this.rocket.fuelCombustionTime) *
         100;
 
-    this.velocityToGravityAngle = this.rocket.velocity.length() > 0 ? THREE.MathUtils.radToDeg(
-      this.rocket.velocity
-      .clone()
-      .angleTo(this.rocket.gravityForce)) : 0;
+    this.velocityToGravityAngle =
+      this.rocket.velocity.length() > 0
+        ? THREE.MathUtils.radToDeg(
+            this.rocket.velocity.clone().angleTo(this.rocket.gravityForce)
+          )
+        : 0;
 
     this.folder.refresh();
+  }
+
+  remove() {
+    this.folder.dispose();
   }
 }

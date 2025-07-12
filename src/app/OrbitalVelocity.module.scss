@@ -3,6 +3,8 @@
   height: 100%;
   overflow: hidden;
 
+  
+
   .launchPad {
     position: absolute;
     bottom: 20px;
@@ -88,6 +90,7 @@
               display: flex;
               justify-content: center;
               align-items: center;
+              color: orangered;
               height: 100%;
             }
           }
@@ -107,7 +110,7 @@
   
           
           &:active {
-            transform: scale(0.95);
+            transform: scale(0.95) !important;
           }
           &:hover:enabled {
             transform: scale(1.05);
@@ -140,6 +143,16 @@
         }
       }
     }
+
+    
+    .timeManager {
+      position: absolute;
+      bottom: 20px;
+      right: 0px;
+      transform: translateX(150%);
+      color: #0ff;
+    }
+
   }
   
 

@@ -1,6 +1,6 @@
-import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls';
 import Rocket from './Rocket';
 import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
@@ -154,9 +154,7 @@ export class TrailView {
 }
 
 export default class RocketView {
-  private geometry: THREE.CylinderGeometry;
-  private material: THREE.MeshStandardMaterial;
-  private mesh: THREE.Mesh;
+  private group: THREE.Group;
 
   private arrows: THREE.ArrowHelper[] = [];
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
@@ -168,21 +166,74 @@ export default class RocketView {
     private readonly scene: THREE.Scene,
     private readonly camera: THREE.PerspectiveCamera
   ) {
-    const heigth = 2;
-
-    this.geometry = new THREE.CylinderGeometry(2, 2, heigth * 2, 32);
-    // this.geometry.scale(this.scale.x, this.scale.y, this.scale.z);
-    this.material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-    this.mesh = new THREE.Mesh(this.geometry, this.material);
-    this.mesh.position.copy(this.rocket.position);
-    // this.mesh.frustumCulled = false;
-    this.mesh.name = RocketView.name;
-
-    this.scene.add(this.mesh);
+    this.group = new THREE.Group();
+    this.buildRocketMesh();
 
     this.initArrows();
     this.trailView = new TrailView(this.scene);
+
+    // this.rotateTowards(new THREE.Vector3(0, 10, 0));
   }
+
+  private buildRocketMesh(size = 10) {
+    const coneColor = 0xff0000;
+    const bodyColor = 0xcccccc;
+    const legColor = 0x888888; 
+
+    // ------------------------------------------------------------------------
+    // === Rocket Body ===
+    const bodyRadius = 0.1 * size;
+    const bodyHeight = size;
+
+    const bodyGeometry = new THREE.CylinderGeometry(
+      bodyRadius,
+      bodyRadius,
+      bodyHeight,
+      16
+    );
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: bodyColor });
+    const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    bodyMesh.position.y = bodyHeight / 2; // bottom touches y = 0
+    this.group.add(bodyMesh);
+
+    // ------------------------------------------------------------------------
+    // === Rocket Nose Cone ===
+    const coneHeight = 0.3 * bodyHeight;
+    const coneRadius = bodyRadius; // same radius as the body
+    const coneGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 16);
+    const coneMaterial = new THREE.MeshStandardMaterial({ color: coneColor });
+    const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
+    coneMesh.position.y = bodyHeight + coneHeight / 2; // sits on top of the body
+    this.group.add(coneMesh);
+
+    // ------------------------------------------------------------------------
+    // === Landing Legs (4) ===
+    const legWidth = bodyRadius * 0.4; // thickness left-right
+    const legDepth = bodyRadius * 0.1; // thickness front-back
+    const legHeight = bodyHeight * 0.3; // how tall the leg is
+
+    // Same geometry for all four legs
+    const legGeometry = new THREE.BoxGeometry(legWidth, legHeight, legDepth, 1, 1, 1);
+    const legMaterial = new THREE.MeshStandardMaterial({ color: legColor });
+
+    // Place each leg 90° apart around the body’s circumference
+    for (let i = 0; i < 4; i++) {
+      const angle = (i * Math.PI) / 2; // 0, 90, 180, 270 degrees
+      const x = Math.cos(angle) * (bodyRadius + legWidth / 2);
+      const z = Math.sin(angle) * (bodyRadius + legDepth / 2);
+
+      const legMesh = new THREE.Mesh(legGeometry, legMaterial);
+      legMesh.rotateOnAxis(new THREE.Vector3(0, 1, 0), angle);
+
+      legMesh.position.set(x, legHeight / 2, z); // bottom just touches y = 0
+      this.group.add(legMesh);
+    }
+
+    // ------------------------------------------------------------------------
+    this.group.name = RocketView.name;
+    this.scene.add(this.group);
+  }
+
 
   private initArrows() {
     this.addArrow(
@@ -319,7 +370,8 @@ export default class RocketView {
   updateTrail() {
     if (!this.trailView) return;
 
-    const thrustPercentage = this.rocket.thrust.length() / this.rocket.maxThrust;
+    const thrustPercentage =
+      this.rocket.thrust.length() / this.rocket.maxThrust;
 
     this.trailView.extendFromVectors(
       this.rocket.position.clone(),
@@ -327,20 +379,48 @@ export default class RocketView {
     );
   }
 
+  private alignRotation() {
+    if (this.rocket.hasLanded) {
+      return;
+    }
+
+    if (this.rocket.velocity.length() === 0) {
+      this.rotateTowards(this.rocket.position);
+    } else {
+      this.rotateTowards(this.rocket.velocity.clone().normalize());
+    }
+  }
+
+  private rotateTowards(normal: THREE.Vector3) {
+    // const normal = this.mesh.position.clone().sub(to).normalize();
+    this.group.lookAt(this.group.position.clone().add(normal));
+
+    this.group.rotateOnAxis(
+      new THREE.Vector3(1, 0, 0),
+      THREE.MathUtils.degToRad(90)
+    );
+  }
+
   update(): void {
-    this.mesh.position.copy(this.rocket.position);
+    this.updateFromCoordinates(this.rocket.position);
+  }
+
+  updateFromCoordinates(position: THREE.Vector3): void {
+    this.group.position.copy(position);
     this.updateArrows();
 
     if (!this.rocket.hasLanded) {
       this.updateTrail();
     }
+
+    this.alignRotation();
   }
 
   applyScaleToArrows(scale: number) {
     this.arrowLength = scale;
   }
 
-  focusCamera(controls: TrackballControls, camera: THREE.PerspectiveCamera) {
+  focusCamera(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
     // Calculate direction from sphere center to object (surface normal)
     const normalDirection = this.rocket.gravityForce.clone().normalize();
 
@@ -369,5 +449,27 @@ export default class RocketView {
 
     // Update controls
     controls.update();
+  }
+
+  remove() {
+    this.scene.remove(this.group);
+    this.group.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        child.material.dispose();
+      }
+    });
+    this.group.clear();
+
+    this.arrows.forEach((arrow) => {
+      arrow.dispose();
+      this.scene.remove(arrow);
+    });
+    this.arrows = [];
+
+    if (this.trailView) {
+      this.trailView.remove();
+      this.trailView = null;
+    }
   }
 }
