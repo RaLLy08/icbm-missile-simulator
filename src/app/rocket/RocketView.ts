@@ -154,7 +154,7 @@ export class TrailView {
 }
 
 export default class RocketView {
-  private group: THREE.Group;
+  group: THREE.Group;
   private arrows: THREE.ArrowHelper[] = [];
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private arrowLength = 100;
