@@ -111,38 +111,16 @@ const OrbitalVelocity = () => {
       container: rocketGuiContainer!,
     });
 
-    const cameraManager = new CameraManager(scene, renderer);
-    updateTriggers.push(cameraManager);
-
     sceneContainer.appendChild(renderer.domElement);
 
     const mouseTracker = new MouseTracker(window);
 
+    const cameraManager = new CameraManager(scene, renderer, mouseTracker);
+    updateTriggers.push(cameraManager);
+
+
     const earth = new Earth();
     updateTriggers.push(earth);
-
-    const rocketInitialPosition = Earth.geoCoordinatesToPosition(0, 90);
-    const rocketTargetPosition = Earth.geoCoordinatesToPosition(180, 0);
-    const targetInclineVector = rocketInitialPosition
-      .clone()
-      .sub(rocketTargetPosition)
-      .normalize();
-
-    const _rocket = new Rocket(
-      earth,
-      rocketInitialPosition,
-      targetInclineVector
-    );
-
-    const _rocketView = new RocketView(_rocket, scene);
-    updateTriggers.push(_rocketView);
-
-    const _rocketGui = new RocketGui(
-      rocketGuiPane,
-      rocketGuiContainer!,
-      _rocket,
-      _rocketView
-    );
 
     const earthGui = new EarthGui(mainPane, earth);
     const earthView = new EarthView(earth, scene, earthGui);
@@ -196,8 +174,13 @@ const OrbitalVelocity = () => {
         rocketGuiPane,
         rocketGuiContainer!,
         rocket,
-        rocketView
+        rocketView,
+        earthView,
+        cameraManager
       );
+
+      cameraManager.focusOnRocket(earthView, rocketView);
+
 
       updateTriggers.push(frameTimeManager);
       updateTriggers.push(rocketGui);
@@ -210,9 +193,8 @@ const OrbitalVelocity = () => {
     // };
 
     const onMouseDown = () => {
-      const earthIntersection = earthView.clickToGeoCoordinates(
-        mouseTracker.normalizedPosition,
-        cameraManager.camera
+      const earthIntersection = cameraManager.getMeshIntersectionPoint(
+        earthView.mesh
       );
 
       if (earthIntersection == null) {
@@ -242,7 +224,6 @@ const OrbitalVelocity = () => {
       setIsCalculateTrajectoryDisabled(
         !(launcher.rocketStartPosition && launcher.rocketTargetPosition)
       );
-      // launcher.handleEarthClick(earthIntersection);
     };
 
     const onMove = () => {
@@ -258,9 +239,8 @@ const OrbitalVelocity = () => {
         mouseFollower.style.top = `${mouseTracker.position.y}px`;
       }
 
-      const earthIntersection = earthView.clickToGeoCoordinates(
-        mouseTracker.normalizedPosition,
-        cameraManager.camera
+      const earthIntersection = cameraManager.getMeshIntersectionPoint(
+        earthView.mesh
       );
 
       if (earthIntersection == null) {

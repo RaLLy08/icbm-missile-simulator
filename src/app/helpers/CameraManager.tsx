@@ -1,50 +1,89 @@
 import Earth from 'app/earth/Earth';
 import EarthView from 'app/earth/EarthView';
-import Rocket from 'app/rocket/Rocket';
+import RocketView from 'app/rocket/RocketView';
 import { normalizeBetween, toExponentGrowth } from 'app/utils';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import MouseTracker from './MouseTracker';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
 
 export default class CameraManager {
-  readonly camera = new THREE.PerspectiveCamera(50, WIDTH / HEIGHT);
-  readonly controls = new OrbitControls(this.camera, this.renderer.domElement);
+  controls: OrbitControls | null = null;
+  focusObject: RocketView | EarthView | null = null;
+
+  private createCamera() {
+    return new THREE.PerspectiveCamera(
+      50,
+      WIDTH / HEIGHT,
+      0.1,
+      Earth.RADIUS * 100
+    );
+  }
 
   constructor(
     private scene: THREE.Scene,
-    private renderer: THREE.WebGLRenderer
+    private renderer: THREE.WebGLRenderer,
+    private mouseTracker: MouseTracker,
+    public camera = this.createCamera()
   ) {}
 
-  focusOnRocket(rocketView: Rocket) {
+  private updateControlsPosition(position: THREE.Vector3) {
     if (!this.controls) {
       return;
     }
 
-    this.controls.minDistance = 50;
-    this.controls.maxDistance = Earth.RADIUS * 4;
+    // if (this.focusObject instanceof RocketView) {
+    // fixed focus
+    //   this.camera.position
+    //     .copy(this.focusObject.group.position.clone())
+    //     .add(new THREE.Vector3(0, 100, 100));
+    // }
+
+    this.controls.target.copy(position);
+
+    this.controls.update();
+  }
+
+  focusOnRocket(earthView: EarthView, rocketView: RocketView) {
+    this.focusObject = rocketView;
+
+    this.camera = this.createCamera();
+
+    this.camera.position
+      .copy(rocketView.group.position.clone())
+      .add(new THREE.Vector3(0, 100, 100));
+
+    const surfaceNormal = new THREE.Vector3()
+      .subVectors(rocketView.group.position, earthView.mesh.position)
+      .normalize();
+
+    this.camera.up.copy(surfaceNormal);
+
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
     this.camera.updateProjectionMatrix();
+
+    this.updateControlsPosition(rocketView.group.position);
   }
 
   focusOnEarth(earthView: EarthView) {
-    if (!this.controls) {
-      return;
-    }
+    this.focusObject = earthView;
 
-    this.camera.near = Earth.RADIUS * 0.001;
-    this.camera.far = Earth.RADIUS * 100;
+    this.camera = this.createCamera();
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
     this.controls.minDistance = Earth.RADIUS + 50;
     this.controls.maxDistance = Earth.RADIUS * 6;
 
-    // check this
     this.camera.position.z = this.controls.maxDistance / 2;
     this.camera.position.y = 0;
     this.camera.position.x = 0;
 
     this.camera.updateProjectionMatrix();
+
+    this.controls.update();
   }
 
   private updateControlSpeed = () => {
@@ -87,11 +126,15 @@ export default class CameraManager {
     );
     this.controls.zoomSpeed = zoomFactor;
 
-    this.camera.updateProjectionMatrix();
     this.controls.update();
+    this.camera.updateProjectionMatrix();
   };
 
   private updateCameraRotation = () => {
+    if (!this.controls) {
+      return;
+    }
+
     const distance = this.camera.position.length();
 
     const rotationEffectStartFromSurfaceKm = 6000;
@@ -109,12 +152,33 @@ export default class CameraManager {
         maxAngle * effectPercentageExp
       );
     }
+
+    this.camera.updateProjectionMatrix();
   };
 
   update() {
-    this.updateControlSpeed();
-    this.updateCameraRotation();
+    if (this.focusObject instanceof EarthView) {
+      this.updateControlSpeed();
+      this.updateCameraRotation();
+    }
+
+    if (this.focusObject instanceof RocketView) {
+      this.updateControlsPosition(this.focusObject.group.position);
+    }
 
     this.renderer.render(this.scene, this.camera);
+  }
+
+  getMeshIntersectionPoint(mesh: THREE.Mesh): THREE.Vector3 | null {
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(this.mouseTracker.normalizedPosition, this.camera);
+
+    const intersects = raycaster.intersectObject(mesh);
+
+    if (intersects.length > 0) {
+      return intersects[0].point;
+    }
+
+    return null;
   }
 }

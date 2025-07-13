@@ -3,7 +3,8 @@ import Rocket from './Rocket';
 import RocketView from './RocketView';
 import * as THREE from 'three';
 import { formatSeconds } from 'app/utils';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import CameraManager from 'app/helpers/CameraManager';
+import EarthView from 'app/earth/EarthView';
 
 export default class RocketGui {
   private folder: FolderApi;
@@ -21,8 +22,8 @@ export default class RocketGui {
     private readonly paneContainer: HTMLElement,
     private readonly rocket: Rocket,
     private readonly rocketView: RocketView,
-    private readonly camera: THREE.PerspectiveCamera,
-    private readonly controls: OrbitControls
+    private readonly earthView: EarthView,
+    private readonly cameraManager: CameraManager
   ) {
     this.folder = this.pane.addFolder({
       title: `Rocket ${this.rocket.id}`,
@@ -34,7 +35,10 @@ export default class RocketGui {
         title: 'Focus on Missile',
       })
       .on('click', () => {
-        this.rocketView.focusCamera(this.controls, this.camera);
+        this.cameraManager.focusOnRocket(
+          this.earthView,
+          this.rocketView
+        );
       });
 
     this.folder.addBinding(this, 'velocity', {
