@@ -7,9 +7,7 @@ import EarthGui from './Earth.gui';
 const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
 
 export default class EarthView {
-  private geometry: THREE.SphereGeometry;
-  private material: THREE.MeshPhongMaterial;
-  private mesh: THREE.Mesh;
+  readonly mesh: THREE.Mesh;
 
   public atmosphereLayers = new Map<atmosphereLayerKeys, THREE.Mesh>();
   public atmostphereBorders = new Map<
@@ -24,12 +22,12 @@ export default class EarthView {
   ) {
     const segments = 128;
 
-    this.geometry = new THREE.SphereGeometry(Earth.RADIUS, segments, segments);
-    this.material = new THREE.MeshPhongMaterial({
+    const geometry = new THREE.SphereGeometry(Earth.RADIUS, segments, segments);
+    const material = new THREE.MeshPhongMaterial({
       map: earthTexture,
     });
 
-    this.mesh = new THREE.Mesh(this.geometry, this.material);
+    this.mesh = new THREE.Mesh(geometry, material);
 
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;

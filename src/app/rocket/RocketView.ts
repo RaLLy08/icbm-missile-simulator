@@ -155,7 +155,6 @@ export class TrailView {
 
 export default class RocketView {
   private group: THREE.Group;
-
   private arrows: THREE.ArrowHelper[] = [];
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private arrowLength = 100;
@@ -163,22 +162,18 @@ export default class RocketView {
 
   constructor(
     private readonly rocket: Rocket,
-    private readonly scene: THREE.Scene,
-    private readonly camera: THREE.PerspectiveCamera
+    private readonly scene: THREE.Scene
   ) {
     this.group = new THREE.Group();
     this.buildRocketMesh();
-
     this.initArrows();
     this.trailView = new TrailView(this.scene);
-
-    // this.rotateTowards(new THREE.Vector3(0, 10, 0));
   }
 
   private buildRocketMesh(size = 10) {
     const coneColor = 0xff0000;
     const bodyColor = 0xcccccc;
-    const legColor = 0x888888; 
+    const legColor = 0x888888;
 
     // ------------------------------------------------------------------------
     // === Rocket Body ===
@@ -213,7 +208,14 @@ export default class RocketView {
     const legHeight = bodyHeight * 0.3; // how tall the leg is
 
     // Same geometry for all four legs
-    const legGeometry = new THREE.BoxGeometry(legWidth, legHeight, legDepth, 1, 1, 1);
+    const legGeometry = new THREE.BoxGeometry(
+      legWidth,
+      legHeight,
+      legDepth,
+      1,
+      1,
+      1
+    );
     const legMaterial = new THREE.MeshStandardMaterial({ color: legColor });
 
     // Place each leg 90° apart around the body’s circumference
@@ -233,7 +235,6 @@ export default class RocketView {
     this.group.name = RocketView.name;
     this.scene.add(this.group);
   }
-
 
   private initArrows() {
     this.addArrow(

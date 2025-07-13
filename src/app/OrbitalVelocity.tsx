@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Pane } from 'tweakpane';
 import Stats from 'three/examples/jsm/libs/stats.module';
@@ -16,28 +15,15 @@ import LauncherView from './launcher/LauncherView';
 import LauncherGui from './launcher/Launcher.gui';
 import RocketGui from './rocket/Rocket.gui';
 import FrameTimeManager from './helpers/FrameTimeManager';
-import { toExponentGrowth, normalizeBetween } from './utils';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
+import Rocket from './rocket/Rocket';
+import CameraManager from './helpers/CameraManager';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, WIDTH / HEIGHT, 0.1, 1000000);
-
-camera.near = Earth.RADIUS * 0.001;
-camera.far = Earth.RADIUS * 100;
-camera.updateProjectionMatrix();
-
-const mouse = new THREE.Vector2();
-
-const MIN_EARTH_CAMERA_DISTANCE = Earth.RADIUS + 50; // Just above surface
-const MAX_EARTH_CAMERA_DISTANCE = Earth.RADIUS * 4; // Outer orbit
-
-camera.position.z = MAX_EARTH_CAMERA_DISTANCE / 2;
-camera.position.y = 0;
-camera.position.x = 0;
 
 const axisHelper = new THREE.AxesHelper(10000);
 scene.add(axisHelper);
@@ -68,46 +54,6 @@ const updateTriggers: {
   [key: string]: any;
   update: () => void;
 }[] = [stats];
-
-const updateControlSpeed = (
-  camera: THREE.PerspectiveCamera,
-  controls: OrbitControls
-) => {
-  const distance = camera.position.length(); // Assuming planet center at (0, 0, 0)
-
-  const percentageOfDistanceToSurface = normalizeBetween(
-    distance,
-    MIN_EARTH_CAMERA_DISTANCE,
-    MAX_EARTH_CAMERA_DISTANCE
-  );
-
-  const rotateExponentBase = 5;
-  const maxRotateSpeed = 2;
-  const minRotateSpeed = 0.05;
-
-  const expFactor = THREE.MathUtils.mapLinear(
-    toExponentGrowth(percentageOfDistanceToSurface, rotateExponentBase),
-    0,
-    1,
-    minRotateSpeed,
-    maxRotateSpeed
-  );
-
-  controls.rotateSpeed = expFactor;
-
-  const minZoomSpeed = 0.01;
-  const maxZoomSpeed = 4;
-
-  const zoomExponentBase = 2;
-  const zoomFactor = THREE.MathUtils.mapLinear(
-    toExponentGrowth(percentageOfDistanceToSurface, zoomExponentBase),
-    0,
-    1,
-    minZoomSpeed,
-    maxZoomSpeed
-  );
-  controls.zoomSpeed = zoomFactor;
-};
 
 const OrbitalVelocity = () => {
   const launchPadListenersRef = useRef({
@@ -165,47 +111,43 @@ const OrbitalVelocity = () => {
       container: rocketGuiContainer!,
     });
 
+    const cameraManager = new CameraManager(scene, renderer);
+    updateTriggers.push(cameraManager);
+
     sceneContainer.appendChild(renderer.domElement);
 
-    const controls = new OrbitControls(camera, renderer.domElement);
     const mouseTracker = new MouseTracker(window);
-
-    controls.minDistance = MIN_EARTH_CAMERA_DISTANCE;
-    controls.maxDistance = MAX_EARTH_CAMERA_DISTANCE;
-    controls.enablePan = false;
-
-    updateTriggers.push(controls);
 
     const earth = new Earth();
     updateTriggers.push(earth);
 
-    // const rocketInitialPosition = Earth.geoCoordinatesToPosition(0, 90);
-    // const rocketTargetPosition = Earth.geoCoordinatesToPosition(180, 0);
-    // const targetInclineVector = rocketInitialPosition
-    //   .clone()
-    //   .sub(rocketTargetPosition)
-    //   .normalize();
+    const rocketInitialPosition = Earth.geoCoordinatesToPosition(0, 90);
+    const rocketTargetPosition = Earth.geoCoordinatesToPosition(180, 0);
+    const targetInclineVector = rocketInitialPosition
+      .clone()
+      .sub(rocketTargetPosition)
+      .normalize();
 
-    // const _rocket = new Rocket(
-    //   earth,
-    //   rocketInitialPosition,
-    //   targetInclineVector
-    // );
+    const _rocket = new Rocket(
+      earth,
+      rocketInitialPosition,
+      targetInclineVector
+    );
 
-    // const _rocketView = new RocketView(_rocket, scene, camera);
-    // updateTriggers.push(_rocketView);
+    const _rocketView = new RocketView(_rocket, scene);
+    updateTriggers.push(_rocketView);
 
-    // const _rocketGui = new RocketGui(
-    //   rocketGuiPane,
-    //   rocketGuiContainer!,
-    //   _rocket,
-    //   _rocketView,
-    //   camera,
-    //   controls
-    // );
+    const _rocketGui = new RocketGui(
+      rocketGuiPane,
+      rocketGuiContainer!,
+      _rocket,
+      _rocketView
+    );
 
     const earthGui = new EarthGui(mainPane, earth);
     const earthView = new EarthView(earth, scene, earthGui);
+
+    cameraManager.focusOnEarth(earthView);
 
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
@@ -242,7 +184,7 @@ const OrbitalVelocity = () => {
         console.error('Rocket could not be created. Check launcher settings.');
         return;
       }
-      const rocketView = new RocketView(rocket, scene, camera);
+      const rocketView = new RocketView(rocket, scene);
 
       const frameTimeManager = new FrameTimeManager(
         rocket,
@@ -254,9 +196,7 @@ const OrbitalVelocity = () => {
         rocketGuiPane,
         rocketGuiContainer!,
         rocket,
-        rocketView,
-        camera,
-        controls
+        rocketView
       );
 
       updateTriggers.push(frameTimeManager);
@@ -272,7 +212,7 @@ const OrbitalVelocity = () => {
     const onMouseDown = () => {
       const earthIntersection = earthView.clickToGeoCoordinates(
         mouseTracker.normalizedPosition,
-        camera
+        cameraManager.camera
       );
 
       if (earthIntersection == null) {
@@ -320,7 +260,7 @@ const OrbitalVelocity = () => {
 
       const earthIntersection = earthView.clickToGeoCoordinates(
         mouseTracker.normalizedPosition,
-        camera
+        cameraManager.camera
       );
 
       if (earthIntersection == null) {
@@ -343,10 +283,6 @@ const OrbitalVelocity = () => {
     window.addEventListener('mousedown', onMouseDown, false);
 
     const animateLoop = () => {
-      // rocketGui.update();
-      // controls.update();
-      renderer.render(scene, camera);
-
       const deltaTime = clock.getDelta();
 
       // const tick = deltaTime * worldGui.timeMultiplier;
@@ -358,7 +294,6 @@ const OrbitalVelocity = () => {
       //   }
       // });
       mouseTracker.update(deltaTime);
-      updateControlSpeed(camera, controls);
       onMove();
 
       updateTriggers.forEach((trigger) => {
