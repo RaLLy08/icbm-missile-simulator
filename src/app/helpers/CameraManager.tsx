@@ -100,6 +100,9 @@ class EarthCamera {
 
     this.controls.minDistance = Earth.RADIUS + 50;
     this.controls.maxDistance = Earth.RADIUS * 6;
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.8;
+    this.controls.enablePan = false;
 
     this.camera.position.z = z + this.controls.maxDistance / 2;
     this.camera.position.y = y;
