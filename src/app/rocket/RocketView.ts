@@ -160,7 +160,7 @@ export default class RocketView {
   private trailView: TrailView | null = null;
 
   readonly size = 1;
-  private arrowLength = 3 * this.size; 
+  private arrowLength = 2 * this.size; 
 
   constructor(
     readonly rocket: Rocket,

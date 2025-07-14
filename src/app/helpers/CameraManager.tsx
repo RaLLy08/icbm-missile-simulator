@@ -34,13 +34,13 @@ export default class CameraManager {
     private mouseTracker: MouseTracker
   ) {}
 
-  setEarthCamera(earthView: EarthView) {
+  setEarthCamera(earth: Earth) {
     if (this.cameraController) {
       this.cameraController.remove();
     }
 
     this.cameraController = new EarthCamera(
-      earthView.mesh.position.clone(),
+      earth.position.clone(),
       this.createCamera(),
       this.renderer.domElement
     );

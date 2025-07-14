@@ -119,14 +119,18 @@ const OrbitalVelocity = () => {
     const earth = new Earth();
     updateTriggers.push(earth);
 
-    const earthGui = new EarthGui(mainPane, earth);
-    const earthView = new EarthView(earth, scene, earthGui);
+  
  
     
     const cameraManager = new CameraManager(scene, renderer, mouseTracker);
-    cameraManager.setEarthCamera(earthView);
-
     updateTriggers.push(cameraManager);
+
+    const earthGui = new EarthGui(mainPane, earth, cameraManager);
+    const earthView = new EarthView(earth, scene, earthGui);
+
+
+    cameraManager.setEarthCamera(earth);
+
 
 
 

@@ -1,6 +1,7 @@
 import { FolderApi, Pane } from 'tweakpane';
 import Earth from './Earth';
 import { atmosphereLayerKeys } from './earth.consts';
+import CameraManager from 'app/helpers/CameraManager';
 
 export default class EarthGui {
   private folder: FolderApi;
@@ -53,7 +54,8 @@ export default class EarthGui {
 
   constructor(
     private readonly pane: Pane,
-    private readonly earth: Earth
+    private readonly earth: Earth,
+    private readonly cameraManager: CameraManager
   ) {
     this.folder = pane.addFolder({
       title: 'Earth',
@@ -126,6 +128,13 @@ export default class EarthGui {
       })
       .on('change', (ev) => {
         this.onShowEarthClicked(ev.value);
+      });
+    this.folder
+      .addButton({
+        title: 'Focus Camera',
+      })
+      .on('click', () => {
+        this.cameraManager.setEarthCamera(this.earth);
       });
   }
 
