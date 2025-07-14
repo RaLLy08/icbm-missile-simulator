@@ -25,8 +25,8 @@ const HEIGHT = window.innerHeight;
 
 const scene = new THREE.Scene();
 
-const axisHelper = new THREE.AxesHelper(10000);
-scene.add(axisHelper);
+// const axisHelper = new THREE.AxesHelper(10000);
+// scene.add(axisHelper);
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -115,17 +115,52 @@ const OrbitalVelocity = () => {
 
     const mouseTracker = new MouseTracker(window);
 
-    const cameraManager = new CameraManager(scene, renderer, mouseTracker);
-    updateTriggers.push(cameraManager);
-
 
     const earth = new Earth();
     updateTriggers.push(earth);
 
     const earthGui = new EarthGui(mainPane, earth);
     const earthView = new EarthView(earth, scene, earthGui);
+ 
+    
+    const cameraManager = new CameraManager(scene, renderer, mouseTracker);
+    cameraManager.setEarthCamera(earthView);
 
-    cameraManager.focusOnEarth(earthView);
+    updateTriggers.push(cameraManager);
+
+
+
+    // const rocketInitialPosition = Earth.geoCoordinatesToPosition(0, 90);
+    // const rocketTargetPosition = Earth.geoCoordinatesToPosition(180, 0);
+    // const targetInclineVector = rocketInitialPosition
+    //   .clone()
+    //   .sub(rocketTargetPosition)
+    //   .normalize();
+
+    // const _rocket = new Rocket(
+    //   earth,
+    //   rocketInitialPosition,
+    //   targetInclineVector
+    // );
+
+    // const _rocketView = new RocketView(_rocket, scene);
+    // updateTriggers.push(_rocketView);
+
+    // const _rocketGui = new RocketGui(
+    //   rocketGuiPane,
+    //   rocketGuiContainer!,
+    //   _rocket,
+    //   _rocketView,
+    //   earthView,
+    //   cameraManager
+    // );
+
+    // cameraManager.setRocketCamera(earthView, _rocketView);
+
+    // setTimeout(() => {
+    //   _rocket.position.copy(rocketTargetPosition);
+    // }, 1000); // Wait for the camera to focus
+
 
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
@@ -178,9 +213,6 @@ const OrbitalVelocity = () => {
         earthView,
         cameraManager
       );
-
-      cameraManager.focusOnRocket(earthView, rocketView);
-
 
       updateTriggers.push(frameTimeManager);
       updateTriggers.push(rocketGui);

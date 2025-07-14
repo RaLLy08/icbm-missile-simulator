@@ -35,7 +35,7 @@ export default class RocketGui {
         title: 'Focus on Missile',
       })
       .on('click', () => {
-        this.cameraManager.focusOnRocket(
+        this.cameraManager.setRocketCamera(
           this.earthView,
           this.rocketView
         );

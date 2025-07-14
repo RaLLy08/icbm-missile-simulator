@@ -157,28 +157,32 @@ export default class RocketView {
   group: THREE.Group;
   private arrows: THREE.ArrowHelper[] = [];
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
-  private arrowLength = 100;
   private trailView: TrailView | null = null;
 
+  readonly size = 1;
+  private arrowLength = 3 * this.size; 
+
   constructor(
-    private readonly rocket: Rocket,
+    readonly rocket: Rocket,
     private readonly scene: THREE.Scene
   ) {
     this.group = new THREE.Group();
     this.buildRocketMesh();
     this.initArrows();
     this.trailView = new TrailView(this.scene);
+
+    this.update();
   }
 
-  private buildRocketMesh(size = 10) {
+  private buildRocketMesh() {
     const coneColor = 0xff0000;
     const bodyColor = 0xcccccc;
     const legColor = 0x888888;
 
     // ------------------------------------------------------------------------
     // === Rocket Body ===
-    const bodyRadius = 0.1 * size;
-    const bodyHeight = size;
+    const bodyRadius = 0.1 * this.size;
+    const bodyHeight = this.size;
 
     const bodyGeometry = new THREE.CylinderGeometry(
       bodyRadius,
@@ -307,8 +311,8 @@ export default class RocketView {
     arrow.setDirection(direction);
     arrow.setLength(
       length,
-      Math.min(length * 0.2, 20),
-      Math.min(length * 0.1, 10)
+      Math.min(length * 0.05, 10),
+      Math.min(length * 0.03, 5)
     );
     arrow.position.copy(position);
 
@@ -419,37 +423,6 @@ export default class RocketView {
 
   applyScaleToArrows(scale: number) {
     this.arrowLength = scale;
-  }
-
-  focusCamera(controls: OrbitControls, camera: THREE.PerspectiveCamera) {
-    // Calculate direction from sphere center to object (surface normal)
-    const normalDirection = this.rocket.gravityForce.clone().normalize();
-
-    normalDirection.applyAxisAngle(
-      new THREE.Vector3(0, 0, 1),
-      THREE.MathUtils.degToRad(80)
-    );
-
-    // normalDirection.applyAxisAngle(
-    //   new THREE.Vector3(0, 1, 0),
-    //   THREE.MathUtils.degToRad(90)
-    // );
-
-    // Position the camera just above the object in the normal direction
-    const cameraPosition = new THREE.Vector3()
-      .copy(this.rocket.position)
-      .addScaledVector(normalDirection, 10);
-
-    camera.position.copy(cameraPosition);
-
-    // Aim the camera to look at the object
-    controls.target.copy(this.rocket.position);
-
-    // Update camera projection matrix (in case you move far from center)
-    camera.updateProjectionMatrix();
-
-    // Update controls
-    controls.update();
   }
 
   remove() {

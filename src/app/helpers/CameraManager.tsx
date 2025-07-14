@@ -1,18 +1,15 @@
 import Earth from 'app/earth/Earth';
 import EarthView from 'app/earth/EarthView';
-import RocketView from 'app/rocket/RocketView';
 import { normalizeBetween, toExponentGrowth } from 'app/utils';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import MouseTracker from './MouseTracker';
+import RocketView from 'app/rocket/RocketView';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
 
 export default class CameraManager {
-  controls: OrbitControls | null = null;
-  focusObject: RocketView | EarthView | null = null;
-
   private createCamera() {
     return new THREE.PerspectiveCamera(
       50,
@@ -22,75 +19,97 @@ export default class CameraManager {
     );
   }
 
+  cameraController: EarthCamera | RocketCamera | null = null;
+
+  getCamera() {
+    if (!this.cameraController) {
+      return null;
+    }
+    return this.cameraController.camera;
+  }
+
   constructor(
     private scene: THREE.Scene,
     private renderer: THREE.WebGLRenderer,
-    private mouseTracker: MouseTracker,
-    public camera = this.createCamera()
+    private mouseTracker: MouseTracker
   ) {}
 
-  private updateControlsPosition(position: THREE.Vector3) {
-    if (!this.controls) {
-      return;
+  setEarthCamera(earthView: EarthView) {
+    if (this.cameraController) {
+      this.cameraController.remove();
     }
 
-    // if (this.focusObject instanceof RocketView) {
-    // fixed focus
-    //   this.camera.position
-    //     .copy(this.focusObject.group.position.clone())
-    //     .add(new THREE.Vector3(0, 100, 100));
-    // }
-
-    this.controls.target.copy(position);
-
-    this.controls.update();
+    this.cameraController = new EarthCamera(
+      earthView.mesh.position.clone(),
+      this.createCamera(),
+      this.renderer.domElement
+    );
   }
 
-  focusOnRocket(earthView: EarthView, rocketView: RocketView) {
-    this.focusObject = rocketView;
+  setRocketCamera(earthView: EarthView, rocketView: RocketView) {
+    if (this.cameraController) {
+      this.cameraController.remove();
+    }
 
-    this.camera = this.createCamera();
-
-    this.camera.position
-      .copy(rocketView.group.position.clone())
-      .add(new THREE.Vector3(0, 100, 100));
-
-    const surfaceNormal = new THREE.Vector3()
-      .subVectors(rocketView.group.position, earthView.mesh.position)
-      .normalize();
-
-    this.camera.up.copy(surfaceNormal);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-
-    this.camera.updateProjectionMatrix();
-
-    this.updateControlsPosition(rocketView.group.position);
+    const camera = this.createCamera();
+    const earthCenter = earthView.mesh.position.clone();
+    this.cameraController = new RocketCamera(
+      camera,
+      rocketView,
+      earthCenter,
+      this.renderer.domElement
+    );
   }
 
-  focusOnEarth(earthView: EarthView) {
-    this.focusObject = earthView;
+  update() {
+    if (!this.cameraController) return;
 
-    this.camera = this.createCamera();
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.cameraController.update();
+    this.renderer.render(this.scene, this.cameraController.camera);
+  }
+
+  getMeshIntersectionPoint(mesh: THREE.Mesh): THREE.Vector3 | null {
+    if (!this.cameraController) {
+      return null;
+    }
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(
+      this.mouseTracker.normalizedPosition,
+      this.cameraController.camera
+    );
+
+    const intersects = raycaster.intersectObject(mesh);
+
+    if (intersects.length > 0) {
+      return intersects[0].point;
+    }
+
+    return null;
+  }
+}
+
+class EarthCamera {
+  constructor(
+    private readonly earthCenter: THREE.Vector3,
+    public camera: THREE.PerspectiveCamera,
+    private domElement: HTMLElement | null,
+    private controls = new OrbitControls(camera, domElement)
+  ) {
+    const { x, y, z } = this.earthCenter;
 
     this.controls.minDistance = Earth.RADIUS + 50;
     this.controls.maxDistance = Earth.RADIUS * 6;
 
-    this.camera.position.z = this.controls.maxDistance / 2;
-    this.camera.position.y = 0;
-    this.camera.position.x = 0;
+    this.camera.position.z = z + this.controls.maxDistance / 2;
+    this.camera.position.y = y;
+    this.camera.position.x = x;
 
     this.camera.updateProjectionMatrix();
-
     this.controls.update();
   }
 
   private updateControlSpeed = () => {
-    if (!this.controls) {
-      return;
-    }
-
     const distance = this.camera.position.length(); // Assuming planet center at (0, 0, 0)
 
     const percentageOfDistanceToSurface = normalizeBetween(
@@ -127,14 +146,10 @@ export default class CameraManager {
     this.controls.zoomSpeed = zoomFactor;
 
     this.controls.update();
-    this.camera.updateProjectionMatrix();
+    // this.camera.updateProjectionMatrix();
   };
 
   private updateCameraRotation = () => {
-    if (!this.controls) {
-      return;
-    }
-
     const distance = this.camera.position.length();
 
     const rotationEffectStartFromSurfaceKm = 6000;
@@ -157,28 +172,165 @@ export default class CameraManager {
   };
 
   update() {
-    if (this.focusObject instanceof EarthView) {
-      this.updateControlSpeed();
-      this.updateCameraRotation();
-    }
-
-    if (this.focusObject instanceof RocketView) {
-      this.updateControlsPosition(this.focusObject.group.position);
-    }
-
-    this.renderer.render(this.scene, this.camera);
+    this.updateControlSpeed();
+    this.updateCameraRotation();
   }
 
-  getMeshIntersectionPoint(mesh: THREE.Mesh): THREE.Vector3 | null {
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(this.mouseTracker.normalizedPosition, this.camera);
+  remove() {
+    this.controls.dispose();
+  }
+}
 
-    const intersects = raycaster.intersectObject(mesh);
+class RocketCamera {
+  camera: THREE.PerspectiveCamera;
+  earthCenter: THREE.Vector3;
 
-    if (intersects.length > 0) {
-      return intersects[0].point;
-    }
+  // Camera settings
+  mouseSensitivity: number = 0.005;
 
-    return null;
+  minDistance: number = 10; // Minimum distance from the target
+  maxDistance: number = Earth.RADIUS; // Maximum distance from the target
+  distance: number = this.minDistance;
+  currentOffset: THREE.Vector3 = new THREE.Vector3(0, 0, 0); // Default offset
+
+  // Rotation state
+  phi: number = THREE.MathUtils.degToRad(45); // Vertical angle
+  theta: number = THREE.MathUtils.degToRad(0); // Horizontal angle
+
+  // DOM element for mouse events
+  domElement: HTMLElement;
+  isMouseDown: boolean = false;
+  prevMouseX: number = 0;
+  prevMouseY: number = 0;
+
+  constructor(
+    camera: THREE.PerspectiveCamera,
+    private rocketView: RocketView,
+    earthCenter: THREE.Vector3,
+    domElement: HTMLElement
+  ) {
+    this.camera = camera;
+
+    this.earthCenter = earthCenter;
+    this.domElement = domElement;
+
+    this.minDistance = this.rocketView.size;
+    this.distance = this.rocketView.size * 3; 
+
+    // Set up mouse controls
+    this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this));
+    this.domElement.addEventListener('mouseup', this.onMouseUp.bind(this));
+    this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
+    this.domElement.addEventListener('wheel', this.onMouseWheel.bind(this), {
+      passive: false,
+    });
+  }
+
+  private getRocketPosition() {
+    const rocketPosition = this.rocketView.group.position.clone();
+
+    const earthNormal = this.earthCenter
+      .clone()
+      .sub(this.rocketView.group.position)
+      .normalize();
+
+    const offset = -this.rocketView.size * 0.5;
+
+    return rocketPosition
+      .add(earthNormal.clone().multiplyScalar(offset))
+  }
+
+  onMouseDown(event: MouseEvent) {
+    this.isMouseDown = true;
+    this.prevMouseX = event.clientX;
+    this.prevMouseY = event.clientY;
+  }
+
+  onMouseUp() {
+    this.isMouseDown = false;
+  }
+
+  onMouseMove(event: MouseEvent) {
+    if (!this.isMouseDown) return;
+
+    const deltaX = event.clientX - this.prevMouseX;
+    const deltaY = event.clientY - this.prevMouseY;
+
+    // Update angles based on mouse movement
+    this.theta -= deltaX * this.mouseSensitivity; // Horizontal rotation
+    this.phi = Math.max(
+      0.1,
+      Math.min(Math.PI - 0.1, this.phi - deltaY * this.mouseSensitivity)
+    ); // Vertical rotation (clamped)
+
+    this.prevMouseX = event.clientX;
+    this.prevMouseY = event.clientY;
+  }
+
+  onMouseWheel(event: WheelEvent) {
+    // Zoom in/out
+    const minStep = 0.001;
+    const maxStep = 1;
+
+    const percentageOfApproach = normalizeBetween(
+      this.distance,
+      this.minDistance,
+      this.maxDistance
+    );
+
+    // const step = maxStep;
+    const step = THREE.MathUtils.mapLinear(
+      1 - Math.pow(1 - percentageOfApproach, 8),
+      0,
+      1,
+      minStep,
+      maxStep
+    );
+
+    const wheelStep = event.deltaY * step;
+
+    this.distance = Math.max(
+      this.minDistance,
+      Math.min(this.maxDistance, this.distance + wheelStep)
+    );
+
+    event.preventDefault();
+  }
+
+  update() {
+    const targetPos = this.getRocketPosition();
+    const surfaceNormal = new THREE.Vector3()
+      .subVectors(targetPos, this.earthCenter)
+      .normalize();
+
+    // Calculate camera position in spherical coordinates
+    const sphericalPos = new THREE.Spherical(
+      this.distance,
+      this.phi,
+      this.theta
+    );
+
+    // Convert spherical to Cartesian coordinates
+    this.currentOffset.setFromSpherical(sphericalPos);
+
+    // Align offset with surface normal (so "up" is away from Earth)
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0), // Default "up"
+      surfaceNormal
+    );
+    this.currentOffset.applyQuaternion(quaternion);
+
+    // Set camera position and look at target
+    this.camera.position.copy(targetPos).add(this.currentOffset);
+    this.camera.lookAt(targetPos);
+    this.camera.up.copy(surfaceNormal); // Ensure camera respects surface normal
+  }
+
+  remove() {
+    // Clean up event listeners
+    this.domElement.removeEventListener('mousedown', this.onMouseDown);
+    this.domElement.removeEventListener('mouseup', this.onMouseUp);
+    this.domElement.removeEventListener('mousemove', this.onMouseMove);
+    this.domElement.removeEventListener('wheel', this.onMouseWheel);
   }
 }
