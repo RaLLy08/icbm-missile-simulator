@@ -17,6 +17,8 @@ export default class LauncherGui {
   startLongitude: number | string = 'N/A';
   startLatitude: number | string = 'N/A';
 
+  rocketCount = 0;
+
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
       title: 'Launcher',
@@ -104,6 +106,14 @@ export default class LauncherGui {
         const formatted = formatSeconds(v);
 
         return `${formatted.value.toFixed(1)} ${formatted.unit}`;
+      },
+    });
+
+    this.folder.addBinding(this, 'rocketCount', {
+      label: 'Rocket Count',
+      readonly: true,
+      format: (v) => {
+       return `${v.toFixed(0)} rockets`;
       },
     });
   }

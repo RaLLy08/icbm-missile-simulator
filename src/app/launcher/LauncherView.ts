@@ -27,6 +27,7 @@ const createMarker = (
 export default class LauncherView {
   startMarker: THREE.Object3D | null = null;
   targetMarker: THREE.Object3D | null = null;
+  activeMarker: THREE.Object3D | null = null;
 
   constructor(
     private earth: Earth,
@@ -39,6 +40,43 @@ export default class LauncherView {
     this.startMarker = createMarker(position, this.earth, 0x0000ff);
     this.scene.add(this.startMarker);
   }
+
+  setActivePosition(position: THREE.Vector3, type: 'start' | 'target' = 'start') {
+    if (this.activeMarker) {
+      this.scene.remove(this.activeMarker);
+      this.activeMarker = null;
+    }
+
+    if (this.startMarker && type === 'start') {
+      this.startMarker.visible = false;
+    }
+
+    if (this.targetMarker && type === 'target') {
+      this.targetMarker.visible = false;
+    }
+
+    if (type === 'start') {
+      this.activeMarker = createMarker(position, this.earth, 0x0000ff);
+    } else if (type === 'target') {
+      this.activeMarker = createMarker(position, this.earth, 0xff0000);
+    }
+    
+    this.scene.add(this.activeMarker!);
+  }
+
+  activePositionWasSet() {
+    if (this.activeMarker) {
+      this.activeMarker.visible = false;
+    }
+    if (this.startMarker) {
+      this.startMarker.visible = true;
+    }
+
+    if (this.targetMarker) {
+      this.targetMarker.visible = true;
+    }
+  }
+
 
   removeStartPositionIfExist() {
     if (this.startMarker) {
@@ -62,5 +100,10 @@ export default class LauncherView {
       this.targetMarker = null;
       return;
     }
+  }
+
+  remove() {
+    this.removeStartPositionIfExist();
+    this.removeTargetPositionIfExist();
   }
 }

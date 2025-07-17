@@ -14,6 +14,7 @@ export default class EarthView {
     atmosphereLayerKeys,
     THREE.LineSegments
   >();
+  markers: THREE.Mesh[] = [];
 
   constructor(
     private readonly earth: Earth,
@@ -258,5 +259,70 @@ export default class EarthView {
     }
 
     return null;
+  }
+
+  addTorusMarker = (
+    position: THREE.Vector3,
+    color: number = 0x0000ff,
+    radius: number = 80,
+    tube: number = 16
+  ) => {
+    const normal = position.clone().sub(this.earth.position).normalize();
+
+    // create torus
+    const geometry = new THREE.TorusGeometry(radius, tube, 16, 100);
+    const material = new THREE.MeshBasicMaterial({ color: color });
+    const marker = new THREE.Mesh(geometry, material);
+    marker.position.copy(position);
+    marker.lookAt(position.clone().add(normal)); // orient the torus to face the normal direction
+
+    marker.castShadow = true;
+    marker.receiveShadow = true;
+
+    this.scene.add(marker);
+  };
+
+  addCrossMarker = (
+    position: THREE.Vector3,
+    color: number = 0xff0000,
+    size: number = 100,
+    thickness: number = 10
+  ) => {
+    const normal = position.clone().sub(this.earth.position).normalize();
+
+    const material = new THREE.MeshBasicMaterial({ color: color });
+
+    // Create horizontal bar
+    const horizontalGeometry = new THREE.BoxGeometry(
+      size,
+      thickness,
+      thickness
+    );
+    const horizontal = new THREE.Mesh(horizontalGeometry, material);
+
+    // Create vertical bar
+    const verticalGeometry = new THREE.BoxGeometry(thickness, size, thickness);
+    const vertical = new THREE.Mesh(verticalGeometry, material);
+
+    // Combine into a single object
+    const cross = new THREE.Object3D();
+    cross.add(horizontal);
+    cross.add(vertical);
+
+    cross.position.copy(position);
+    cross.lookAt(position.clone().add(normal)); // orient the cross to face outward
+
+    cross.castShadow = true;
+    cross.receiveShadow = true;
+
+    this.scene.add(cross);
+  };
+
+  removeMarker(marker: THREE.Mesh) {
+    this.scene.remove(marker);
+  }
+
+  setMarkerVisible(marker: THREE.Mesh, visible: boolean = true) {
+    marker.visible = visible;
   }
 }

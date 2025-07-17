@@ -60,6 +60,8 @@ const OrbitalVelocity = () => {
     onCalculateTrajectory: () => {},
     onLaunchRocket: () => {},
   });
+  const [calcWasReset, setCalcWasReset] = useState(true);
+  const [rocketCount, setRocketCount] = useState(0);
   const launchPadStatesRef = useRef({
     startPositionSetIsActive: false,
     targetPositionSetIsActive: false,
@@ -87,6 +89,12 @@ const OrbitalVelocity = () => {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [activePositionGeo, setActivePositionGeo] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+
 
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
@@ -182,6 +190,8 @@ const OrbitalVelocity = () => {
         return;
       }
 
+      setCalcWasReset(false);
+
       const onProgress = (bestGenome: any, progress: number) => {
         setCalculationProgress(progress);
       };
@@ -193,6 +203,8 @@ const OrbitalVelocity = () => {
         setCalculationProgress(null);
       });
     };
+
+    let activeRocketGui: RocketGui | null = null;
 
     launcherPadListeners.onLaunchRocket = () => {
       const rocket = launcher.createRocket();
@@ -209,7 +221,21 @@ const OrbitalVelocity = () => {
         worldGui
       );
 
-      const rocketGui = new RocketGui(
+      earthView.addTorusMarker(launcher.rocketStartPosition!, 0x0000ff, 40, 4);
+      earthView.addCrossMarker(launcher.rocketTargetPosition!, 0x00ff00, 80, 8);
+      launcherView.remove()
+
+      setRocketCount(launcher.rocketCount);
+
+      if (activeRocketGui) {
+        activeRocketGui.remove();
+        updateTriggers.splice(
+          updateTriggers.indexOf(activeRocketGui),
+          1
+        );
+      }
+
+      activeRocketGui = new RocketGui(
         rocketGuiPane,
         rocketGuiContainer!,
         rocket,
@@ -219,7 +245,7 @@ const OrbitalVelocity = () => {
       );
 
       updateTriggers.push(frameTimeManager);
-      updateTriggers.push(rocketGui);
+      updateTriggers.push(activeRocketGui);
     };
 
     // const garbageCollector = () => {
@@ -236,25 +262,34 @@ const OrbitalVelocity = () => {
       if (earthIntersection == null) {
         return;
       }
+      const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
 
       if (launchPadStatesRef.current.startPositionSetIsActive) {
         launcherView.setStartPosition(earthIntersection);
         launcher.setStartPosition(earthIntersection);
 
-        setStartPositionGeo(Earth.positionToGeoCoordinates(earthIntersection));
+        setStartPositionGeo(geoCords);
 
         launchPadStatesRef.current.startPositionSetIsActive = false;
         setSetStartPositionActive(false);
+
+        setCalcWasReset(true);
+
+        launcherView.activePositionWasSet();
       }
 
       if (launchPadStatesRef.current.targetPositionSetIsActive) {
         launcherView.setTargetPosition(earthIntersection);
         launcher.setTargetPosition(earthIntersection);
 
-        setTargetPositionGeo(Earth.positionToGeoCoordinates(earthIntersection));
+        setTargetPositionGeo(geoCords);
 
         launchPadStatesRef.current.targetPositionSetIsActive = false;
         setSetTargetPositionActive(false);
+
+        setCalcWasReset(true);
+
+        launcherView.activePositionWasSet();
       }
 
       setIsCalculateTrajectoryDisabled(
@@ -285,18 +320,30 @@ const OrbitalVelocity = () => {
 
       const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
 
+      setActivePositionGeo(geoCords);
+
       if (launchPadStatesRef.current.startPositionSetIsActive) {
-        launcherView.setStartPosition(earthIntersection);
-        setStartPositionGeo(geoCords);
+        launcherView.setActivePosition(earthIntersection, 'start');
+        setActivePositionGeo(geoCords);
       }
 
       if (launchPadStatesRef.current.targetPositionSetIsActive) {
-        launcherView.setTargetPosition(earthIntersection);
+        launcherView.setActivePosition(earthIntersection, 'target');
         setTargetPositionGeo(geoCords);
       }
     };
 
     window.addEventListener('mousedown', onMouseDown, false);
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        launchPadStatesRef.current.startPositionSetIsActive = false;
+        launchPadStatesRef.current.targetPositionSetIsActive = false;
+        setSetStartPositionActive(false);
+        setSetTargetPositionActive(false);
+        launcherView.activePositionWasSet();
+      }
+    });
 
     const animateLoop = () => {
       const deltaTime = clock.getDelta();
@@ -400,7 +447,9 @@ const OrbitalVelocity = () => {
 
             <div className={s.trajectoryBlock}>
               <button
-                className={s.calculateButton}
+                className={clsx(s.calculateButton, {
+                  [s.calcWasReset]: calcWasReset,
+                })}
                 onClick={handleCalculateTrajectoryClick}
                 disabled={isCalculateTrajectoryDisabled}
               >
@@ -423,7 +472,7 @@ const OrbitalVelocity = () => {
                 disabled={isLaunchDisabled}
                 onClick={handleLaunchRocketClick}
               >
-                Launch 🚀
+                Launch 🚀 {rocketCount}
               </button>
             </div>
 

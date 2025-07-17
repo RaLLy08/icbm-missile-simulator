@@ -12,6 +12,8 @@ export default class Launcher {
   thrustInclineVelocity = THREE.MathUtils.degToRad(0.5); // radians per second
   fuelCombustionTime = 180; // seconds
 
+  rocketCount = 0;
+
   constructor(
     private launcherGui: LauncherGui,
     private earth: Earth
@@ -104,6 +106,9 @@ export default class Launcher {
     if (!this.rocketStartPosition || !this.rocketTargetPosition) {
       return;
     }
+
+    this.rocketCount++;
+    this.launcherGui.rocketCount = this.rocketCount;
 
     const targetInclineVector = this.rocketTargetPosition
       .clone()

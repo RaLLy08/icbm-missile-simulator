@@ -64,6 +64,10 @@
           border-radius: 6px;
           overflow: hidden;
           cursor: pointer;
+
+          &.calcWasReset {
+            background: rgba(73, 255, 60, 0.292);
+          }
   
           &:disabled {
             opacity: 0.4;
