@@ -504,23 +504,13 @@ const OrbitalVelocity = () => {
         })}
       >
         <div className={s.coordBox}>
-          {setStartPositionActive && (
+          {(setStartPositionActive || setTargetPositionActive) && (
             <>
               <span className={s.coordItem}>
-                ↔ {startPositionGeo?.longitude.toFixed(1)}
+                ↔ {activePositionGeo?.longitude.toFixed(1)}
               </span>
               <span className={s.coordItem}>
-                ↕ {startPositionGeo?.latitude.toFixed(1)}
-              </span>
-            </>
-          )}
-          {setTargetPositionActive && (
-            <>
-              <span className={s.coordItem}>
-                ↔ {targetPositionGeo?.longitude.toFixed(1)}
-              </span>
-              <span className={s.coordItem}>
-                ↕ {targetPositionGeo?.latitude.toFixed(1)}
+                ↕ {activePositionGeo?.latitude.toFixed(1)}
               </span>
             </>
           )}

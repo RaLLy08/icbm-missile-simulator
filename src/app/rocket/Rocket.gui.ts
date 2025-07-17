@@ -13,7 +13,7 @@ export default class RocketGui {
   displacement = 0;
   gravityForce = 0;
   percentOfFuel = 0;
-  forcesArrowViewScale = 100;
+  forcesArrowViewScale = 1;
   travelledDistance = 0;
   velocityToGravityAngle = 0;
 
@@ -123,7 +123,7 @@ export default class RocketGui {
     this.folder
       .addBinding(this, 'forcesArrowViewScale', {
         label: 'Forces Arrow View Scale',
-        min: 100,
+        min: 1,
         max: 3000,
         step: 1,
       })

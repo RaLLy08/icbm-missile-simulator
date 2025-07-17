@@ -334,8 +334,7 @@ export default class RocketView {
     position = new THREE.Vector3(0, 0, 0),
     direction = new THREE.Vector3(0, 0, 0)
   ) {
-    const scale = 100;
-    const length = direction.length() * scale;
+    const length = direction.length() * this.arrowLength;
     const arrow = new THREE.ArrowHelper(direction, position, length, color);
     arrow.name = `${name}-arrow`;
     arrow.frustumCulled = false;
