@@ -17,7 +17,7 @@ const icons = fs.readFileSync(
   path.join(__dirname, '..', 'src', 'public/inline-icons.svg')
 );
 
-const REPO_NAME = 'orbital-motion';
+const REPO_NAME = 'icbm-missile-simulator';
 
 const config = {
   entry: {

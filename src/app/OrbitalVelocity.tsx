@@ -372,9 +372,6 @@ const OrbitalVelocity = () => {
     const animateLoop = () => {
       const deltaTime = clock.getDelta();
 
-      // const tick = deltaTime * worldGui.timeMultiplier;
-      // fix tick more 1 second
-
       // rockets.forEach((rocket) => {
       //   for (let i = 0; i < worldGui.timeMultiplier; i++) {
       //     rocket.update();
