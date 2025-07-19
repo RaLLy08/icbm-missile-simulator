@@ -17,7 +17,6 @@ import RocketGui from './rocket/Rocket.gui';
 import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
-import Rocket from './rocket/Rocket';
 import CameraManager from './helpers/CameraManager';
 
 const WIDTH = window.innerWidth;
@@ -59,6 +58,8 @@ const OrbitalVelocity = () => {
   const launchPadListenersRef = useRef({
     onCalculateTrajectory: () => {},
     onLaunchRocket: () => {},
+    focusOnEarth: () => {},
+    onCancelSelectionClick: () => {},
   });
   const [calcWasReset, setCalcWasReset] = useState(true);
   const [rocketCount, setRocketCount] = useState(0);
@@ -67,10 +68,10 @@ const OrbitalVelocity = () => {
     targetPositionSetIsActive: false,
   });
 
-  const [setStartPositionActive, setSetStartPositionActive] = useState(
+  const [startPositionActive, setStartPositionActive] = useState(
     launchPadStatesRef.current.startPositionSetIsActive
   );
-  const [setTargetPositionActive, setSetTargetPositionActive] = useState(
+  const [targetPositionActive, setTargetPositionActive] = useState(
     launchPadStatesRef.current.targetPositionSetIsActive
   );
   const [calculationProgress, setCalculationProgress] = useState<null | number>(
@@ -94,10 +95,17 @@ const OrbitalVelocity = () => {
     longitude: number;
   } | null>(null);
 
+  const [isFocusedOnEarth, setIsFocusedOnEarth] = useState(true);
+
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
   const rocketGuiContainerId = useId();
   const mouseFollowerId = useId();
+
+  const handleFocusOnEarthClick = () => {
+    setIsFocusedOnEarth(true);
+    launchPadListenersRef.current.focusOnEarth();
+  };
 
   useEffect(() => {
     const sceneContainer = document.getElementById(sceneContainerId);
@@ -127,10 +135,19 @@ const OrbitalVelocity = () => {
     const cameraManager = new CameraManager(scene, renderer, mouseTracker);
     updateTriggers.push(cameraManager);
 
-    const earthGui = new EarthGui(mainPane, earth, cameraManager);
+    const earthGui = new EarthGui(mainPane);
     const earthView = new EarthView(earth, scene, earthGui);
-
     cameraManager.setEarthCamera(earth);
+
+    launchPadListenersRef.current.focusOnEarth = () => {
+      cameraManager.setEarthCamera(earth);
+      setIsFocusedOnEarth(true);
+    };
+
+    earthGui.onFocusCameraClick = () => {
+      cameraManager.setEarthCamera(earth);
+      setIsFocusedOnEarth(true);
+    };
 
     // const rocketInitialPosition = Earth.geoCoordinatesToPosition(0, 90);
     // const rocketTargetPosition = Earth.geoCoordinatesToPosition(180, 0);
@@ -162,9 +179,6 @@ const OrbitalVelocity = () => {
     //   _rocket.position.copy(rocketTargetPosition);
     // }, 1000); // Wait for the camera to focus
 
-    const worldGui = new WorldGui(mainPane, clock);
-    updateTriggers.push(worldGui);
-
     // const _frameTimeManager = new FrameTimeManager(
     //   _rocket,
     //   _rocketView,
@@ -172,12 +186,15 @@ const OrbitalVelocity = () => {
     // );
     // updateTriggers.push(_frameTimeManager);
 
-    const mouseTrackedGui = new MouseTrackerGui(worldGui.folder, mouseTracker);
-    updateTriggers.push(mouseTrackedGui);
-
     const launcherGui = new LauncherGui(mainPane);
     const launcherView = new LauncherView(earth, scene);
     const launcher = new Launcher(launcherGui, earth);
+
+    const worldGui = new WorldGui(mainPane, clock);
+    updateTriggers.push(worldGui);
+
+    const mouseTrackedGui = new MouseTrackerGui(worldGui.folder, mouseTracker);
+    updateTriggers.push(mouseTrackedGui);
 
     launcherPadListeners.onCalculateTrajectory = () => {
       if (!launcher.rocketStartPosition || !launcher.rocketTargetPosition) {
@@ -209,6 +226,10 @@ const OrbitalVelocity = () => {
         return;
       }
       const rocketView = new RocketView(rocket, scene);
+      rocketView.setSize(
+        launcherGui.rocketSizeMultiplier
+      );
+      rocketView.init();
 
       const frameTimeManager = new FrameTimeManager(
         rocket,
@@ -231,10 +252,13 @@ const OrbitalVelocity = () => {
         rocketGuiPane,
         rocketGuiContainer!,
         rocket,
-        rocketView,
-        earthView,
-        cameraManager
+        rocketView
       );
+
+      activeRocketGui.onFocusCameraClick = () => {
+        cameraManager.setRocketCamera(earthView, rocketView);
+        setIsFocusedOnEarth(false);
+      };
 
       updateTriggers.push(frameTimeManager);
       updateTriggers.push(activeRocketGui);
@@ -263,7 +287,7 @@ const OrbitalVelocity = () => {
         setStartPositionGeo(geoCords);
 
         launchPadStatesRef.current.startPositionSetIsActive = false;
-        setSetStartPositionActive(false);
+        setStartPositionActive(false);
 
         setCalcWasReset(true);
 
@@ -277,7 +301,7 @@ const OrbitalVelocity = () => {
         setTargetPositionGeo(geoCords);
 
         launchPadStatesRef.current.targetPositionSetIsActive = false;
-        setSetTargetPositionActive(false);
+        setTargetPositionActive(false);
 
         setCalcWasReset(true);
 
@@ -327,13 +351,21 @@ const OrbitalVelocity = () => {
 
     window.addEventListener('mousedown', onMouseDown, false);
 
+    const resetActivePosition = () => {
+      launchPadStatesRef.current.startPositionSetIsActive = false;
+      launchPadStatesRef.current.targetPositionSetIsActive = false;
+      setStartPositionActive(false);
+      setTargetPositionActive(false);
+      launcherView.activePositionWasSet();
+    };
+
+    launchPadListenersRef.current.onCancelSelectionClick = () => {
+      resetActivePosition();
+    };
+
     window.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
-        launchPadStatesRef.current.startPositionSetIsActive = false;
-        launchPadStatesRef.current.targetPositionSetIsActive = false;
-        setSetStartPositionActive(false);
-        setSetTargetPositionActive(false);
-        launcherView.activePositionWasSet();
+        resetActivePosition();
       }
     });
 
@@ -366,14 +398,14 @@ const OrbitalVelocity = () => {
 
   const handleStartPositionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSetStartPositionActive((prev) => !prev);
+    setStartPositionActive((prev) => !prev);
     launchPadStatesRef.current.startPositionSetIsActive =
       !launchPadStatesRef.current.startPositionSetIsActive;
   };
 
   const handleTargetPositionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSetTargetPositionActive((prev) => !prev);
+    setTargetPositionActive((prev) => !prev);
     launchPadStatesRef.current.targetPositionSetIsActive =
       !launchPadStatesRef.current.targetPositionSetIsActive;
   };
@@ -395,7 +427,7 @@ const OrbitalVelocity = () => {
   };
 
   const isPositionSelectionActive =
-    setStartPositionActive || setTargetPositionActive;
+    startPositionActive || targetPositionActive;
 
   return (
     <>
@@ -410,84 +442,118 @@ const OrbitalVelocity = () => {
           ref={(el) => el && el.appendChild(stats.dom)}
         ></div>
 
-        <div className={s.launchPad}>
-          <div className={s.infoPanel}>
-            {setStartPositionActive && (
-              <div className={s.infoText}>
-                Click on Earth to set Start Position
-              </div>
-            )}
-            {setTargetPositionActive && (
-              <div className={s.infoText}>
-                Click on Earth to set Target Position
-              </div>
-            )}
-          </div>
+        {/* <div className={s.timeManager}>
+          <div>FPS*Sec</div>
+        </div> */}
 
-          <div className={s.controls}>
-            <div className={s.positionBlock}>
-              <button className={s.button} onClick={handleStartPositionClick}>
-                Set Start
-              </button>
-              {startPositionGeo?.longitude != null && (
-                <div className={s.coordinates}>
-                  Lon: {startPositionGeo.longitude.toFixed(1)} <br />
-                  Lat: {startPositionGeo.latitude.toFixed(1)}
-                </div>
-              )}
-            </div>
+        {(() => {
+          if (!isFocusedOnEarth) {
+            return (
+              <div className={s.clearLaunchPad}>
+                <button className={s.button} onClick={handleFocusOnEarthClick}>
+                  Return to Earth
+                </button>
+              </div>
+            );
+          }
 
-            <div className={s.trajectoryBlock}>
-              <button
-                className={clsx(s.calculateButton, {
-                  [s.calcWasReset]: calcWasReset,
-                })}
-                onClick={handleCalculateTrajectoryClick}
-                disabled={isCalculateTrajectoryDisabled}
-              >
-                {calculationProgress !== null ? (
-                  <div className={s.progressWrapper}>
-                    <div
-                      className={s.progressBar}
-                      style={{ width: `${Math.round(calculationProgress)}%` }}
-                    ></div>
-                    <span className={s.progressText}>
-                      {Math.round(calculationProgress)}%
-                    </span>
+          return (
+            <div className={s.launchPad}>
+              <div className={s.infoPanel}>
+                {startPositionActive && (
+                  <div className={s.infoText}>
+                    Click on Earth to set Start Position
                   </div>
-                ) : (
-                  'Calculate'
                 )}
-              </button>
-              <button
-                className={s.launchButton}
-                disabled={isLaunchDisabled}
-                onClick={handleLaunchRocketClick}
-              >
-                Launch 🚀 {rocketCount}
-              </button>
-            </div>
+                {targetPositionActive && (
+                  <div className={s.infoText}>
+                    Click on Earth to set Target Position
+                  </div>
+                )}
+              </div>
 
-            <div className={s.positionBlock}>
-              <button className={s.button} onClick={handleTargetPositionClick}>
-                Set Target
-              </button>
-              {targetPositionGeo?.longitude != null && (
-                <div className={s.coordinates}>
-                  Lon: {targetPositionGeo.longitude.toFixed(1)} <br />
-                  Lat: {targetPositionGeo.latitude.toFixed(1)}
+              <div className={s.controls}>
+                <div className={s.positionBlock}>
+                  <button
+                    className={s.button}
+                    onClick={handleStartPositionClick}
+                  >
+                    Set Start
+                  </button>
+                  {startPositionGeo?.longitude != null && (
+                    <div className={s.coordinates}>
+                      Lon: {startPositionGeo.longitude.toFixed(1)} <br />
+                      Lat: {startPositionGeo.latitude.toFixed(1)}
+                    </div>
+                  )}
                 </div>
-              )}
+
+                <div className={s.trajectoryBlock}>
+                  <button
+                    className={clsx(s.calculateButton, {
+                      [s.calcWasReset]: calcWasReset,
+                    })}
+                    onClick={handleCalculateTrajectoryClick}
+                    disabled={isCalculateTrajectoryDisabled}
+                  >
+                    {calculationProgress !== null ? (
+                      <div className={s.progressWrapper}>
+                        <div
+                          className={s.progressBar}
+                          style={{
+                            width: `${Math.round(calculationProgress)}%`,
+                          }}
+                        ></div>
+                        <span className={s.progressText}>
+                          {Math.round(calculationProgress)}%
+                        </span>
+                      </div>
+                    ) : (
+                      'Calculate'
+                    )}
+                  </button>
+                  <button
+                    className={s.launchButton}
+                    disabled={isLaunchDisabled}
+                    onClick={handleLaunchRocketClick}
+                  >
+                    Launch 🚀 {rocketCount}
+                  </button>
+                </div>
+
+                <div className={s.positionBlock}>
+                  <button
+                    className={s.button}
+                    onClick={handleTargetPositionClick}
+                  >
+                    Set Target
+                  </button>
+                  {targetPositionGeo?.longitude != null && (
+                    <div className={s.coordinates}>
+                      Lon: {targetPositionGeo.longitude.toFixed(1)} <br />
+                      Lat: {targetPositionGeo.latitude.toFixed(1)}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-          {/* 
-          <div className={s.timeManager}>
-            <div>FPS*Sec</div>
-            <button>⏮</button>
-            <button>⏭</button>
-          </div> */}
-        </div>
+          );
+        })()}
       </div>
+
+      {isPositionSelectionActive && (
+        <div className={s.clearLaunchPad}>
+          <button
+            className={s.button}
+              onClick={(e) => {
+              e.stopPropagation();
+              launchPadListenersRef?.current?.onCancelSelectionClick?.();
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       <div
         id={mouseFollowerId}
@@ -496,7 +562,7 @@ const OrbitalVelocity = () => {
         })}
       >
         <div className={s.coordBox}>
-          {(setStartPositionActive || setTargetPositionActive) && (
+          {(startPositionActive || targetPositionActive) && (
             <>
               <span className={s.coordItem}>
                 ↔ {activePositionGeo?.longitude.toFixed(1)}

@@ -179,9 +179,9 @@ export default class RocketView {
   prevVelocity = new THREE.Vector3();
   prevThrust = new THREE.Vector3();
 
-  readonly size = 1;
+  size = 1;
   private arrowLength = 2 * this.size;
-  readonly burningFireSize = 1 * this.size;
+  private burningFireSize = 1 * this.size;
 
   private lerpAlpha = 1;
 
@@ -194,10 +194,18 @@ export default class RocketView {
     private readonly scene: THREE.Scene
   ) {
     this.group = new THREE.Group();
+    this.trailView = new TrailView(this.scene);
+  }
+
+  setSize(size: number) { 
+    this.size = size;
+    this.arrowLength = 2 * this.size;
+    this.burningFireSize = 1 * this.size;
+  }
+
+  init() {
     this.buildRocketMesh();
     this.initArrows();
-    this.trailView = new TrailView(this.scene);
-
     this.update();
   }
 
@@ -265,11 +273,11 @@ export default class RocketView {
     const burningFireMaterial = new THREE.MeshBasicMaterial({
       color: 0xffa500,
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.6,
     });
     const burningFireGeometry = new THREE.CylinderGeometry(
-      0.06 * this.size,
-      0.14 * this.size,
+      0.06 * this.burningFireSize,
+      0.14 * this.burningFireSize,
       this.burningFireSize,
       16
     );
@@ -288,7 +296,6 @@ export default class RocketView {
     this.group.name = RocketView.name;
     this.scene.add(this.group);
   }
-
 
   private initArrows() {
     this.addArrow(
@@ -424,7 +431,7 @@ export default class RocketView {
     // );
   }
 
-  extendTrail() {
+  private extendTrail() {
     if (!this.trailView) return;
 
     const thrustPercentage =
@@ -468,6 +475,8 @@ export default class RocketView {
     this.updateArrows();
 
     this.alignRotation();
+
+    this.updateTrail();
   }
 
   updateTrail() {
@@ -483,9 +492,9 @@ export default class RocketView {
     const thrustableSize = this.burningFireSize * thrustPercentage;
 
     this.burningFireMesh!.scale.set(
-      thrustableSize,
-      thrustableSize,
-      thrustableSize
+      thrustPercentage,
+      thrustPercentage,
+      thrustPercentage
     );
 
     this.burningFireMesh!.position.y = -thrustableSize / 2;

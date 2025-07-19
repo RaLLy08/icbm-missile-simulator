@@ -3,8 +3,6 @@ import Rocket from './Rocket';
 import RocketView from './RocketView';
 import * as THREE from 'three';
 import { formatSeconds } from 'app/utils';
-import CameraManager from 'app/helpers/CameraManager';
-import EarthView from 'app/earth/EarthView';
 
 export default class RocketGui {
   private folder: FolderApi;
@@ -17,29 +15,18 @@ export default class RocketGui {
   travelledDistance = 0;
   velocityToGravityAngle = 0;
 
+  onFocusCameraClick: () => void = () => {};
+
   constructor(
     private readonly pane: Pane,
     private readonly paneContainer: HTMLElement,
     private readonly rocket: Rocket,
-    private readonly rocketView: RocketView,
-    private readonly earthView: EarthView,
-    private readonly cameraManager: CameraManager
+    private readonly rocketView: RocketView
   ) {
     this.folder = this.pane.addFolder({
       title: `Rocket ${this.rocket.id}`,
       expanded: true,
     });
-
-    this.folder
-      .addButton({
-        title: 'Focus on Missile',
-      })
-      .on('click', () => {
-        this.cameraManager.setRocketCamera(
-          this.earthView,
-          this.rocketView
-        );
-      });
 
     this.folder.addBinding(this, 'velocity', {
       label: 'Velocity',
@@ -142,6 +129,14 @@ export default class RocketGui {
       readonly: true,
       format: (v) => v.toFixed(2) + '°',
     });
+
+    this.folder
+      .addButton({
+        title: 'Focus on Missile',
+      })
+      .on('click', () => {
+        this.onFocusCameraClick();
+      });
 
     this.paneContainer.scrollTo(0, this.paneContainer.scrollHeight);
   }

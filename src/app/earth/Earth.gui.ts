@@ -52,10 +52,10 @@ export default class EarthGui {
     () => {};
   onShowEarthClicked: (show: boolean) => void = () => {};
 
+  onFocusCameraClick: () => void = () => {};
+
   constructor(
     private readonly pane: Pane,
-    private readonly earth: Earth,
-    private readonly cameraManager: CameraManager
   ) {
     this.folder = pane.addFolder({
       title: 'Earth',
@@ -134,7 +134,7 @@ export default class EarthGui {
         title: 'Focus Camera',
       })
       .on('click', () => {
-        this.cameraManager.setEarthCamera(this.earth);
+        this.onFocusCameraClick();
       });
   }
 

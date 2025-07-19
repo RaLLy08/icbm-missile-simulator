@@ -18,6 +18,7 @@ export default class LauncherGui {
   startLatitude: number | string = 'N/A';
 
   rocketCount = 0;
+  rocketSizeMultiplier = 1;
 
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
@@ -114,6 +115,16 @@ export default class LauncherGui {
       readonly: true,
       format: (v) => {
        return `${v.toFixed(0)} rockets`;
+      },
+    });
+
+    this.folder.addBinding(this, 'rocketSizeMultiplier', {
+      label: 'Rocket Size Multiplier',
+      min: 1,
+      max: 100,
+      step: 0.1,
+      format: (v) => {
+        return `${v.toFixed(1)} X`;
       },
     });
   }

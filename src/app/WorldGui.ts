@@ -5,7 +5,7 @@ import { formatSeconds } from './utils';
 export default class WorldGui {
   folder: FolderApi;
   timeMultiplier = 1;
-  timeDeltaTime = 0;
+  timeDeltaTime = 0.01666; 
   timePassedSeconds = 0;
 
   constructor(
@@ -35,15 +35,8 @@ export default class WorldGui {
         ev.target.title = this.clock.running ? 'Stop Time' : 'Resume Time';
       });
 
-    const guiTimeMultiplier = this.folder.addBinding(this, 'timeMultiplier', {
-      label: 'Time Multiplier',
-      min: 1,
-      max: 100,
-      step: 1,
-    });
-
     const guiDeltaTime = this.folder.addBinding(this, 'timeDeltaTime', {
-      label: 'Delta Time Between Frames (s)',
+      label: 'Seconds Passed Between Frames (s)',
       readonly: true,
       format: (v) => (v != null ? v.toFixed(3) : 'N/A'),
     });
@@ -61,12 +54,22 @@ export default class WorldGui {
         },
       }
     );
+
+    const guiTimeMultiplier = this.folder.addBinding(this, 'timeMultiplier', {
+      label: 'Time Multiplier',
+      format: (v) => {
+        return v + ' X';
+      },
+      min: 1,
+      max: 300,
+      step: 1,
+    });
+
   }
 
-  update(tick = 1) {
-    this.folder.refresh();
 
-    this.timeDeltaTime = tick;
-    this.timePassedSeconds += tick;
+  update(tick = 1) {
+    this.timeDeltaTime = tick * this.timeMultiplier;
+    this.timePassedSeconds += tick * this.timeMultiplier;
   }
 }
