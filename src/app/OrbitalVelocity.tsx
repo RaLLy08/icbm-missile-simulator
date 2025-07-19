@@ -238,7 +238,7 @@ const OrbitalVelocity = () => {
       );
 
       earthView.addTorusMarker(launcher.rocketStartPosition!, 0x0000ff, 40, 4);
-      earthView.addCrossMarker(launcher.rocketTargetPosition!, 0x00ff00, 80, 8);
+      earthView.addTorusMarker(launcher.rocketTargetPosition!, 0x00ff00, 40, 4);
       launcherView.remove();
 
       setRocketCount(launcher.rocketCount);
