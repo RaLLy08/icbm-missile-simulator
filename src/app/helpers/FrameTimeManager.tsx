@@ -3,9 +3,9 @@ import RocketView from '../rocket/RocketView';
 import WorldGui from '../WorldGui';
 
 export default class FrameTimeManager {
-  static readonly MINIMUM_TIME_UNIT_MS = 1000;
+  static readonly MINIMUM_TIME_UNIT_S = 1;
 
-  lastUpdateTimestamp: number | null = null;
+  passedTimeBeforeUpdate = 0;
 
   constructor(
     private rocket: Rocket,
@@ -15,25 +15,18 @@ export default class FrameTimeManager {
 
   missedUpdateCalls: number = 0;
 
-  update() {
-    const currentTimestamp = performance.now();
-    let deltaTime = 0;
-
-    if (this.lastUpdateTimestamp === null) {
-      this.lastUpdateTimestamp = currentTimestamp;
-    } else {
-      deltaTime = currentTimestamp - this.lastUpdateTimestamp;
-    }
+  update(delta: number): void {
+    this.passedTimeBeforeUpdate += delta;
 
     const updateEachMs =
-      FrameTimeManager.MINIMUM_TIME_UNIT_MS / this.worldGui.timeMultiplier;
+      FrameTimeManager.MINIMUM_TIME_UNIT_S / this.worldGui.timeMultiplier;
 
-    this.rocketView.setLerpAlpha(deltaTime / updateEachMs);
+    this.rocketView.setLerpAlpha(this.passedTimeBeforeUpdate / updateEachMs);
     this.rocketView.update();
 
-    let shouldCallUpdateTimes = deltaTime / updateEachMs;
+    let shouldCallUpdateTimes = this.passedTimeBeforeUpdate / updateEachMs;
 
-    if (deltaTime >= updateEachMs) {
+    if (this.passedTimeBeforeUpdate >= updateEachMs) {
       this.rocketView.updatePrevFromRocket();
       this.rocket.update();
       shouldCallUpdateTimes -= 1;
@@ -45,7 +38,7 @@ export default class FrameTimeManager {
         this.missedUpdateCalls -= 1;
       }
 
-      this.lastUpdateTimestamp = currentTimestamp;
+      this.passedTimeBeforeUpdate = 0;
     }
   }
 }
