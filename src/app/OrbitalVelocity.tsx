@@ -52,7 +52,7 @@ stats.showPanel(0);
 
 const updateTriggers: {
   [key: string]: any;
-  update: () => void;
+  update: (deltaTime?: number) => void;
 }[] = [stats];
 
 const OrbitalVelocity = () => {
@@ -94,8 +94,6 @@ const OrbitalVelocity = () => {
     longitude: number;
   } | null>(null);
 
-
-
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
   const rocketGuiContainerId = useId();
@@ -123,24 +121,16 @@ const OrbitalVelocity = () => {
 
     const mouseTracker = new MouseTracker(window);
 
-
     const earth = new Earth();
     updateTriggers.push(earth);
 
-  
- 
-    
     const cameraManager = new CameraManager(scene, renderer, mouseTracker);
     updateTriggers.push(cameraManager);
 
     const earthGui = new EarthGui(mainPane, earth, cameraManager);
     const earthView = new EarthView(earth, scene, earthGui);
 
-
     cameraManager.setEarthCamera(earth);
-
-
-
 
     // const rocketInitialPosition = Earth.geoCoordinatesToPosition(0, 90);
     // const rocketTargetPosition = Earth.geoCoordinatesToPosition(180, 0);
@@ -156,7 +146,6 @@ const OrbitalVelocity = () => {
     // );
 
     // const _rocketView = new RocketView(_rocket, scene);
-    // updateTriggers.push(_rocketView);
 
     // const _rocketGui = new RocketGui(
     //   rocketGuiPane,
@@ -173,9 +162,15 @@ const OrbitalVelocity = () => {
     //   _rocket.position.copy(rocketTargetPosition);
     // }, 1000); // Wait for the camera to focus
 
-
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
+
+    // const _frameTimeManager = new FrameTimeManager(
+    //   _rocket,
+    //   _rocketView,
+    //   worldGui
+    // );
+    // updateTriggers.push(_frameTimeManager);
 
     const mouseTrackedGui = new MouseTrackerGui(worldGui.folder, mouseTracker);
     updateTriggers.push(mouseTrackedGui);
@@ -223,16 +218,13 @@ const OrbitalVelocity = () => {
 
       earthView.addTorusMarker(launcher.rocketStartPosition!, 0x0000ff, 40, 4);
       earthView.addCrossMarker(launcher.rocketTargetPosition!, 0x00ff00, 80, 8);
-      launcherView.remove()
+      launcherView.remove();
 
       setRocketCount(launcher.rocketCount);
 
       if (activeRocketGui) {
         activeRocketGui.remove();
-        updateTriggers.splice(
-          updateTriggers.indexOf(activeRocketGui),
-          1
-        );
+        updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
       }
 
       activeRocketGui = new RocketGui(
@@ -360,7 +352,7 @@ const OrbitalVelocity = () => {
       onMove();
 
       updateTriggers.forEach((trigger) => {
-        trigger.update();
+        trigger.update(deltaTime);
       });
     };
 

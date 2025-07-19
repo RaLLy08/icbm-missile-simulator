@@ -1,6 +1,5 @@
 import Rocket from './Rocket';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
@@ -56,6 +55,17 @@ export class TrailView {
       new THREE.BufferAttribute(this.positions, 3)
     );
     this.geometry.attributes.position.needsUpdate = true;
+  }
+
+  getLastVectorPosition(): THREE.Vector3 | null {
+    if (this.positions.length === 0) return null;
+
+    const lastIndex = this.positions.length - 3;
+    return new THREE.Vector3(
+      this.positions[lastIndex],
+      this.positions[lastIndex + 1],
+      this.positions[lastIndex + 2]
+    );
   }
 
   private extendColors(newColors: Float32Array) {
@@ -153,14 +163,31 @@ export class TrailView {
   }
 }
 
+// class VectorHistory {
+//   prev = new THREE.Vector3();
+//   next = new THREE.Vector3();
+// }
+
 export default class RocketView {
   group: THREE.Group;
   private arrows: THREE.ArrowHelper[] = [];
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private trailView: TrailView | null = null;
+  private burningFireMesh: THREE.Mesh | null = null;
+
+  prevPosition = new THREE.Vector3();
+  prevVelocity = new THREE.Vector3();
+  prevThrust = new THREE.Vector3();
 
   readonly size = 1;
-  private arrowLength = 2 * this.size; 
+  private arrowLength = 2 * this.size;
+  readonly burningFireSize = 1 * this.size;
+
+  private lerpAlpha = 1;
+
+  setLerpAlpha(alpha: number) {
+    this.lerpAlpha = alpha;
+  }
 
   constructor(
     readonly rocket: Rocket,
@@ -235,59 +262,85 @@ export default class RocketView {
       this.group.add(legMesh);
     }
 
+    const burningFireMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffa500,
+      transparent: true,
+      opacity: 0.7,
+    });
+    const burningFireGeometry = new THREE.CylinderGeometry(
+      0.06 * this.size,
+      0.14 * this.size,
+      this.burningFireSize,
+      16
+    );
+    const burningFireMesh = new THREE.Mesh(
+      burningFireGeometry,
+      burningFireMaterial
+    );
+
+    burningFireMesh.position.y = -0.5 * this.size; // bottom just touches y = 0
+
+    this.burningFireMesh = burningFireMesh;
+
+    this.group.add(this.burningFireMesh);
+
     // ------------------------------------------------------------------------
     this.group.name = RocketView.name;
     this.scene.add(this.group);
   }
 
+
   private initArrows() {
     this.addArrow(
       'velocity',
       0xff0000,
-      this.rocket.position,
+      this.group.position,
       this.rocket.velocity
     );
-    this.addArrow('thrust', 0x00ff00, this.rocket.position, this.rocket.thrust);
+    this.addArrow('thrust', 0x00ff00, this.group.position, this.rocket.thrust);
     this.addArrow(
       'gravity',
       0x0000ff,
-      this.rocket.position,
+      this.group.position,
       this.rocket.gravityForce
     );
 
     this.addArrow(
       'targetIncline',
       0xcc00cc,
-      this.rocket.position,
+      this.group.position,
       this.rocket.calcThrustDirectionToIncline()
     );
   }
 
   private updateArrows() {
+    const velocity = this.getVelocity();
+    const thrust = this.getThrust();
+
     this.updateArrow(
       'gravity',
-      this.rocket.position,
+      this.group.position,
       this.rocket.gravityForce.clone().normalize(),
       this.rocket.gravityForce.length()
     );
 
     this.updateArrow(
       'velocity',
-      this.rocket.position,
-      this.rocket.velocity.clone().normalize(),
-      this.rocket.velocity.length()
+      this.group.position,
+      velocity.clone().normalize(),
+      velocity.length()
     );
 
     this.updateArrow(
       'thrust',
-      this.rocket.position,
-      this.rocket.thrust.clone().normalize(),
-      this.rocket.thrust.length()
+      this.group.position,
+      thrust.clone().normalize(),
+      thrust.length()
     );
 
     this.updateArrow(
       'targetIncline',
-      this.rocket.position,
+      this.group.position,
       this.rocket.calcThrustDirectionToIncline().clone().normalize(),
       this.rocket.calcThrustDirectionToIncline().length()
     );
@@ -371,14 +424,14 @@ export default class RocketView {
     // );
   }
 
-  updateTrail() {
+  extendTrail() {
     if (!this.trailView) return;
 
     const thrustPercentage =
       this.rocket.thrust.length() / this.rocket.maxThrust;
 
     this.trailView.extendFromVectors(
-      this.rocket.position.clone(),
+      this.prevPosition.clone(),
       new THREE.Color(1, thrustPercentage, 1 - thrustPercentage)
     );
   }
@@ -389,35 +442,85 @@ export default class RocketView {
     }
 
     if (this.rocket.velocity.length() === 0) {
-      this.rotateTowards(this.rocket.position);
+      this.rotateTowards(this.group, this.group.position);
     } else {
-      this.rotateTowards(this.rocket.velocity.clone().normalize());
+      this.rotateTowards(this.group, this.getVelocity().normalize());
     }
   }
 
-  private rotateTowards(normal: THREE.Vector3) {
+  private rotateTowards(
+    object: THREE.Object3D | THREE.Mesh,
+    normal: THREE.Vector3
+  ) {
     // const normal = this.mesh.position.clone().sub(to).normalize();
-    this.group.lookAt(this.group.position.clone().add(normal));
+    object.lookAt(object.position.clone().add(normal));
 
-    this.group.rotateOnAxis(
+    object.rotateOnAxis(
       new THREE.Vector3(1, 0, 0),
       THREE.MathUtils.degToRad(90)
     );
   }
 
   update(): void {
-    this.updateFromCoordinates(this.rocket.position);
-  }
+    this.updatePosition();
+    this.updateBurningFireScale();
 
-  updateFromCoordinates(position: THREE.Vector3): void {
-    this.group.position.copy(position);
     this.updateArrows();
 
-    if (!this.rocket.hasLanded) {
-      this.updateTrail();
-    }
-
     this.alignRotation();
+  }
+
+  updateTrail() {
+    if (!this.rocket.hasLanded) {
+      this.extendTrail();
+    }
+  }
+
+  private updateBurningFireScale() {
+    const thrustPercentage =
+      this.rocket.thrust.length() / this.rocket.maxThrust;
+
+    const thrustableSize = this.burningFireSize * thrustPercentage;
+
+    this.burningFireMesh!.scale.set(
+      thrustableSize,
+      thrustableSize,
+      thrustableSize
+    );
+
+    this.burningFireMesh!.position.y = -thrustableSize / 2;
+  }
+
+  private updatePosition() {
+    const position = new THREE.Vector3().lerpVectors(
+      this.prevPosition,
+      this.rocket.position,
+      this.lerpAlpha
+    );
+
+    this.group.position.copy(position);
+  }
+
+  private getVelocity() {
+    return new THREE.Vector3().lerpVectors(
+      this.prevVelocity,
+      this.rocket.velocity,
+      this.lerpAlpha
+    );
+  }
+
+  private getThrust() {
+    return new THREE.Vector3().lerpVectors(
+      this.prevThrust,
+      this.rocket.thrust,
+      this.lerpAlpha
+    );
+  }
+
+  updatePrevFromRocket() {
+    this.prevPosition.copy(this.rocket.position.clone());
+    this.prevVelocity.copy(this.rocket.velocity.clone());
+    this.prevThrust.copy(this.rocket.thrust.clone());
   }
 
   applyScaleToArrows(scale: number) {
