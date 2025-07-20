@@ -18,6 +18,7 @@ import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
+import Rocket from './rocket/Rocket';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -225,7 +226,7 @@ const OrbitalVelocity = () => {
         console.error('Rocket could not be created. Check launcher settings.');
         return;
       }
-      const rocketView = new RocketView(rocket, scene);
+      const rocketView = new RocketView(rocket, scene, earthView);
       rocketView.setSize(
         launcherGui.rocketSizeMultiplier
       );
@@ -240,6 +241,7 @@ const OrbitalVelocity = () => {
       earthView.addTorusMarker(launcher.rocketStartPosition!, 0x0000ff, 40, 4);
       earthView.addTorusMarker(launcher.rocketTargetPosition!, 0x00ff00, 40, 4);
       launcherView.remove();
+
 
       setRocketCount(launcher.rocketCount);
 
@@ -266,7 +268,7 @@ const OrbitalVelocity = () => {
 
     // const garbageCollector = () => {
     //   updateTriggers.forEach((trigger) => {
-    //     trigger.remove();
+    
     //   });
     // };
 
@@ -377,6 +379,7 @@ const OrbitalVelocity = () => {
       //     rocket.update();
       //   }
       // });
+
       mouseTracker.update(deltaTime);
       onMove();
 

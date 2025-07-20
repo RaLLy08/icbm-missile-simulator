@@ -57,7 +57,7 @@ export default class CameraManager {
       camera,
       rocketView,
       earthCenter,
-      this.renderer.domElement
+      window.document.body
     );
   }
 

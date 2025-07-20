@@ -1,3 +1,4 @@
+import EarthView from 'app/earth/EarthView';
 import Rocket from './Rocket';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -191,13 +192,14 @@ export default class RocketView {
 
   constructor(
     readonly rocket: Rocket,
-    private readonly scene: THREE.Scene
+    private readonly scene: THREE.Scene,
+    readonly earthView: EarthView
   ) {
     this.group = new THREE.Group();
     this.trailView = new TrailView(this.scene);
   }
 
-  setSize(size: number) { 
+  setSize(size: number) {
     this.size = size;
     this.arrowLength = 2 * this.size;
     this.burningFireSize = 1 * this.size;
@@ -468,6 +470,8 @@ export default class RocketView {
     );
   }
 
+  endPositionSkyMarker: null | THREE.Line = null;
+
   update(): void {
     this.updatePosition();
     this.updateBurningFireScale();
@@ -476,12 +480,18 @@ export default class RocketView {
 
     this.alignRotation();
 
-    this.updateTrail();
-  }
-
-  updateTrail() {
     if (!this.rocket.hasLanded) {
       this.extendTrail();
+    };
+
+    if (this.rocket.hasLanded && this.endPositionSkyMarker == null) {
+      this.endPositionSkyMarker = this.earthView.createLineToSkyMarker(
+        this.rocket.position,
+        0x00ff00,
+        this.rocket.maxAltitude
+      );
+
+      this.scene.add(this.endPositionSkyMarker);
     }
   }
 
@@ -538,6 +548,13 @@ export default class RocketView {
 
   remove() {
     this.scene.remove(this.group);
+
+    if (this.endPositionSkyMarker) {
+      this.scene.remove(this.endPositionSkyMarker);
+      this.endPositionSkyMarker.geometry.dispose();
+      this.endPositionSkyMarker = null;
+    }
+
     this.group.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.geometry.dispose();
