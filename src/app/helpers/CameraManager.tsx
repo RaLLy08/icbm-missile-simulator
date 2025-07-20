@@ -57,7 +57,8 @@ export default class CameraManager {
       camera,
       rocketView,
       earthCenter,
-      window.document.body
+      this.renderer.domElement,
+      this.mouseTracker
     );
   }
 
@@ -189,7 +190,7 @@ class RocketCamera {
   earthCenter: THREE.Vector3;
 
   // Camera settings
-  mouseSensitivity: number = 0.005;
+  mouseSensitivity: number = 0.0001;
 
   minDistance: number = 10; // Minimum distance from the target
   maxDistance: number = Earth.RADIUS; // Maximum distance from the target
@@ -210,7 +211,8 @@ class RocketCamera {
     camera: THREE.PerspectiveCamera,
     private rocketView: RocketView,
     earthCenter: THREE.Vector3,
-    domElement: HTMLElement
+    domElement: HTMLElement,
+    private mouseTracker: MouseTracker
   ) {
     this.camera = camera;
 
@@ -222,8 +224,7 @@ class RocketCamera {
 
     // Set up mouse controls
     this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this));
-    this.domElement.addEventListener('mouseup', this.onMouseUp.bind(this));
-    this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
+    window.addEventListener('mouseup', this.onMouseUp.bind(this));
     this.domElement.addEventListener('wheel', this.onMouseWheel.bind(this), {
       passive: false,
     });
@@ -253,11 +254,11 @@ class RocketCamera {
     this.isMouseDown = false;
   }
 
-  onMouseMove(event: MouseEvent) {
+  syncMousePosition() {
     if (!this.isMouseDown) return;
 
-    const deltaX = event.clientX - this.prevMouseX;
-    const deltaY = event.clientY - this.prevMouseY;
+    const deltaX = this.mouseTracker.velocity.x;
+    const deltaY = this.mouseTracker.velocity.y;
 
     // Update angles based on mouse movement
     this.theta -= deltaX * this.mouseSensitivity; // Horizontal rotation
@@ -266,8 +267,6 @@ class RocketCamera {
       Math.min(Math.PI - 0.1, this.phi - deltaY * this.mouseSensitivity)
     ); // Vertical rotation (clamped)
 
-    this.prevMouseX = event.clientX;
-    this.prevMouseY = event.clientY;
   }
 
   onMouseWheel(event: WheelEvent) {
@@ -327,13 +326,14 @@ class RocketCamera {
     this.camera.position.copy(targetPos).add(this.currentOffset);
     this.camera.lookAt(targetPos);
     this.camera.up.copy(surfaceNormal); // Ensure camera respects surface normal
+
+    this.syncMousePosition();
   }
 
   remove() {
     // Clean up event listeners
     this.domElement.removeEventListener('mousedown', this.onMouseDown);
-    this.domElement.removeEventListener('mouseup', this.onMouseUp);
-    this.domElement.removeEventListener('mousemove', this.onMouseMove);
+    window.removeEventListener('mouseup', this.onMouseUp);
     this.domElement.removeEventListener('wheel', this.onMouseWheel);
   }
 }
