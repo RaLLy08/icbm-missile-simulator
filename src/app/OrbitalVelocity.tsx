@@ -231,6 +231,8 @@ const OrbitalVelocity = () => {
         launcherGui.rocketSizeMultiplier
       );
       rocketView.init();
+      rocketView.updatePrevFromRocket();
+
 
       const frameTimeManager = new FrameTimeManager(
         rocket,
