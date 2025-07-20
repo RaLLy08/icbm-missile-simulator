@@ -338,8 +338,6 @@ const OrbitalVelocity = () => {
 
       const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
 
-      setActivePositionGeo(geoCords);
-
       if (launchPadStatesRef.current.startPositionSetIsActive) {
         launcherView.setActivePosition(earthIntersection, 'start');
         setActivePositionGeo(geoCords);
@@ -517,7 +515,7 @@ const OrbitalVelocity = () => {
                     disabled={isLaunchDisabled}
                     onClick={handleLaunchRocketClick}
                   >
-                    Launch 🚀 {rocketCount}
+                    Launch 🚀
                   </button>
                 </div>
 
