@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Earth from '../earth/Earth';
+import EarthView from 'app/earth/EarthView';
 
 const createMarker = (
   position: THREE.Vector3,
@@ -31,17 +32,21 @@ export default class LauncherView {
 
   constructor(
     private earth: Earth,
-    private scene: THREE.Scene
+    private scene: THREE.Scene,
+    private earthView: EarthView
   ) {}
 
   setStartPosition(position: THREE.Vector3) {
     this.removeStartPositionIfExist();
 
     this.startMarker = createMarker(position, this.earth, 0x0000ff);
-    this.scene.add(this.startMarker);
+    this.earthView.group.add(this.startMarker);
   }
 
-  setActivePosition(position: THREE.Vector3, type: 'start' | 'target' = 'start') {
+  setActivePosition(
+    position: THREE.Vector3,
+    type: 'start' | 'target' = 'start'
+  ) {
     if (this.activeMarker) {
       this.scene.remove(this.activeMarker);
       this.activeMarker = null;
@@ -60,7 +65,7 @@ export default class LauncherView {
     } else if (type === 'target') {
       this.activeMarker = createMarker(position, this.earth, 0xff0000);
     }
-    
+
     this.scene.add(this.activeMarker!);
   }
 
@@ -77,10 +82,9 @@ export default class LauncherView {
     }
   }
 
-
   removeStartPositionIfExist() {
     if (this.startMarker) {
-      this.scene.remove(this.startMarker);
+      this.earthView.group.remove(this.startMarker);
 
       this.startMarker = null;
       return;
@@ -91,12 +95,12 @@ export default class LauncherView {
     this.removeTargetPositionIfExist();
 
     this.targetMarker = createMarker(position, this.earth, 0xff0000);
-    this.scene.add(this.targetMarker);
+    this.earthView.group.add(this.targetMarker);
   }
 
   removeTargetPositionIfExist() {
     if (this.targetMarker) {
-      this.scene.remove(this.targetMarker);
+      this.earthView.group.remove(this.targetMarker);
       this.targetMarker = null;
       return;
     }
@@ -106,4 +110,6 @@ export default class LauncherView {
     this.removeStartPositionIfExist();
     this.removeTargetPositionIfExist();
   }
+
+  update() {}
 }

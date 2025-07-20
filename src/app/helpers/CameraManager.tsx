@@ -68,7 +68,7 @@ export default class CameraManager {
     this.renderer.render(this.scene, this.cameraController.camera);
   }
 
-  getMeshIntersectionPoint(mesh: THREE.Mesh): THREE.Vector3 | null {
+  getMeshIntersectionPoint(mesh: THREE.Mesh | THREE.Group): THREE.Vector3 | null {
     if (!this.cameraController) {
       return null;
     }

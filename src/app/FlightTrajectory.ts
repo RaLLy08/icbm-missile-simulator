@@ -1,4 +1,4 @@
-import type Earth from './earth/Earth';
+import Earth from './earth/Earth';
 import DE from './ga/DE';
 import Rocket from './rocket/Rocket';
 import * as THREE from 'three';
@@ -62,13 +62,17 @@ export class FlightTrajectory {
     const bestGenome = await this.runDe(
       {
         maxGenerations: 70,
-        populationSize: 120,
+        populationSize: 160,
         mutationRate: 0.96,
         bestSurvivePercent: 0.9,
         elite: 0.1,
-        genomeLength: 4,
+        genomeLength: 5,
         fitnessFunction: this.fitnessFunction,
         genomeConstraints: [
+          {
+            min: 0,
+            max: Math.PI * 2,
+          },
           this.rocketConstrains.startInclineAfterDistance,
           this.rocketConstrains.thrustInclineMaxDuration,
           this.rocketConstrains.thrustInclineVelocity,
@@ -116,6 +120,7 @@ export class FlightTrajectory {
 
   private fitnessFunction = (genome: any) => {
     const [
+      angleRad,
       startInclineAfterDistance,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
@@ -123,10 +128,22 @@ export class FlightTrajectory {
     ] = genome;
 
 
+    const center = new THREE.Vector3(0, 0, 0); // rotation center
+    const start = this.start.clone(); // your starting point
+
+    const radiusVector = start.clone().sub(center);
+    const normal = new THREE.Vector3(0, 0, 1); // change this if you want a different rotation plane
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromAxisAngle(normal.normalize(), angleRad);
+
+    // Apply rotation
+    const rotatedVector = radiusVector.clone().applyQuaternion(quaternion);
+    const newVector = center.clone().add(rotatedVector);
+
     const rocket = new Rocket(
       this.earth,
       this.start,
-      this.target,
+      newVector,
       startInclineAfterDistance,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
@@ -137,7 +154,13 @@ export class FlightTrajectory {
 
     genome.rocket = rocket;
 
-    let fitness = rocket.position.clone().distanceTo(this.target);
+    const rotationY = Earth.EARTH_ROTATION_SPEED * rocket.flightTime;
+
+    const rotationMatrix = new THREE.Matrix4().makeRotationY(rotationY);
+    const targetWithRotation = this.target.clone().applyMatrix4(rotationMatrix);
+
+
+    let fitness = rocket.position.clone().distanceTo(targetWithRotation);
 
     if (this.minimizeFlightTime) {
       fitness += rocket.flightTime;

@@ -131,13 +131,14 @@ const OrbitalVelocity = () => {
     const mouseTracker = new MouseTracker(window);
 
     const earth = new Earth();
-    updateTriggers.push(earth);
 
     const cameraManager = new CameraManager(scene, renderer, mouseTracker);
     updateTriggers.push(cameraManager);
 
     const earthGui = new EarthGui(mainPane);
     const earthView = new EarthView(earth, scene, earthGui);
+    updateTriggers.push(earthView);
+    
     cameraManager.setEarthCamera(earth);
 
     launchPadListenersRef.current.focusOnEarth = () => {
@@ -188,8 +189,10 @@ const OrbitalVelocity = () => {
     // updateTriggers.push(_frameTimeManager);
 
     const launcherGui = new LauncherGui(mainPane);
-    const launcherView = new LauncherView(earth, scene);
+    const launcherView = new LauncherView(earth, scene, earthView);
     const launcher = new Launcher(launcherGui, earth);
+
+    updateTriggers.push(launcherView);
 
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
@@ -207,6 +210,7 @@ const OrbitalVelocity = () => {
 
       const onProgress = (bestGenome: any, progress: number) => {
         setCalculationProgress(progress);
+        console.log(bestGenome.fitness);
       };
 
       setIsLaunchDisabled(true);
@@ -274,16 +278,20 @@ const OrbitalVelocity = () => {
 
     const onMouseDown = () => {
       const earthIntersection = cameraManager.getMeshIntersectionPoint(
-        earthView.mesh
+        earthView.group
       );
 
       if (earthIntersection == null) {
         return;
       }
-      const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
+
+      const withRotation = earth.withRotation(earthIntersection, -1);
+      
+      const geoCords = Earth.positionToGeoCoordinates(withRotation);
+
 
       if (launchPadStatesRef.current.startPositionSetIsActive) {
-        launcherView.setStartPosition(earthIntersection);
+        launcherView.setStartPosition(withRotation);
         launcher.setStartPosition(earthIntersection);
 
         setStartPositionGeo(geoCords);
@@ -297,7 +305,7 @@ const OrbitalVelocity = () => {
       }
 
       if (launchPadStatesRef.current.targetPositionSetIsActive) {
-        launcherView.setTargetPosition(earthIntersection);
+        launcherView.setTargetPosition(withRotation);
         launcher.setTargetPosition(earthIntersection);
 
         setTargetPositionGeo(geoCords);
@@ -329,16 +337,18 @@ const OrbitalVelocity = () => {
       }
 
       const earthIntersection = cameraManager.getMeshIntersectionPoint(
-        earthView.mesh
+        earthView.group
       );
+
 
       if (earthIntersection == null) {
         return;
       }
 
-      const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
+      const withRotation = earth.withRotation(earthIntersection, -1);
 
-      setActivePositionGeo(geoCords);
+      const geoCords = Earth.positionToGeoCoordinates(withRotation);
+
 
       if (launchPadStatesRef.current.startPositionSetIsActive) {
         launcherView.setActivePosition(earthIntersection, 'start');
@@ -379,6 +389,8 @@ const OrbitalVelocity = () => {
       //     rocket.update();
       //   }
       // });
+
+      earth.update(deltaTime * worldGui.timeMultiplier);
 
       mouseTracker.update(deltaTime);
       onMove();
@@ -517,7 +529,7 @@ const OrbitalVelocity = () => {
                     disabled={isLaunchDisabled}
                     onClick={handleLaunchRocketClick}
                   >
-                    Launch 🚀 {rocketCount}
+                    Launch 🚀
                   </button>
                 </div>
 

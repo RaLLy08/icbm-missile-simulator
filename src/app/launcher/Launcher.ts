@@ -11,6 +11,7 @@ export default class Launcher {
   thrustInclineMaxDuration = 160; // seconds
   thrustInclineVelocity = THREE.MathUtils.degToRad(0.5); // radians per second
   fuelCombustionTime = 180; // seconds
+  inclineAngle = 0; // radians
 
   rocketCount = 0;
 
@@ -34,15 +35,15 @@ export default class Launcher {
       return;
     }
 
-    const euclideanDistance = this.rocketStartPosition
-      .clone()
-      .sub(this.rocketTargetPosition)
-      .length();
+    const start = this.earth.withRotation(this.rocketStartPosition.clone());
+    const target = this.earth.withRotation(this.rocketTargetPosition.clone());
+
+    const euclideanDistance = start.clone().sub(target).length();
 
     const flightTrajectory = new FlightTrajectory(
       this.earth,
-      this.rocketStartPosition,
-      this.rocketTargetPosition,
+      start,
+      target,
       {
         startInclineAfterDistance: {
           min: 1,
@@ -78,6 +79,7 @@ export default class Launcher {
 
   private setRocketParams = (genome: any) => {
     const [
+      inclineAngle,
       startInclineAfterDistance,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
@@ -88,6 +90,7 @@ export default class Launcher {
     this.thrustInclineMaxDuration = thrustInclineMaxDuration;
     this.thrustInclineVelocity = thrustInclineVelocity;
     this.fuelCombustionTime = fuelCombustionTime;
+    this.inclineAngle = inclineAngle;
 
     const rocket = genome.rocket;
 
@@ -106,19 +109,25 @@ export default class Launcher {
     if (!this.rocketStartPosition || !this.rocketTargetPosition) {
       return;
     }
-
     this.rocketCount++;
     this.launcherGui.rocketCount = this.rocketCount;
 
-    const targetInclineVector = this.rocketTargetPosition
-      .clone()
-      .sub(this.rocketStartPosition)
-      .normalize();
+    const start = this.earth.withRotation(this.rocketStartPosition.clone());
+    const center = new THREE.Vector3(0, 0, 0); // rotation center
+
+    const radiusVector = start.clone().sub(center);
+    const normal = new THREE.Vector3(0, 0, 1); // change this if you want a different rotation plane
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromAxisAngle(normal.normalize(), this.inclineAngle);
+
+    // Apply rotation
+    const rotatedVector = radiusVector.clone().applyQuaternion(quaternion);
+    const newVector = center.clone().add(rotatedVector);
 
     const rocket = new Rocket(
       this.earth,
-      this.rocketStartPosition,
-      targetInclineVector,
+      start,
+      newVector,
       this.startInclineAfterDistance,
       this.thrustInclineMaxDuration,
       this.thrustInclineVelocity,

@@ -61,7 +61,7 @@ export default class WorldGui {
         return v + ' X';
       },
       min: 1,
-      max: 300,
+      max: 1600,
       step: 1,
     });
 

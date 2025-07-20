@@ -8,6 +8,7 @@ class Earth {
    */
   static readonly RADIUS = 6378;
   static readonly G = 6.6743e-11;
+  static readonly EARTH_ROTATION_SPEED = (2 * Math.PI) / (24 * 60 * 60);
   /**
    * Unit: kg
    */
@@ -28,7 +29,10 @@ class Earth {
     [atmosphereLayerKeys.EXOSPHERE]: 1000,
   });
 
-  constructor(public position = new THREE.Vector3(0, 0, 0)) {}
+  constructor(
+    public position = new THREE.Vector3(0, 0, 0),
+    public rotation = new THREE.Euler(0, 0, 0)
+  ) {}
 
   // private createSphereEdges(radius: number, color: number, segmentCount: number = 128): THREE.LineSegments {
   //   const geo = new THREE.EdgesGeometry(
@@ -63,12 +67,20 @@ class Earth {
   }
 
   update(tick = 1) {
-    // rotate the Earth around its axis
+    this.rotation.y += Earth.EARTH_ROTATION_SPEED * tick;
+  }
+
+  withRotation(
+    position: THREE.Vector3,
+    sign = 1
+  ) {
+    const rotationMatrix = new THREE.Matrix4().makeRotationY(this.rotation.y * sign);
+    return position.clone().applyMatrix4(rotationMatrix);
   }
 
   static geoCoordinatesToPosition(
     latitude: number,
-    longitude: number
+    longitude: number,
   ): THREE.Vector3 {
     const latRad = latitude * (Math.PI / 180);
     const lonRad = longitude * (Math.PI / 180);

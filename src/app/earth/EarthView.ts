@@ -7,6 +7,7 @@ import EarthGui from './Earth.gui';
 const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
 
 export default class EarthView {
+  readonly group: THREE.Group = new THREE.Group();
   readonly mesh: THREE.Mesh;
 
   public atmosphereLayers = new Map<atmosphereLayerKeys, THREE.Mesh>();
@@ -36,7 +37,6 @@ export default class EarthView {
     this.mesh.name = Earth.name;
     this.mesh.position.copy(this.earth.position);
 
-    this.scene.add(this.mesh);
 
     this.initAtmosphereLayers();
     this.initAtmosphereBorders();
@@ -56,6 +56,9 @@ export default class EarthView {
     earthGui.onShowEarthClicked = (show) => {
       this.setVisibility(show);
     };
+
+    this.group.add(this.mesh);
+    this.scene.add(this.group);
   }
 
   private createAtmosphereLayer(
@@ -279,7 +282,7 @@ export default class EarthView {
     marker.castShadow = true;
     marker.receiveShadow = true;
 
-    this.scene.add(marker);
+    this.group.add(marker);
   };
 
   addCrossMarker = (
@@ -315,7 +318,7 @@ export default class EarthView {
     cross.castShadow = true;
     cross.receiveShadow = true;
 
-    this.scene.add(cross);
+    this.group.add(cross);
   };
 
   createLineToSkyMarker(
@@ -342,5 +345,11 @@ export default class EarthView {
 
   setMarkerVisible(marker: THREE.Mesh, visible: boolean = true) {
     marker.visible = visible;
+  }
+
+  update() {
+    const rotation: THREE.Euler = this.earth.rotation;
+    this.group.rotation.set(rotation.x, rotation.y, rotation.z);
+        this.group.updateMatrixWorld(true);
   }
 }
