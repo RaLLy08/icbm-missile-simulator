@@ -59,7 +59,7 @@ export default class EarthGui {
   ) {
     this.folder = pane.addFolder({
       title: 'Earth',
-      expanded: true,
+      expanded: false,
     });
 
     this.folder.addBinding(this, 'massKg', {

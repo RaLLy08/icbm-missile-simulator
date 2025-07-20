@@ -55,7 +55,7 @@ export class FlightTrajectory {
         'Earth, start position, and target position must be set before calculating the trajectory.'
       );
     }
-      
+
     this.ellapsedTime = 0;
     const startTime = performance.now();
 
@@ -122,7 +122,6 @@ export class FlightTrajectory {
       fuelCombustionTime,
     ] = genome;
 
-
     const rocket = new Rocket(
       this.earth,
       this.start,
@@ -155,7 +154,10 @@ export class FlightTrajectory {
 
       const traveledDistance = rocket.travelledDistance.length();
 
-      if (maxDistanceThreshold != null &&traveledDistance > maxDistanceThreshold) {
+      if (
+        maxDistanceThreshold != null &&
+        traveledDistance > maxDistanceThreshold
+      ) {
         // console.log(
         //   `Rocket traveled too far: ${traveledDistance} > ${constraints.maxDistanceThreshold}`
         // );
@@ -167,13 +169,10 @@ export class FlightTrajectory {
         break;
       }
 
-      
-
       if (rocket.hasLanded) {
         // console.log(`Rocket landed after ${i} iterations.`);
         break;
       }
     }
   };
-
 }
