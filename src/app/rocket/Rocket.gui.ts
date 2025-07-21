@@ -137,7 +137,9 @@ export default class RocketGui {
       .on('click', () => {
         this.onFocusCameraClick();
       });
+  }
 
+  scrollToEnd() {
     this.paneContainer.scrollTo(0, this.paneContainer.scrollHeight);
   }
 

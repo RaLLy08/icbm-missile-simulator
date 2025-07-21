@@ -5,6 +5,8 @@ import LauncherGui from './Launcher.gui';
 import Rocket from 'app/rocket/Rocket';
 
 export default class Launcher {
+  counter = 0;
+
   rocketStartPosition: THREE.Vector3 | null = null;
   rocketTargetPosition: THREE.Vector3 | null = null;
   startInclineAfterDistance = 8; // km
@@ -124,6 +126,8 @@ export default class Launcher {
       this.thrustInclineVelocity,
       this.fuelCombustionTime
     );
+
+    rocket.id = this.counter++;
 
     return rocket;
   };

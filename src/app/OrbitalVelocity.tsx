@@ -307,6 +307,7 @@ const OrbitalVelocity = () => {
         });
 
       setActiveRocketGui();
+      activeRocketGui?.scrollToEnd();
 
       updateTriggers.push(frameTimeManager);
     };
