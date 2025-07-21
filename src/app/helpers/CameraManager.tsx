@@ -20,6 +20,8 @@ export default class CameraManager {
   }
 
   cameraController: EarthCamera | RocketCamera | null = null;
+  rocketCameraController: RocketCamera | null = null;
+  earthCameraController: EarthCamera | null = null;
 
   getCamera() {
     if (!this.cameraController) {
@@ -35,36 +37,52 @@ export default class CameraManager {
   ) {}
 
   setEarthCamera(earth: Earth) {
-    if (this.cameraController) {
-      this.cameraController.remove();
+    if (this.rocketCameraController) {
+      this.rocketCameraController.disable();
     }
 
-    this.cameraController = new EarthCamera(
-      earth.position.clone(),
-      this.createCamera(),
-      this.renderer.domElement
-    );
+    if (this.earthCameraController == null) {
+      this.earthCameraController = new EarthCamera(
+        earth.position.clone(),
+        this.createCamera(),
+        this.renderer.domElement
+      );
+    } else {
+      this.earthCameraController.enable();
+    }
+
+    this.cameraController = this.earthCameraController;
   }
 
   setRocketCamera(earthView: EarthView, rocketView: RocketView) {
-    if (this.cameraController) {
-      this.cameraController.remove();
+    if (this.earthCameraController) {
+      this.earthCameraController.disable();
     }
 
     const camera = this.createCamera();
     const earthCenter = earthView.mesh.position.clone();
-    this.cameraController = new RocketCamera(
-      camera,
-      rocketView,
-      earthCenter,
-      this.renderer.domElement
-    );
+
+    if (this.rocketCameraController == null) {
+      this.rocketCameraController = new RocketCamera(
+        camera,
+        rocketView,
+        earthCenter,
+        this.renderer.domElement
+      );
+    } else {
+      this.rocketCameraController.enable();
+      this.rocketCameraController.setRocketView(rocketView);
+    }
+
+    this.rocketCameraController;
+
+    this.cameraController = this.rocketCameraController;
   }
 
-  update() {
+  update(delta: number) {
     if (!this.cameraController) return;
 
-    this.cameraController.update();
+    this.cameraController.update(delta);
     this.renderer.render(this.scene, this.cameraController.camera);
   }
 
@@ -152,6 +170,15 @@ class EarthCamera {
     // this.camera.updateProjectionMatrix();
   };
 
+
+  disable() {
+    this.controls.enabled = false;
+  }
+
+  enable() {
+    this.controls.enabled = true;
+  }
+
   private updateCameraRotation = () => {
     const distance = this.camera.position.length();
 
@@ -218,7 +245,7 @@ class RocketCamera {
     this.domElement = domElement;
 
     this.minDistance = this.rocketView.size;
-    this.distance = this.rocketView.size * 3; 
+    this.distance = this.rocketView.size * 3;
 
     // Set up mouse controls
     this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this));
@@ -227,6 +254,21 @@ class RocketCamera {
     this.domElement.addEventListener('wheel', this.onMouseWheel.bind(this), {
       passive: false,
     });
+  }
+
+  disabled = false;
+  transitioningToRocketView: RocketView | null = null;
+
+  setRocketView(newRocketView: RocketView) {
+    this.rocketView = newRocketView;
+  }
+
+  disable() {
+    this.disabled = true;
+  }
+
+  enable() {
+    this.disabled = false;
   }
 
   private getRocketPosition() {
@@ -239,11 +281,11 @@ class RocketCamera {
 
     const offset = -this.rocketView.size * 0.5;
 
-    return rocketPosition
-      .add(earthNormal.clone().multiplyScalar(offset))
+    return rocketPosition.add(earthNormal.clone().multiplyScalar(offset));
   }
 
   onMouseDown(event: MouseEvent) {
+
     this.isMouseDown = true;
     this.prevMouseX = event.clientX;
     this.prevMouseY = event.clientY;
@@ -254,6 +296,7 @@ class RocketCamera {
   }
 
   onMouseMove(event: MouseEvent) {
+    if (this.disabled) return;
     if (!this.isMouseDown) return;
 
     const deltaX = event.clientX - this.prevMouseX;
@@ -271,6 +314,9 @@ class RocketCamera {
   }
 
   onMouseWheel(event: WheelEvent) {
+    if (this.disabled) return;
+    if (this.transitioningToRocketView != null) return;
+
     // Zoom in/out
     const minStep = 0.001;
     const maxStep = 1;
@@ -300,8 +346,7 @@ class RocketCamera {
     event.preventDefault();
   }
 
-  update() {
-    const targetPos = this.getRocketPosition();
+  private getCameraPosition(targetPos: THREE.Vector3) {
     const surfaceNormal = new THREE.Vector3()
       .subVectors(targetPos, this.earthCenter)
       .normalize();
@@ -324,9 +369,72 @@ class RocketCamera {
     this.currentOffset.applyQuaternion(quaternion);
 
     // Set camera position and look at target
-    this.camera.position.copy(targetPos).add(this.currentOffset);
-    this.camera.lookAt(targetPos);
-    this.camera.up.copy(surfaceNormal); // Ensure camera respects surface normal
+    // this.camera.position.copy(targetPos).add(this.currentOffset);
+    // this.camera.lookAt(targetPos);
+    // this.camera.up.copy(surfaceNormal); // Ensure camera respects surface normal
+
+    return {
+      position: targetPos.clone().add(this.currentOffset),
+      lookAt: targetPos,
+      up: surfaceNormal,
+    };
+  }
+
+  passedTimeAfterTransition = 0;
+
+  update(delta: number) {
+    // if (this.transitioningToRocketView != null) {
+    //   this.passedTimeAfterTransition += delta;
+
+    //   const percentOfPassedTime = Math.min(
+    //     this.passedTimeAfterTransition / 1, // Transition duration
+    //     1
+    //   );
+
+    //   const lerpAlpha = THREE.MathUtils.smoothstep(percentOfPassedTime, 0, 1);
+
+    //   const { position, lookAt, up } = this.getCameraPosition(
+    //     this.transitioningToRocketView.group.position
+    //   );
+
+
+    //   const targetPos = position.clone();
+    //   const currentPos = this.camera.position.clone();
+
+    //   const targetLookAt = lookAt.clone();
+    //   const currentLookAt = this.camera
+    //     .getWorldDirection(new THREE.Vector3())
+    //     .add(currentPos);
+
+    //   const targetUp = up.clone();
+    //   const currentUp = this.camera.up.clone();
+
+    //   // Lerp position
+    //   this.camera.position.lerp(targetPos, lerpAlpha);
+    //   this.camera.up.lerp(currentUp.lerp(targetUp, lerpAlpha), lerpAlpha);
+    //   // this.camera.lookAt(currentLookAt.lerp(targetLookAt, lerpAlpha));
+
+
+    //   const dist = currentPos.distanceTo(targetPos);
+
+
+    //   // If close enough, stop transitioning
+    //   if (dist < 1) {
+    //     this.rocketView = this.transitioningToRocketView;
+    //     this.transitioningToRocketView = null;
+    //     this.passedTimeAfterTransition = 0;
+    //   }
+
+    //   return;
+    // }
+
+    const { position, lookAt, up } = this.getCameraPosition(
+      this.getRocketPosition()
+    );
+
+    this.camera.position.copy(position);
+    this.camera.lookAt(lookAt);
+    this.camera.up.copy(up);
   }
 
   remove() {

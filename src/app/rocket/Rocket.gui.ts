@@ -24,7 +24,7 @@ export default class RocketGui {
     private readonly rocketView: RocketView
   ) {
     this.folder = this.pane.addFolder({
-      title: `Rocket ${this.rocket.id}`,
+      title: `Missile ${this.rocket.id}`,
       expanded: true,
     });
 

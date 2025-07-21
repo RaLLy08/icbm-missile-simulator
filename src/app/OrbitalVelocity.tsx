@@ -18,7 +18,6 @@ import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
-import Rocket from './rocket/Rocket';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -227,12 +226,9 @@ const OrbitalVelocity = () => {
         return;
       }
       const rocketView = new RocketView(rocket, scene, earthView);
-      rocketView.setSize(
-        launcherGui.rocketSizeMultiplier
-      );
+      rocketView.setSize(launcherGui.rocketSizeMultiplier);
       rocketView.init();
       rocketView.updatePrevFromRocket();
-
 
       const frameTimeManager = new FrameTimeManager(
         rocket,
@@ -244,33 +240,47 @@ const OrbitalVelocity = () => {
       earthView.addTorusMarker(launcher.rocketTargetPosition!, 0x00ff00, 40, 4);
       launcherView.remove();
 
-
       setRocketCount(launcher.rocketCount);
 
-      if (activeRocketGui) {
-        activeRocketGui.remove();
-        updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
-      }
+      const setActiveRocketGui = () => {
+        if (activeRocketGui) {
+          activeRocketGui.remove();
+          updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
+        }
 
-      activeRocketGui = new RocketGui(
-        rocketGuiPane,
-        rocketGuiContainer!,
-        rocket,
-        rocketView
-      );
+        activeRocketGui = new RocketGui(
+          rocketGuiPane,
+          rocketGuiContainer!,
+          rocket,
+          rocketView
+        );
 
-      activeRocketGui.onFocusCameraClick = () => {
-        cameraManager.setRocketCamera(earthView, rocketView);
-        setIsFocusedOnEarth(false);
+        activeRocketGui.onFocusCameraClick = () => {
+          cameraManager.setRocketCamera(earthView, rocketView);
+          setIsFocusedOnEarth(false);
+        };
+
+        updateTriggers.push(activeRocketGui);
       };
 
+      rocketGuiPane
+        .addButton({
+          title: `Focus on Missile ${rocket.id}`,
+        })
+        .on('click', () => {
+          cameraManager.setRocketCamera(earthView, rocketView);
+          setIsFocusedOnEarth(false);
+          setActiveRocketGui();
+        });
+
+      setActiveRocketGui();
+
       updateTriggers.push(frameTimeManager);
-      updateTriggers.push(activeRocketGui);
     };
 
     // const garbageCollector = () => {
     //   updateTriggers.forEach((trigger) => {
-    
+
     //   });
     // };
 
@@ -426,8 +436,7 @@ const OrbitalVelocity = () => {
     launchPadListenersRef.current.onLaunchRocket();
   };
 
-  const isPositionSelectionActive =
-    startPositionActive || targetPositionActive;
+  const isPositionSelectionActive = startPositionActive || targetPositionActive;
 
   return (
     <>
@@ -545,7 +554,7 @@ const OrbitalVelocity = () => {
         <div className={s.clearLaunchPad}>
           <button
             className={s.button}
-              onClick={(e) => {
+            onClick={(e) => {
               e.stopPropagation();
               launchPadListenersRef?.current?.onCancelSelectionClick?.();
             }}
