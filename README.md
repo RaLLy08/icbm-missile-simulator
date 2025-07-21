@@ -1,1 +1,1 @@
-# Orbital motion simulation
+# Optimization Based ICBM Trajectory Calculator
