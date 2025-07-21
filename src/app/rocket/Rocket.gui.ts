@@ -85,12 +85,6 @@ export default class RocketGui {
       format: (v) => v.toExponential(5) + ' km/s²',
     });
 
-    this.folder.addBinding(this.rocket, 'thrustInclineAngle', {
-      label: 'Thrust Incline Angle (degrees)',
-      readonly: true,
-      format: (v) => THREE.MathUtils.radToDeg(v).toFixed(5),
-    });
-
     this.folder.addBinding(this.rocket, 'currentThrustInclineDuration', {
       label: 'Thrust Gravity Turn Duration',
       readonly: true,
@@ -125,9 +119,16 @@ export default class RocketGui {
     });
 
     this.folder.addBinding(this, 'velocityToGravityAngle', {
-      label: 'Velocity to Gravity Angle',
+      label: 'Angle of attack Velocity',
       readonly: true,
       format: (v) => v.toFixed(2) + '°',
+    });
+
+    
+    this.folder.addBinding(this.rocket, 'thrustInclineAngle', {
+      label: 'Angle of attack Thrust',
+      readonly: true,
+      format: (v) => THREE.MathUtils.radToDeg(v).toFixed(5) + '°',
     });
 
     this.folder

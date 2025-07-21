@@ -104,11 +104,11 @@ const OrbitalVelocity = () => {
     if (!sceneContainer) return;
 
     const mainPane = new Pane({
-      title: 'Orbital Velocity Controls',
+      title: 'Main Controls',
       container: mainGuiContainer!,
     });
     const rocketGuiPane = new Pane({
-      title: 'Rocket Controls',
+      title: 'Missile Controls',
       container: rocketGuiContainer!,
     });
 
