@@ -19,23 +19,7 @@ import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
 
-const WIDTH = window.innerWidth;
-const HEIGHT = window.innerHeight;
-
 const scene = new THREE.Scene();
-
-// const axisHelper = new THREE.AxesHelper(10000);
-// scene.add(axisHelper);
-
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  logarithmicDepthBuffer: true,
-});
-renderer.setSize(WIDTH, HEIGHT);
-
-renderer.setClearColor(0x000000, 1); // Set background color to black
-
-renderer.setPixelRatio(window.devicePixelRatio);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
@@ -67,6 +51,7 @@ const OrbitalVelocity = () => {
     startPositionSetIsActive: false,
     targetPositionSetIsActive: false,
   });
+  const [isMiniWindowOpen, setIsMiniWindowOpen] = useState(false);
 
   const [startPositionActive, setStartPositionActive] = useState(
     launchPadStatesRef.current.startPositionSetIsActive
@@ -101,6 +86,7 @@ const OrbitalVelocity = () => {
   const mainGuiContainerId = useId();
   const rocketGuiContainerId = useId();
   const mouseFollowerId = useId();
+  const miniWindowId = useId();
 
   const handleFocusOnEarthClick = () => {
     setIsFocusedOnEarth(true);
@@ -112,6 +98,7 @@ const OrbitalVelocity = () => {
     const mainGuiContainer = document.getElementById(mainGuiContainerId);
     const rocketGuiContainer = document.getElementById(rocketGuiContainerId);
     const mouseFollower = document.getElementById(mouseFollowerId);
+    const miniWindow = document.getElementById(miniWindowId);
     const { current: launcherPadListeners } = launchPadListenersRef;
 
     if (!sceneContainer) return;
@@ -125,14 +112,53 @@ const OrbitalVelocity = () => {
       container: rocketGuiContainer!,
     });
 
-    sceneContainer.appendChild(renderer.domElement);
+    const createMiniWindowRenderer = () => {
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        logarithmicDepthBuffer: true,
+      });
+      renderer.setClearColor(0x000000, 1);
+      miniWindow!.style.width = '300px';
+      miniWindow!.style.height = '300px';
+
+      const { width, height } = miniWindow!.getBoundingClientRect();
+
+      const aspect = width / height;
+
+      renderer.setPixelRatio(aspect);
+      renderer.setSize(width, height);
+      miniWindow!.appendChild(renderer.domElement);
+
+      return renderer;
+    };
+
+    const createFullScreenRenderer = () => {
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        logarithmicDepthBuffer: true,
+      });
+      renderer.setClearColor(0x000000, 1);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      sceneContainer!.appendChild(renderer.domElement);
+
+      return renderer;
+    };
+
+    const fullScreenRenderer = createFullScreenRenderer();
+    const miniWindowRenderer = createMiniWindowRenderer();
 
     const mouseTracker = new MouseTracker(window);
 
     const earth = new Earth();
     updateTriggers.push(earth);
 
-    const cameraManager = new CameraManager(scene, renderer, mouseTracker);
+    const cameraManager = new CameraManager(
+      scene,
+      fullScreenRenderer,
+      miniWindowRenderer,
+      mouseTracker
+    );
     updateTriggers.push(cameraManager);
 
     const earthGui = new EarthGui(mainPane);
@@ -141,11 +167,15 @@ const OrbitalVelocity = () => {
 
     launchPadListenersRef.current.focusOnEarth = () => {
       cameraManager.setEarthCamera(earth);
+
+      setIsMiniWindowOpen(false);
       setIsFocusedOnEarth(true);
     };
 
     earthGui.onFocusCameraClick = () => {
       cameraManager.setEarthCamera(earth);
+      setIsMiniWindowOpen(false);
+
       setIsFocusedOnEarth(true);
     };
 
@@ -257,6 +287,7 @@ const OrbitalVelocity = () => {
 
         activeRocketGui.onFocusCameraClick = () => {
           cameraManager.setRocketCamera(earthView, rocketView);
+          setIsMiniWindowOpen(true);
           setIsFocusedOnEarth(false);
         };
 
@@ -269,6 +300,8 @@ const OrbitalVelocity = () => {
         })
         .on('click', () => {
           cameraManager.setRocketCamera(earthView, rocketView);
+
+          setIsMiniWindowOpen(true);
           setIsFocusedOnEarth(false);
           setActiveRocketGui();
         });
@@ -398,11 +431,14 @@ const OrbitalVelocity = () => {
       });
     };
 
-    renderer.setAnimationLoop(animateLoop);
+    fullScreenRenderer.setAnimationLoop(animateLoop);
 
     return () => {
-      sceneContainer.removeChild(renderer.domElement);
-      renderer.dispose();
+      sceneContainer.removeChild(fullScreenRenderer.domElement);
+      fullScreenRenderer.setAnimationLoop(null);
+
+      fullScreenRenderer.dispose();
+      miniWindowRenderer.dispose();
     };
   }, []);
 
@@ -582,6 +618,20 @@ const OrbitalVelocity = () => {
             </>
           )}
         </div>
+      </div>
+
+      <div
+        className={s.miniWindowContainer}
+        style={{
+          visibility: isMiniWindowOpen ? 'visible' : 'hidden',
+        }}
+      >
+        <div
+          id={miniWindowId}
+          style={{
+            position: 'absolute',
+          }}
+        ></div>
       </div>
     </>
   );

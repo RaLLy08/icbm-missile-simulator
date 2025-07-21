@@ -10,10 +10,10 @@ const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
 
 export default class CameraManager {
-  private createCamera() {
+  private createCamera(aspectRatio = WIDTH / HEIGHT) {
     return new THREE.PerspectiveCamera(
       50,
-      WIDTH / HEIGHT,
+      aspectRatio,
       0.1,
       Earth.RADIUS * 100
     );
@@ -32,7 +32,8 @@ export default class CameraManager {
 
   constructor(
     private scene: THREE.Scene,
-    private renderer: THREE.WebGLRenderer,
+    private fullScreenRenderer: THREE.WebGLRenderer,
+    private miniWindowRenderer: THREE.WebGLRenderer,
     private mouseTracker: MouseTracker
   ) {}
 
@@ -45,9 +46,12 @@ export default class CameraManager {
       this.earthCameraController = new EarthCamera(
         earth.position.clone(),
         this.createCamera(),
-        this.renderer.domElement
+        this.fullScreenRenderer.domElement
       );
     } else {
+      this.earthCameraController.camera.aspect = window.innerWidth / window.innerHeight;
+      this.earthCameraController.camera.updateProjectionMatrix();
+
       this.earthCameraController.enable();
     }
 
@@ -57,6 +61,10 @@ export default class CameraManager {
   setRocketCamera(earthView: EarthView, rocketView: RocketView) {
     if (this.earthCameraController) {
       this.earthCameraController.disable();
+      this.earthCameraController.camera.aspect =
+        this.miniWindowRenderer.domElement.clientWidth /
+        this.miniWindowRenderer.domElement.clientHeight;
+      this.earthCameraController.camera.updateProjectionMatrix();
     }
 
     const camera = this.createCamera();
@@ -67,7 +75,7 @@ export default class CameraManager {
         camera,
         rocketView,
         earthCenter,
-        this.renderer.domElement
+        this.fullScreenRenderer.domElement
       );
     } else {
       this.rocketCameraController.enable();
@@ -83,7 +91,17 @@ export default class CameraManager {
     if (!this.cameraController) return;
 
     this.cameraController.update(delta);
-    this.renderer.render(this.scene, this.cameraController.camera);
+    this.fullScreenRenderer.render(this.scene, this.cameraController.camera);
+
+    if (
+      this.earthCameraController &&
+      this.cameraController === this.rocketCameraController
+    ) {
+      this.miniWindowRenderer.render(
+        this.scene,
+        this.earthCameraController.camera
+      );
+    }
   }
 
   getMeshIntersectionPoint(mesh: THREE.Mesh): THREE.Vector3 | null {
@@ -169,7 +187,6 @@ class EarthCamera {
     this.controls.update();
     // this.camera.updateProjectionMatrix();
   };
-
 
   disable() {
     this.controls.enabled = false;
@@ -285,7 +302,6 @@ class RocketCamera {
   }
 
   onMouseDown(event: MouseEvent) {
-
     this.isMouseDown = true;
     this.prevMouseX = event.clientX;
     this.prevMouseY = event.clientY;
@@ -397,7 +413,6 @@ class RocketCamera {
     //     this.transitioningToRocketView.group.position
     //   );
 
-
     //   const targetPos = position.clone();
     //   const currentPos = this.camera.position.clone();
 
@@ -414,9 +429,7 @@ class RocketCamera {
     //   this.camera.up.lerp(currentUp.lerp(targetUp, lerpAlpha), lerpAlpha);
     //   // this.camera.lookAt(currentLookAt.lerp(targetLookAt, lerpAlpha));
 
-
     //   const dist = currentPos.distanceTo(targetPos);
-
 
     //   // If close enough, stop transitioning
     //   if (dist < 1) {
