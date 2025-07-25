@@ -18,6 +18,7 @@ import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
+import Rocket from './rocket/Rocket';
 
 const scene = new THREE.Scene();
 
@@ -192,22 +193,34 @@ const OrbitalVelocity = () => {
     //   targetInclineVector
     // );
 
-    // const _rocketView = new RocketView(_rocket, scene);
-
-    // const _rocketGui = new RocketGui(
-    //   rocketGuiPane,
-    //   rocketGuiContainer!,
-    //   _rocket,
-    //   _rocketView,
-    //   earthView,
-    //   cameraManager
-    // );
-
     // cameraManager.setRocketCamera(earthView, _rocketView);
 
     // setTimeout(() => {
     //   _rocket.position.copy(rocketTargetPosition);
     // }, 1000); // Wait for the camera to focus
+
+    const launcherGui = new LauncherGui(mainPane);
+    const launcherView = new LauncherView(earth, scene);
+    const launcher = new Launcher(launcherGui, earth);
+
+    const worldGui = new WorldGui(mainPane, clock);
+    updateTriggers.push(worldGui);
+
+    ///
+
+    // const _rocketView = new RocketView(_rocket, scene, earthView);
+    // _rocketView.setSize(launcherGui.rocketSizeMultiplier);
+    // _rocketView.init();
+    // _rocketView.updatePrevFromRocket();
+
+
+    // const _rocketGui = new RocketGui(
+    //   rocketGuiPane,
+    //   rocketGuiContainer!,
+    //   _rocket,
+    //   _rocketView
+    // );
+    // updateTriggers.push(_rocketGui);
 
     // const _frameTimeManager = new FrameTimeManager(
     //   _rocket,
@@ -216,12 +229,8 @@ const OrbitalVelocity = () => {
     // );
     // updateTriggers.push(_frameTimeManager);
 
-    const launcherGui = new LauncherGui(mainPane);
-    const launcherView = new LauncherView(earth, scene);
-    const launcher = new Launcher(launcherGui, earth);
-
-    const worldGui = new WorldGui(mainPane, clock);
-    updateTriggers.push(worldGui);
+    // cameraManager.setRocketCamera(earthView, _rocketView);
+    ///
 
     const mouseTrackedGui = new MouseTrackerGui(worldGui.folder, mouseTracker);
     updateTriggers.push(mouseTrackedGui);
@@ -391,7 +400,7 @@ const OrbitalVelocity = () => {
 
       if (launchPadStatesRef.current.targetPositionSetIsActive) {
         launcherView.setActivePosition(earthIntersection, 'target');
-        setTargetPositionGeo(geoCords);
+        setActivePositionGeo(geoCords);
       }
     };
 

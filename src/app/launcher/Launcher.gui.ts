@@ -12,7 +12,13 @@ export default class LauncherGui {
   maxAltitude = 0;
   travelledDistance = 0;
   flightTime = 0;
-  minimizeFlightTime = false;
+  minimizeFlightTime = true;
+  increaseCalculationAccuracy = false;
+
+  payloadMass = 0;
+  fuelMass = 0;
+  massFlowRate = 0;
+  exhaustVelocity = 0;
 
   startLongitude: number | string = 'N/A';
   startLatitude: number | string = 'N/A';
@@ -34,6 +40,16 @@ export default class LauncherGui {
       })
       .on('change', (ev) => {
         this.minimizeFlightTime = ev.value;
+      });
+
+    this.folder
+      .addBinding(this, 'increaseCalculationAccuracy', {
+        label: 'Increase Calculation Precision (slower)',
+        view: 'checkbox',
+        input: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.increaseCalculationAccuracy = ev.value;
       });
 
     this.folder.addBinding(this, 'startInclineAfterDistance', {
@@ -78,6 +94,30 @@ export default class LauncherGui {
       },
     });
 
+    this.folder.addBinding(this, 'payloadMass', {
+      label: 'Payload Mass',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' kg',
+    });
+
+    this.folder.addBinding(this, 'fuelMass', {
+      label: 'Fuel Mass',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' kg',
+    });
+
+    this.folder.addBinding(this, 'massFlowRate', {
+      label: 'Mass Flow Rate (ṁ)',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' kg/s',
+    });
+
+    this.folder.addBinding(this, 'exhaustVelocity', {
+      label: 'Exhaust Velocity (vₑ)',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' km/s',
+    });
+
     this.folder.addBinding(this, 'maxAltitude', {
       label: 'Max Altitude',
       readonly: true,
@@ -114,7 +154,7 @@ export default class LauncherGui {
       label: 'Rocket Count',
       readonly: true,
       format: (v) => {
-       return `${v.toFixed(0)} rockets`;
+        return `${v.toFixed(0)} rockets`;
       },
     });
 

@@ -35,19 +35,17 @@ export default class RocketGui {
     });
 
     this.folder.addBinding(this, 'thrust', {
-      label: 'Thrust Graph',
+      label: 'Thrust Graph (N)',
       readonly: true,
       view: 'graph',
       min: 0,
       max: this.rocket.maxThrust,
-      format: (v) => v.toFixed(5) + ' km/s²',
+      format: (v) => (v * 1000).toFixed(5) + ' kg*(m/s²)',
     });
 
     this.folder.addBinding(this, 'thrust', {
-      label: 'Thrust (G)',
+      label: 'Thrust (N)',
       readonly: true,
-      min: 0,
-      max: this.rocket.maxThrust,
       format: (v) => (v / this.gravityForce).toFixed(2) + ' g',
     });
 
@@ -65,6 +63,19 @@ export default class RocketGui {
 
         return `${formatted.value.toFixed(1)} ${formatted.unit}`;
       },
+    });
+
+    this.folder.addBinding(this.rocket, 'currentTotalMass', {
+      label: 'Fuel Mass',
+      readonly: true,
+      format: (v) => (v - this.rocket.payloadMass).toFixed(1) + ' kg',
+    });
+
+
+    this.folder.addBinding(this.rocket, 'payloadMass', {
+      label: 'Payload Mass',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' kg',
     });
 
     this.folder.addBinding(this, 'displacement', {
@@ -124,11 +135,10 @@ export default class RocketGui {
       format: (v) => v.toFixed(2) + '°',
     });
 
-    
     this.folder.addBinding(this.rocket, 'thrustInclineAngle', {
       label: 'Angle of attack Thrust',
       readonly: true,
-      format: (v) => THREE.MathUtils.radToDeg(v).toFixed(5) + '°',
+      format: (v) => THREE.MathUtils.radToDeg(v).toFixed(2) + '°',
     });
 
     this.folder
@@ -147,6 +157,7 @@ export default class RocketGui {
   update() {
     this.velocity = this.rocket.velocity.length();
     this.thrust = this.rocket.thrust.length();
+  
     this.displacement = this.rocket.displacement.length();
     this.gravityForce = this.rocket.gravityForce.length();
     this.travelledDistance = this.rocket.travelledDistance.length();

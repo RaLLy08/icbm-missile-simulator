@@ -496,8 +496,10 @@ export default class RocketView {
   }
 
   private updateBurningFireScale() {
-    const thrustPercentage =
-      this.rocket.thrust.length() / this.rocket.maxThrust;
+    let thrustPercentage =
+      this.rocket.thrust.length() / (this.rocket.maxThrust * 0.3);
+
+    thrustPercentage = Math.min(thrustPercentage, 2);
 
     const thrustableSize = this.burningFireSize * thrustPercentage;
 

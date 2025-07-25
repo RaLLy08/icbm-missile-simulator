@@ -39,14 +39,17 @@ export class FlightTrajectory {
       startInclineAfterDistance: ParamConstrain;
       thrustInclineMaxDuration: ParamConstrain;
       thrustInclineVelocity: ParamConstrain;
-      fuelCombustionTime: ParamConstrain;
+      fuelMass: ParamConstrain;
+      exhaustVelocity: ParamConstrain;
+      massFlowRate: ParamConstrain;
     },
     private flightConstraints: {
       maxDistanceThreshold?: number; // minimize
       maxFlightTimeSeconds: number;
       maxAltitude?: number; // optional, not used in current implementation
     },
-    private minimizeFlightTime: boolean = false
+    private minimizeFlightTime: boolean = false,
+    private increaseCalculationAccuracy: boolean = false
   ) {}
 
   async calcTrajectory(delayBetweenGenerationsMs: number | null = null) {
@@ -59,20 +62,24 @@ export class FlightTrajectory {
     this.ellapsedTime = 0;
     const startTime = performance.now();
 
+    const populationSize = this.increaseCalculationAccuracy ? 200 : 80;
+
     const bestGenome = await this.runDe(
       {
-        maxGenerations: 70,
-        populationSize: 120,
+        maxGenerations: 80,
+        populationSize,
         mutationRate: 0.96,
-        bestSurvivePercent: 0.9,
+        bestSurvivePercent: 0.8,
         elite: 0.1,
-        genomeLength: 4,
+        genomeLength: 6,
         fitnessFunction: this.fitnessFunction,
         genomeConstraints: [
           this.rocketConstrains.startInclineAfterDistance,
           this.rocketConstrains.thrustInclineMaxDuration,
           this.rocketConstrains.thrustInclineVelocity,
-          this.rocketConstrains.fuelCombustionTime,
+          this.rocketConstrains.fuelMass,
+          this.rocketConstrains.exhaustVelocity,
+          this.rocketConstrains.massFlowRate,
         ],
         randMutationFunction: () => randFloat(-2, 2),
         CR: 0.9,
@@ -119,7 +126,9 @@ export class FlightTrajectory {
       startInclineAfterDistance,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
-      fuelCombustionTime,
+      fuelMass,
+      exhaustVelocity,
+      massFlowRate,
     ] = genome;
 
     const rocket = new Rocket(
@@ -129,7 +138,9 @@ export class FlightTrajectory {
       startInclineAfterDistance,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
-      fuelCombustionTime
+      fuelMass,
+      exhaustVelocity,
+      massFlowRate
     );
 
     this.simulateFlight(rocket);

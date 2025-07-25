@@ -50,16 +50,21 @@ class Rocket {
    */
   hasLanded = false;
 
+  fuelCombustionTime = 0;
+  currentTotalMass = 0;
+
   /**
    * Creates a new Rocket instance.
    * @param earth The Earth instance to which the rocket is associated.
    * @param initialPosition The initial position of the rocket in 3D space.
    * @param targetInclineVector Thrust straight-line direction (Euclidean) towards the target.
-   * @param startInclineAfterDistance The distance after which the rocket starts to incline (default is 8 km).
-   * @param thrustInclineMaxDuration The maximum duration for the thrust incline (default is 160 seconds).
+   * @param startInclineAfterDistance The distance after which the rocket starts to incline 
+   * @param thrustInclineMaxDuration The maximum duration for the thrust incline
    * @param thrustInclineVelocity The velocity of the thrust incline in radians per second
-   * @param fuelCombustionTime The total time for fuel combustion in seconds (default is 535 seconds).
-   * @param maxThrust The maximum thrust of the rocket in km/s² (default is 0.05 km/s²).
+   * @param payloadMass The mass of the rocket payload in kilograms 
+   * @param fuelMass The mass of the rocket fuel in kilograms
+   * @param exhaustVelocity The exhaust velocity of the rocket in kilometers per second 
+   * @param massFlowRate The mass flow rate of the rocket in kilograms per second 
    */
   constructor(
     private earth: Earth,
@@ -70,11 +75,15 @@ class Rocket {
     public readonly thrustInclineVelocity: number = THREE.MathUtils.degToRad(
       0.5
     ),
-    public readonly fuelCombustionTime = 535,
-    public readonly maxThrust = 0.05 // km/s²
+    public readonly fuelMass = 18400,
+    public readonly exhaustVelocity = 3, // km/s
+    public readonly massFlowRate = 50, // kg/s
+    public readonly payloadMass = 800, // kg
   ) {
     this.initialPosition = initialPosition;
     this.position.copy(this.initialPosition);
+
+    this.fuelCombustionTime = this.fuelMass / this.massFlowRate;
   }
 
   currentThrustInclineDuration = 0;
@@ -84,19 +93,35 @@ class Rocket {
   thrustInclineAngle = 0;
 
   /**
+   * The maximum thrust that the rocket can produce.
+   * @returns The maximum thrust in (kg*(km/s²)).
+   */
+  get maxThrust() {
+    return (this.massFlowRate * this.exhaustVelocity) / this.payloadMass;
+  }
+
+  /**
    * @param tick The time step for the simulation, in seconds.
    * @param targetFlatThrustDirection The target direction for the thrust, in 3D space.
    */
   setThrust(tick: number, targetFlatThrustDirection: THREE.Vector3) {
-    if (this.fuelCombustionTime <= this.flightTime) {
+    const m0 = this.fuelMass + this.payloadMass; // Initial mass (kg)
+    const mf = this.payloadMass; // Final mass (kg) after fuel burn
+    const ve = this.exhaustVelocity; // Exhaust velocity (km/s)
+    const dmdt = this.massFlowRate; // Mass flow rate (kg/s)
+    const F = dmdt * ve; // Thrust (kg*(km/s²))
+    const mT = m0 - dmdt * this.flightTime; // Current mass of the rocket (kg);
+
+    const thrust = F / mT;
+
+    if (mT >= mf) {
+      this.currentTotalMass = mT;
+    }
+
+    if (mT <= mf) {
       this.thrust = new THREE.Vector3(0, 0, 0);
       return;
     }
-
-    // Compute thrust magnitude (same as your original logic)
-    const thrust =
-      this.maxThrust *
-      Math.sin((this.flightTime * Math.PI) / this.fuelCombustionTime);
 
     // --- 1. Initial thrust direction is opposite of gravity ---
     const gravityDirection = this.gravityForce.clone().normalize();
@@ -124,7 +149,6 @@ class Rocket {
       .clone()
       .applyAxisAngle(rotationAxis, this.thrustInclineAngle);
 
-    // Final thrust vector
     this.thrust = inclinedThrustDirection.multiplyScalar(thrust);
   }
 
@@ -148,17 +172,14 @@ class Rocket {
     const displacementMagnitude = this.displacement.length();
 
     // todo fix (if too high time multipliyer)
-    if (
-      displacementMagnitude > 10 &&
-      this.altitude <= 0
-    ) {
+    if (displacementMagnitude > 10 && this.altitude <= 0) {
       this.velocity.set(0, 0, 0);
       this.thrust.set(0, 0, 0);
       this.hasLanded = true;
 
       return;
     }
-  
+
     if (
       this.thrust.length() > this.gravityForce.length() ||
       this.velocity.length() !== 0
