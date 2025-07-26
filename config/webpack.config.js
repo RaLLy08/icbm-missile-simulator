@@ -112,6 +112,16 @@ module.exports = (env, argv) => {
     plugins,
   } = config;
 
+  plugins.push(
+    new CopyPlugin({
+      patterns: [
+        { from: "src/public/robots.txt", to: "robots.txt" },
+        { from: "src/public/sitemap.xml", to: "sitemap.xml" },
+        { from: "preview.png", to: "preview.png" },
+      ],
+    }),
+  );
+
   if (argv.mode === 'production') {
     config.mode = 'production';
 
@@ -196,13 +206,6 @@ module.exports = (env, argv) => {
   }
 
   plugins.push(
-   new CopyPlugin({
-      patterns: [
-        { from: "src/public/robots.txt", to: `${REPO_NAME}/robots.txt` },
-        { from: "src/public/sitemap.xml", to: `${REPO_NAME}/sitemap.xml` },
-        { from: "preview.png", to: `${REPO_NAME}/preview.png` },
-      ],
-    }),
     new HtmlWebpackPlugin({
       title: '',
       svgIcons: icons,
