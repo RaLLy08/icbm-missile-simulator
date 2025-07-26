@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rally08.github.io/icbm-missile-simulator/

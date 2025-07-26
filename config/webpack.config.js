@@ -8,6 +8,7 @@ const CircularDependencyPlugin = require('circular-dependency-plugin');
 const Dotenv = require('dotenv-webpack');
 const process = require('process');
 const fs = require('fs');
+const CopyPlugin = require('copy-webpack-plugin');
 
 require('dotenv').config({
   path: path.resolve(__dirname, '.env'),
@@ -195,6 +196,13 @@ module.exports = (env, argv) => {
   }
 
   plugins.push(
+   new CopyPlugin({
+      patterns: [
+        { from: "src/public/robots.txt", to: "robots.txt" },
+        { from: "src/public/sitemap.xml", to: "sitemap.xml" },
+        { from: "preview.png", to: "preview.png" },
+      ],
+    }),
     new HtmlWebpackPlugin({
       title: '',
       svgIcons: icons,
