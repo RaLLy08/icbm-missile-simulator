@@ -63,7 +63,7 @@ export default class EarthView {
     color: number,
     opacity: number
   ) {
-    const geometry = new THREE.SphereGeometry(radius, 32, 32);
+    const geometry = new THREE.SphereGeometry(radius, 128, 128);
     const material = new THREE.MeshPhongMaterial({
       color: color,
       transparent: true,
@@ -76,7 +76,7 @@ export default class EarthView {
 
   private createAtmosphereBorder(radius: number, color: number) {
     const geo = new THREE.EdgesGeometry(
-      new THREE.SphereGeometry(radius, 32, 32)
+      new THREE.SphereGeometry(radius, 128, 128)
     );
     const mat = new THREE.LineBasicMaterial({ color: color, linewidth: 1 });
     return new THREE.LineSegments(geo, mat);
