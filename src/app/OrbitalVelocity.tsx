@@ -754,7 +754,8 @@ const OrbitalVelocity = () => {
                     disabled={launchQueue.length === 0}
                     onClick={handleLaunchRocketClick}
                   >
-                    Launch 🚀 {launchQueue.length > 0 && `(${launchQueue.length})`}
+                    Launch 🚀{' '}
+                    {launchQueue.length > 0 && `(${launchQueue.length})`}
                   </button>
                 </div>
 
@@ -835,7 +836,7 @@ const OrbitalVelocity = () => {
                     className={s.removeButton}
                     onClick={() => handleRemoveFromQueue(item.id)}
                   >
-                    Remove
+                    ✕
                   </button>
                 </div>
               ))}
@@ -952,22 +953,16 @@ const OrbitalVelocity = () => {
                 <div className={s.stepContent}>
                   <h3>Launch!</h3>
                   <p>
-                    Click the <strong>"Launch 🚀"</strong> button to fire the next
-                    rocket in your queue. Each click launches one rocket and
-                    removes it from the queue. You can launch them one by one,
-                    even while time is running!
+                    Click the <strong>"Launch 🚀"</strong> button to fire the
+                    next rocket in your queue. Each click launches one rocket
+                    and removes it from the queue. You can launch them one by
+                    one, even while time is running!
                   </p>
                 </div>
               </div>
 
               <div className={s.tip}>
-                <strong>🎯 Queue Management:</strong> Use the{' '}
-                <strong>Remove</strong> button to delete individual launches, or{' '}
-                <strong>Clear All</strong> to empty your entire queue.
-              </div>
-
-              <div className={s.tip}>
-                <strong>⏸️ Pro Tip:</strong> Stop time using the{' '}
+                <strong>⏸️ Tip:</strong> Stop time using the{' '}
                 <strong>"Stop Time"</strong> button in Main Controls to set up
                 multiple launches, then resume and fire them sequentially!
               </div>
@@ -976,11 +971,6 @@ const OrbitalVelocity = () => {
                 <strong>⚡ Tip:</strong> Increase the{' '}
                 <strong>Time Multiplier</strong> in the Main Controls panel to
                 speed up the simulation.
-              </div>
-
-              <div className={s.tip}>
-                <strong>💡 Tip:</strong> Press <kbd>Esc</kbd> to cancel position
-                selection at any time.
               </div>
             </div>
           </div>
