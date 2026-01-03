@@ -106,9 +106,13 @@ export default class DE {
   };
 
   calcFitness() {
-    this.population.forEach((genome) => {
-      genome.fitness = this.fitnessFunction(genome);
-    });
+    // Only calculate fitness for genomes that don't have it yet
+    for (let i = 0; i < this.population.length; i++) {
+      const genome = this.population[i];
+      if (genome.fitness === Infinity || genome.fitness === undefined) {
+        genome.fitness = this.fitnessFunction(genome);
+      }
+    }
   }
 
   /**
@@ -184,30 +188,32 @@ export default class DE {
       const newPopulation = [];
 
       const parents = this.population;
-      const eliteSize = this.elite * this.population.length;
-  
-      for (let j = 0; j <= parents.length - 1; j++) {
+      const eliteSize = Math.floor(this.elite * this.population.length);
+      const parentLength = parents.length;
+
+      for (let j = 0; j < parentLength; j++) {
           const parentA = parents[j];
-          const parentB = parents[Math.floor(Math.random() * parents.length)];
-          const parentC = parents[Math.floor(Math.random() * parents.length)];
-          // Crossover between best parent and random parent to increase diversity
 
           if (j < eliteSize) {
               // Elite genomes pass to next generation without changes
               newPopulation.push(parentA);
               continue;
           }
-          
-          const child = this.crossover(parentA, parentB, parentC);
-      
+
+          const parentB = parents[Math.floor(Math.random() * parentLength)];
+          const parentC = parents[Math.floor(Math.random() * parentLength)];
+          // Crossover between best parent and random parent to increase diversity
+
+          const child = new Genome(this.crossover(parentA, parentB, parentC));
+
           if (Math.random() < this.mutationRate) {
               // Mutate child with probability of mutationRate
               this.mutate(child);
           }
-  
+
           newPopulation.push(child);
       }
-  
+
       this.population.push(...newPopulation);
   }
 

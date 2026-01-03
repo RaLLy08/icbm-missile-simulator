@@ -25,6 +25,11 @@ class Rocket {
 
   gravityForce = new THREE.Vector3(0, 0, 0);
 
+  // Reusable vectors to avoid allocations in hot paths
+  private _tempVec1 = new THREE.Vector3();
+  private _tempVec2 = new THREE.Vector3();
+  private _tempVec3 = new THREE.Vector3();
+
   /**
    * Unit: km
    */
@@ -119,13 +124,15 @@ class Rocket {
     }
 
     if (mT <= mf) {
-      this.thrust = new THREE.Vector3(0, 0, 0);
+      this.thrust.set(0, 0, 0);
       return;
     }
 
     // --- 1. Initial thrust direction is opposite of gravity ---
-    const gravityDirection = this.gravityForce.clone().normalize();
-    const baseThrustDirection = gravityDirection.clone().negate(); // opposite to gravity
+    // Reuse _tempVec1 for gravityDirection
+    this._tempVec1.copy(this.gravityForce).normalize();
+    // Reuse _tempVec2 for baseThrustDirection
+    this._tempVec2.copy(this._tempVec1).negate();
 
     // --- 3. Gradual interpolation between gravity-opposite and toTarget ---
     if (
@@ -138,29 +145,25 @@ class Rocket {
     this.thrustInclineAngle =
       this.thrustInclineVelocity * this.currentThrustInclineDuration;
 
-    // Compute axis of rotation
-    const rotationAxis = baseThrustDirection
-      .clone()
-      .cross(targetFlatThrustDirection)
-      .normalize();
+    // Compute axis of rotation - reuse _tempVec3
+    this._tempVec3.copy(this._tempVec2).cross(targetFlatThrustDirection).normalize();
 
-    // Apply the rotation
-    const inclinedThrustDirection = baseThrustDirection
-      .clone()
-      .applyAxisAngle(rotationAxis, this.thrustInclineAngle);
-
-    this.thrust = inclinedThrustDirection.multiplyScalar(thrust);
+    // Apply the rotation directly to thrust vector
+    this.thrust.copy(this._tempVec2).applyAxisAngle(this._tempVec3, this.thrustInclineAngle).multiplyScalar(thrust);
   }
+
+  private _cachedThrustDirection = new THREE.Vector3();
 
   calcThrustDirectionToIncline() {
     const gravityDir = this.earth.gravityForce(this.position);
-    const gravityNorm = gravityDir.clone().normalize();
+    this._tempVec1.copy(gravityDir).normalize();
 
     // 3. Project targetInclineVector onto the plane perpendicular to gravity
-    return this.targetInclineVector
-      .clone()
-      .projectOnPlane(gravityNorm)
+    this._cachedThrustDirection.copy(this.targetInclineVector)
+      .projectOnPlane(this._tempVec1)
       .normalize();
+
+    return this._cachedThrustDirection;
   }
 
   update(tick = 1) {
@@ -184,20 +187,23 @@ class Rocket {
       this.thrust.length() > this.gravityForce.length() ||
       this.velocity.length() !== 0
     ) {
-      this.velocity.add(this.gravityForce.clone().multiplyScalar(tick));
-      this.velocity.add(this.thrust.clone().multiplyScalar(tick));
+      // Use temp vectors to avoid allocations
+      this._tempVec1.copy(this.gravityForce).multiplyScalar(tick);
+      this.velocity.add(this._tempVec1);
 
-      this.position.add(this.velocity.clone().multiplyScalar(tick));
+      this._tempVec2.copy(this.thrust).multiplyScalar(tick);
+      this.velocity.add(this._tempVec2);
 
-      this.travelledDistance.add(
-        new THREE.Vector3()
-          .set(
-            Math.abs(this.velocity.x),
-            Math.abs(this.velocity.y),
-            Math.abs(this.velocity.z)
-          )
-          .multiplyScalar(tick)
-      );
+      this._tempVec1.copy(this.velocity).multiplyScalar(tick);
+      this.position.add(this._tempVec1);
+
+      // Update travelled distance
+      this._tempVec1.set(
+        Math.abs(this.velocity.x),
+        Math.abs(this.velocity.y),
+        Math.abs(this.velocity.z)
+      ).multiplyScalar(tick);
+      this.travelledDistance.add(this._tempVec1);
     }
 
     this.flightTime += tick;
@@ -237,8 +243,10 @@ class Rocket {
   //   }
   // }
 
+  private _displacement = new THREE.Vector3();
+
   get displacement() {
-    return this.position.clone().sub(this.initialPosition);
+    return this._displacement.copy(this.position).sub(this.initialPosition);
   }
 }
 

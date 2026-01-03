@@ -30,6 +30,7 @@ export class FlightTrajectory {
   private de: DE | null = null;
   public onProgress: (bestGenome: any, progress: number) => void = () => {};
   ellapsedTime: number = 0;
+  private _tempDistanceVec = new THREE.Vector3();
 
   constructor(
     private earth: Earth,
@@ -104,6 +105,11 @@ export class FlightTrajectory {
     }
 
     return new Promise<any>((resolve) => {
+      let lastBestFitness = Infinity;
+      let noImprovementCount = 0;
+      const convergenceThreshold = 0.001; // km
+      const maxNoImprovementGenerations = 20;
+
       this.de.run(delayBetweenGenerationsMs, (generation: number) => {
         const bestGenome = this.de.population[0];
 
@@ -111,6 +117,20 @@ export class FlightTrajectory {
           bestGenome,
           (generation * 100) / (deParams.maxGenerations - 1)
         );
+
+        // Early termination: check for convergence
+        const fitnessImprovement = Math.abs(lastBestFitness - bestGenome.fitness);
+        if (fitnessImprovement < convergenceThreshold) {
+          noImprovementCount++;
+          if (noImprovementCount >= maxNoImprovementGenerations) {
+            this.de.terminate();
+            resolve(this.de.population[0]);
+            return;
+          }
+        } else {
+          noImprovementCount = 0;
+        }
+        lastBestFitness = bestGenome.fitness;
 
         const isFinished = generation + 1 === deParams.maxGenerations;
 
@@ -147,7 +167,8 @@ export class FlightTrajectory {
 
     genome.rocket = rocket;
 
-    let fitness = rocket.position.clone().distanceTo(this.target);
+    // Use cached vector for distance calculation to avoid allocation
+    let fitness = this._tempDistanceVec.copy(rocket.position).distanceTo(this.target);
 
     if (this.minimizeFlightTime) {
       fitness += rocket.flightTime;
