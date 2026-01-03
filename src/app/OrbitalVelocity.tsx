@@ -21,12 +21,20 @@ import CameraManager from './helpers/CameraManager';
 
 const scene = new THREE.Scene();
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 2);
+// Strong ambient light for even illumination across the entire Earth
+const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(0, 0, 0);
+// Subtle directional light for minimal definition without harsh shadows
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
+directionalLight.position.set(5, 3, 5).normalize();
+directionalLight.castShadow = false;
+
 scene.add(directionalLight);
+
+// Add hemisphere light for global illumination (sky and ground bounce light)
+const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.8);
+scene.add(hemisphereLight);
 
 const clock = new THREE.Clock();
 
@@ -141,6 +149,8 @@ const OrbitalVelocity = () => {
         logarithmicDepthBuffer: true,
       });
       renderer.setClearColor(0x000000, 1);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       miniWindow!.style.width = '300px';
       miniWindow!.style.height = '300px';
 
@@ -161,6 +171,8 @@ const OrbitalVelocity = () => {
         logarithmicDepthBuffer: true,
       });
       renderer.setClearColor(0x000000, 1);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.setPixelRatio(window.devicePixelRatio);
       renderer.setSize(window.innerWidth, window.innerHeight);
       sceneContainer!.appendChild(renderer.domElement);
@@ -186,7 +198,14 @@ const OrbitalVelocity = () => {
 
     const earthGui = new EarthGui(mainPane);
     const earthView = new EarthView(earth, scene, earthGui);
+    updateTriggers.push(earthView);
     cameraManager.setEarthCamera(earth);
+
+    // Set camera for atmospheric glow updates
+    const camera = cameraManager.getCamera();
+    if (camera) {
+      earthView.setCamera(camera);
+    }
 
     launchPadListenersRef.current.focusOnEarth = () => {
       cameraManager.setEarthCamera(earth);

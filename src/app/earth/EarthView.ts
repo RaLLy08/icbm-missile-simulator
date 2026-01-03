@@ -4,10 +4,15 @@ import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
 import { atmosphereLayerKeys } from './earth.consts';
 import EarthGui from './Earth.gui';
 
-const earthTexture = new THREE.TextureLoader().load(earth8kTextureJpg);
+const textureLoader = new THREE.TextureLoader();
+const earthTexture = textureLoader.load(earth8kTextureJpg);
+earthTexture.colorSpace = THREE.SRGBColorSpace;
+earthTexture.anisotropy = 16; // Better texture quality at angles
 
 export default class EarthView {
   readonly mesh: THREE.Mesh;
+  private atmosphereGlow?: THREE.Mesh;
+  private camera?: THREE.Camera;
 
   public atmosphereLayers = new Map<atmosphereLayerKeys, THREE.Mesh>();
   public atmostphereBorders = new Map<
@@ -24,8 +29,13 @@ export default class EarthView {
     const segments = 512;
 
     const geometry = new THREE.SphereGeometry(Earth.RADIUS, segments, segments);
-    const material = new THREE.MeshPhongMaterial({
+
+    // Use MeshStandardMaterial for physically-based rendering
+    const material = new THREE.MeshStandardMaterial({
       map: earthTexture,
+      roughness: 0.9,
+      metalness: 0.1,
+      // Water will appear more reflective due to lower roughness in specular map
     });
 
     this.mesh = new THREE.Mesh(geometry, material);
@@ -37,6 +47,9 @@ export default class EarthView {
     this.mesh.position.copy(this.earth.position);
 
     this.scene.add(this.mesh);
+
+    // Add atmospheric glow
+    this.createAtmosphericGlow();
 
     this.initAtmosphereLayers();
     this.initAtmosphereBorders();
@@ -56,6 +69,49 @@ export default class EarthView {
     earthGui.onShowEarthClicked = (show) => {
       this.setVisibility(show);
     };
+  }
+
+  private createAtmosphericGlow() {
+    // Create a realistic atmospheric glow using custom shader
+    const glowGeometry = new THREE.SphereGeometry(Earth.RADIUS * 1.015, 128, 128);
+
+    // Custom shader for realistic atmospheric scattering
+    const glowMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        c: { value: 0.3 },
+        p: { value: 3.5 },
+        glowColor: { value: new THREE.Color(0x88ccff) },
+        viewVector: { value: new THREE.Vector3() }
+      },
+      vertexShader: `
+        uniform vec3 viewVector;
+        uniform float c;
+        uniform float p;
+        varying float intensity;
+        void main() {
+          vec3 vNormal = normalize(normalMatrix * normal);
+          vec3 vNormel = normalize(normalMatrix * viewVector);
+          intensity = pow(c - dot(vNormal, vNormel), p);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 glowColor;
+        varying float intensity;
+        void main() {
+          vec3 glow = glowColor * intensity;
+          gl_FragColor = vec4(glow, intensity);
+        }
+      `,
+      side: THREE.FrontSide,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      depthWrite: false
+    });
+
+    this.atmosphereGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+    this.atmosphereGlow.position.copy(this.earth.position);
+    this.scene.add(this.atmosphereGlow);
   }
 
   private createAtmosphereLayer(
@@ -342,5 +398,21 @@ export default class EarthView {
 
   setMarkerVisible(marker: THREE.Mesh, visible: boolean = true) {
     marker.visible = visible;
+  }
+
+  setCamera(camera: THREE.Camera) {
+    this.camera = camera;
+  }
+
+  update() {
+    // Update atmospheric glow shader with camera position for realistic effect
+    if (this.atmosphereGlow && this.camera) {
+      const material = this.atmosphereGlow.material as THREE.ShaderMaterial;
+      if (material.uniforms?.viewVector) {
+        this.camera.getWorldPosition(material.uniforms.viewVector.value);
+        material.uniforms.viewVector.value.sub(this.earth.position);
+        material.uniforms.viewVector.value.normalize();
+      }
+    }
   }
 }
