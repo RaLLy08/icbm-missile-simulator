@@ -83,11 +83,33 @@ const OrbitalVelocity = () => {
   const [isFocusedOnEarth, setIsFocusedOnEarth] = useState(true);
   const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
 
+  // Launch queue state
+  const [launchQueue, setLaunchQueue] = useState<
+    Array<{
+      id: number;
+      startPosition: THREE.Vector3;
+      targetPosition: THREE.Vector3;
+      startGeo: { latitude: number; longitude: number };
+      targetGeo: { latitude: number; longitude: number };
+      trajectoryParams: {
+        startInclineAfterDistance: number;
+        thrustInclineMaxDuration: number;
+        thrustInclineVelocity: number;
+        fuelMass: number;
+        exhaustVelocity: number;
+        massFlowRate: number;
+      };
+    }>
+  >([]);
+  const [queueIdCounter, setQueueIdCounter] = useState(0);
+
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
   const rocketGuiContainerId = useId();
   const mouseFollowerId = useId();
   const miniWindowId = useId();
+
+  const queueMarkersRef = useRef<(THREE.Mesh | THREE.Group)[]>([]);
 
   const handleFocusOnEarthClick = () => {
     setIsFocusedOnEarth(true);
@@ -248,7 +270,34 @@ const OrbitalVelocity = () => {
 
       setIsLaunchDisabled(true);
 
+      const startPos = launcher.rocketStartPosition.clone();
+      const targetPos = launcher.rocketTargetPosition.clone();
+      const startGeoPos = Earth.positionToGeoCoordinates(startPos);
+      const targetGeoPos = Earth.positionToGeoCoordinates(targetPos);
+
       launcher.calcTrajectory(onProgress).then(() => {
+        // Add to queue after calculation
+        setQueueIdCounter((prevCounter) => {
+          setLaunchQueue((prev) => [
+            ...prev,
+            {
+              id: prevCounter,
+              startPosition: startPos,
+              targetPosition: targetPos,
+              startGeo: startGeoPos,
+              targetGeo: targetGeoPos,
+              trajectoryParams: {
+                startInclineAfterDistance: launcher.startInclineAfterDistance,
+                thrustInclineMaxDuration: launcher.thrustInclineMaxDuration,
+                thrustInclineVelocity: launcher.thrustInclineVelocity,
+                fuelMass: launcher.fuelMass,
+                exhaustVelocity: launcher.exhaustVelocity,
+                massFlowRate: launcher.massFlowRate,
+              },
+            },
+          ]);
+          return prevCounter + 1;
+        });
         setIsLaunchDisabled(false);
         setCalculationProgress(null);
       });
@@ -257,67 +306,93 @@ const OrbitalVelocity = () => {
     let activeRocketGui: RocketGui | null = null;
 
     launcherPadListeners.onLaunchRocket = () => {
-      const rocket = launcher.createRocket();
-
-      if (!rocket) {
-        console.error('Rocket could not be created. Check launcher settings.');
-        return;
-      }
-      const rocketView = new RocketView(rocket, scene, earthView);
-      rocketView.setSize(launcherGui.rocketSizeMultiplier);
-      rocketView.init();
-      rocketView.updatePrevFromRocket();
-
-      const frameTimeManager = new FrameTimeManager(
-        rocket,
-        rocketView,
-        worldGui
-      );
-
-      earthView.addTorusMarker(launcher.rocketStartPosition!, 0x0000ff, 40, 4);
-      earthView.addTorusMarker(launcher.rocketTargetPosition!, 0x00ff00, 40, 4);
-      launcherView.remove();
-
-      setRocketCount(launcher.rocketCount);
-
-      const setActiveRocketGui = () => {
-        if (activeRocketGui) {
-          activeRocketGui.remove();
-          updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
+      // Launch from queue
+      setLaunchQueue((prevQueue) => {
+        if (prevQueue.length === 0) {
+          console.error('No launches in queue.');
+          return prevQueue;
         }
 
-        activeRocketGui = new RocketGui(
-          rocketGuiPane,
-          rocketGuiContainer!,
+        const [nextLaunch, ...remainingQueue] = prevQueue;
+
+        // Set launcher params from queue item
+        launcher.rocketStartPosition = nextLaunch.startPosition;
+        launcher.rocketTargetPosition = nextLaunch.targetPosition;
+        launcher.startInclineAfterDistance =
+          nextLaunch.trajectoryParams.startInclineAfterDistance;
+        launcher.thrustInclineMaxDuration =
+          nextLaunch.trajectoryParams.thrustInclineMaxDuration;
+        launcher.thrustInclineVelocity =
+          nextLaunch.trajectoryParams.thrustInclineVelocity;
+        launcher.fuelMass = nextLaunch.trajectoryParams.fuelMass;
+        launcher.exhaustVelocity = nextLaunch.trajectoryParams.exhaustVelocity;
+        launcher.massFlowRate = nextLaunch.trajectoryParams.massFlowRate;
+
+        const rocket = launcher.createRocket();
+
+        if (!rocket) {
+          console.error('Rocket could not be created. Check launcher settings.');
+          return prevQueue;
+        }
+        const rocketView = new RocketView(rocket, scene, earthView);
+        rocketView.setSize(launcherGui.rocketSizeMultiplier);
+        rocketView.init();
+        rocketView.updatePrevFromRocket();
+
+        const frameTimeManager = new FrameTimeManager(
           rocket,
-          rocketView
+          rocketView,
+          worldGui
         );
 
-        activeRocketGui.onFocusCameraClick = () => {
-          cameraManager.setRocketCamera(earthView, rocketView);
-          setIsMiniWindowOpen(true);
-          setIsFocusedOnEarth(false);
+        earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4);
+        earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4);
+        launcherView.remove();
+
+        setRocketCount(launcher.rocketCount);
+
+        const setActiveRocketGui = () => {
+          if (activeRocketGui) {
+            activeRocketGui.remove();
+            updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
+          }
+
+          activeRocketGui = new RocketGui(
+            rocketGuiPane,
+            rocketGuiContainer!,
+            rocket,
+            rocketView
+          );
+
+          activeRocketGui.onFocusCameraClick = () => {
+            cameraManager.setRocketCamera(earthView, rocketView);
+            setIsMiniWindowOpen(true);
+            setIsFocusedOnEarth(false);
+          };
+
+          updateTriggers.push(activeRocketGui);
         };
 
-        updateTriggers.push(activeRocketGui);
-      };
+        rocketGuiPane
+          .addButton({
+            title: `Focus on Missile ${rocket.id}`,
+          })
+          .on('click', () => {
+            cameraManager.setRocketCamera(earthView, rocketView);
 
-      rocketGuiPane
-        .addButton({
-          title: `Focus on Missile ${rocket.id}`,
-        })
-        .on('click', () => {
-          cameraManager.setRocketCamera(earthView, rocketView);
+            setIsMiniWindowOpen(true);
+            setIsFocusedOnEarth(false);
+            setActiveRocketGui();
+          });
 
-          setIsMiniWindowOpen(true);
-          setIsFocusedOnEarth(false);
-          setActiveRocketGui();
-        });
+        setActiveRocketGui();
+        activeRocketGui?.scrollToEnd();
 
-      setActiveRocketGui();
-      activeRocketGui?.scrollToEnd();
+        updateTriggers.push(frameTimeManager);
 
-      updateTriggers.push(frameTimeManager);
+        // Return remaining queue (removing the launched item)
+        return remainingQueue;
+      });
     };
 
     // const garbageCollector = () => {
@@ -451,6 +526,88 @@ const OrbitalVelocity = () => {
     };
   }, []);
 
+  // Update queue markers when queue changes
+  useEffect(() => {
+    // Clear existing markers
+    queueMarkersRef.current.forEach((marker) => {
+      scene.remove(marker);
+    });
+    queueMarkersRef.current = [];
+
+    // Add markers for each queued launch
+    launchQueue.forEach((item, index) => {
+      const startMarker = createQueueMarker(
+        item.startPosition,
+        0x00ffff,
+        index + 1,
+        'start'
+      );
+      const targetMarker = createQueueMarker(
+        item.targetPosition,
+        0xffff00,
+        index + 1,
+        'target'
+      );
+
+      scene.add(startMarker);
+      scene.add(targetMarker);
+      queueMarkersRef.current.push(startMarker, targetMarker);
+    });
+  }, [launchQueue]);
+
+  const createQueueMarker = (
+    position: THREE.Vector3,
+    color: number,
+    number: number,
+    type: 'start' | 'target'
+  ) => {
+    let marker: THREE.Mesh | THREE.Group;
+
+    if (type === 'start') {
+      // Create a sphere (point) for start position
+      const radius = 50;
+      const geometry = new THREE.SphereGeometry(radius, 16, 16);
+      const material = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.7,
+      });
+      marker = new THREE.Mesh(geometry, material);
+    } else {
+      // Create a cross (two intersecting planes) for target position
+      const size = 100;
+      const thickness = 10;
+
+      const group = new THREE.Group();
+
+      // Horizontal plane
+      const planeGeometry1 = new THREE.PlaneGeometry(size, thickness);
+      const material = new THREE.MeshBasicMaterial({
+        color: color,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide,
+      });
+      const plane1 = new THREE.Mesh(planeGeometry1, material);
+
+      // Vertical plane
+      const planeGeometry2 = new THREE.PlaneGeometry(thickness, size);
+      const plane2 = new THREE.Mesh(planeGeometry2, material.clone());
+
+      group.add(plane1);
+      group.add(plane2);
+
+      marker = group;
+    }
+
+    marker.position.copy(position);
+
+    const normal = position.clone().normalize();
+    marker.lookAt(position.clone().add(normal));
+
+    return marker;
+  };
+
   const handleStartPositionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setStartPositionActive((prev) => !prev);
@@ -479,6 +636,15 @@ const OrbitalVelocity = () => {
   const handleLaunchRocketClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     launchPadListenersRef.current.onLaunchRocket();
+  };
+
+  const handleClearQueueClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLaunchQueue([]);
+  };
+
+  const handleRemoveFromQueue = (id: number) => {
+    setLaunchQueue((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleInfoButtonClick = (e: React.MouseEvent) => {
@@ -585,10 +751,10 @@ const OrbitalVelocity = () => {
                   </button>
                   <button
                     className={s.launchButton}
-                    disabled={isLaunchDisabled}
+                    disabled={launchQueue.length === 0}
                     onClick={handleLaunchRocketClick}
                   >
-                    Launch 🚀
+                    Launch 🚀 {launchQueue.length > 0 && `(${launchQueue.length})`}
                   </button>
                 </div>
 
@@ -633,6 +799,49 @@ const OrbitalVelocity = () => {
             </svg>
           </a>
         </div>
+
+        {/* Launch Queue Panel */}
+        {launchQueue.length > 0 && isFocusedOnEarth && (
+          <div className={s.queuePanel}>
+            <div className={s.queueHeader}>
+              <h3>Launch Queue ({launchQueue.length})</h3>
+              <button className={s.clearButton} onClick={handleClearQueueClick}>
+                Clear All
+              </button>
+            </div>
+            <div className={s.queueList}>
+              {launchQueue.map((item, index) => (
+                <div key={item.id} className={s.queueItem}>
+                  <div className={s.queueItemInfo}>
+                    <span className={s.queueItemNumber}>#{index + 1}</span>
+                    <div className={s.queueItemCoords}>
+                      <div className={s.coordPair}>
+                        <span className={s.coordLabel}>Start</span>
+                        <span>
+                          {item.startGeo.latitude.toFixed(1)},
+                          {item.startGeo.longitude.toFixed(1)}
+                        </span>
+                      </div>
+                      <div className={s.coordPair}>
+                        <span className={s.coordLabel}>Target</span>
+                        <span>
+                          {item.targetGeo.latitude.toFixed(1)},
+                          {item.targetGeo.longitude.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    className={s.removeButton}
+                    onClick={() => handleRemoveFromQueue(item.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {isPositionSelectionActive && (
@@ -719,7 +928,8 @@ const OrbitalVelocity = () => {
                   <h3>Calculate Trajectory</h3>
                   <p>
                     Click the <strong>"Calculate"</strong> button to compute the
-                    optimal flight path. This may take a few moments.
+                    optimal flight path. The trajectory will be automatically
+                    added to your launch queue when complete.
                   </p>
                 </div>
               </div>
@@ -727,12 +937,39 @@ const OrbitalVelocity = () => {
               <div className={s.step}>
                 <div className={s.stepNumber}>4</div>
                 <div className={s.stepContent}>
-                  <h3>Launch!</h3>
+                  <h3>Queue Multiple Launches</h3>
                   <p>
-                    Once calculation is complete, click the{' '}
-                    <strong>"Launch 🚀"</strong> button to fire your rocket!
+                    You can repeat steps 1-3 to add multiple launches to your
+                    queue. All queued launches will appear in the{' '}
+                    <strong>Launch Queue</strong> panel at the bottom-left, with
+                    cyan (start) and yellow (target) markers on Earth.
                   </p>
                 </div>
+              </div>
+
+              <div className={s.step}>
+                <div className={s.stepNumber}>5</div>
+                <div className={s.stepContent}>
+                  <h3>Launch!</h3>
+                  <p>
+                    Click the <strong>"Launch 🚀"</strong> button to fire the next
+                    rocket in your queue. Each click launches one rocket and
+                    removes it from the queue. You can launch them one by one,
+                    even while time is running!
+                  </p>
+                </div>
+              </div>
+
+              <div className={s.tip}>
+                <strong>🎯 Queue Management:</strong> Use the{' '}
+                <strong>Remove</strong> button to delete individual launches, or{' '}
+                <strong>Clear All</strong> to empty your entire queue.
+              </div>
+
+              <div className={s.tip}>
+                <strong>⏸️ Pro Tip:</strong> Stop time using the{' '}
+                <strong>"Stop Time"</strong> button in Main Controls to set up
+                multiple launches, then resume and fire them sequentially!
               </div>
 
               <div className={s.tip}>
