@@ -4,6 +4,91 @@ import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 
+export class ExplosionEffect {
+  private rings: THREE.Mesh[] = [];
+  private startTime: number = 0;
+  private duration: number = 2000; // 2 seconds
+  private isActive: boolean = false;
+
+  constructor(
+    private readonly scene: THREE.Scene,
+    private readonly ringCount: number = 3
+  ) {}
+
+  start(position: THREE.Vector3, normal: THREE.Vector3) {
+    this.startTime = Date.now();
+    this.isActive = true;
+
+    // Create expanding rings
+    for (let i = 0; i < this.ringCount; i++) {
+      const ringGeometry = new THREE.RingGeometry(1, 2, 32);
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff4500,
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.8,
+      });
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+
+      // Position ring at explosion point
+      ring.position.copy(position);
+
+      // Align ring perpendicular to the surface normal
+      ring.lookAt(position.clone().add(normal));
+
+      this.rings.push(ring);
+      this.scene.add(ring);
+    }
+  }
+
+  update() {
+    if (!this.isActive) return;
+
+    const elapsed = Date.now() - this.startTime;
+    const progress = Math.min(elapsed / this.duration, 1);
+
+    if (progress >= 1) {
+      this.remove();
+      return;
+    }
+
+    this.rings.forEach((ring, index) => {
+      // Stagger the start of each ring
+      const ringDelay = (index / this.ringCount) * 0.3;
+      const ringProgress = Math.max(0, (progress - ringDelay) / (1 - ringDelay));
+
+      // Expand the ring
+      const maxScale = 50 + index * 10;
+      const scale = 1 + ringProgress * maxScale;
+      ring.scale.set(scale, scale, 1);
+
+      // Fade out with damping
+      const opacity = (1 - ringProgress) * 0.8 * Math.exp(-ringProgress * 2);
+      (ring.material as THREE.MeshBasicMaterial).opacity = opacity;
+
+      // Change color from orange to red to dark
+      const r = 1;
+      const g = Math.max(0, 0.5 - ringProgress * 0.5);
+      const b = 0;
+      (ring.material as THREE.MeshBasicMaterial).color.setRGB(r, g, b);
+    });
+  }
+
+  remove() {
+    this.isActive = false;
+    this.rings.forEach((ring) => {
+      this.scene.remove(ring);
+      ring.geometry.dispose();
+      (ring.material as THREE.MeshBasicMaterial).dispose();
+    });
+    this.rings = [];
+  }
+
+  get active(): boolean {
+    return this.isActive;
+  }
+}
+
 export class TrailView {
   private line: THREE.Line | null = null;
   private geometry = new THREE.BufferGeometry();
@@ -176,6 +261,8 @@ export default class RocketView {
   private trailView: TrailView | null = null;
   private burningFireMesh: THREE.Mesh | null = null;
   private thrustDirectionFireMesh: THREE.Mesh | null = null;
+  private explosionEffect: ExplosionEffect | null = null;
+  private hasTriggeredExplosion: boolean = false;
 
   prevPosition = new THREE.Vector3();
   prevVelocity = new THREE.Vector3();
@@ -198,6 +285,7 @@ export default class RocketView {
   ) {
     this.group = new THREE.Group();
     this.trailView = new TrailView(this.scene);
+    this.explosionEffect = new ExplosionEffect(this.scene, 5);
   }
 
   setSize(size: number) {
@@ -517,6 +605,18 @@ export default class RocketView {
 
       this.scene.add(this.endPositionSkyMarker);
     }
+
+    // Trigger explosion effect when rocket lands
+    if (this.rocket.hasLanded && !this.hasTriggeredExplosion && this.explosionEffect) {
+      const normal = this.rocket.position.clone().normalize();
+      this.explosionEffect.start(this.rocket.position.clone(), normal);
+      this.hasTriggeredExplosion = true;
+    }
+
+    // Update explosion effect animation
+    if (this.explosionEffect) {
+      this.explosionEffect.update();
+    }
   }
 
   private updateBurningFireScale() {
@@ -653,6 +753,11 @@ export default class RocketView {
     if (this.trailView) {
       this.trailView.remove();
       this.trailView = null;
+    }
+
+    if (this.explosionEffect) {
+      this.explosionEffect.remove();
+      this.explosionEffect = null;
     }
   }
 }
