@@ -81,6 +81,7 @@ const OrbitalVelocity = () => {
   } | null>(null);
 
   const [isFocusedOnEarth, setIsFocusedOnEarth] = useState(true);
+  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
 
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
@@ -480,6 +481,15 @@ const OrbitalVelocity = () => {
     launchPadListenersRef.current.onLaunchRocket();
   };
 
+  const handleInfoButtonClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsInstructionsOpen(true);
+  };
+
+  const handleCloseInstructions = () => {
+    setIsInstructionsOpen(false);
+  };
+
   const isPositionSelectionActive = startPositionActive || targetPositionActive;
 
   return (
@@ -512,6 +522,14 @@ const OrbitalVelocity = () => {
 
           return (
             <div className={s.launchPad}>
+              <button
+                className={s.infoButton}
+                onClick={handleInfoButtonClick}
+                title="How to launch a rocket"
+              >
+                ℹ️
+              </button>
+
               <div className={s.infoPanel}>
                 {startPositionActive && (
                   <div className={s.infoText}>
@@ -604,7 +622,7 @@ const OrbitalVelocity = () => {
               width="32"
               height="32"
               xmlns="http://www.w3.org/2000/svg"
-              viewBox='0 0 98 96'
+              viewBox="0 0 98 96"
             >
               <path
                 fill-rule="evenodd"
@@ -664,6 +682,73 @@ const OrbitalVelocity = () => {
           }}
         ></div>
       </div>
+
+      {isInstructionsOpen && (
+        <div className={s.modalOverlay} onClick={handleCloseInstructions}>
+          <div className={s.modalContent} onClick={(e) => e.stopPropagation()}>
+            <button className={s.closeButton} onClick={handleCloseInstructions}>
+              ✕
+            </button>
+            <h2 className={s.modalTitle}>How to Launch a Rocket</h2>
+            <div className={s.instructions}>
+              <div className={s.step}>
+                <div className={s.stepNumber}>1</div>
+                <div className={s.stepContent}>
+                  <h3>Set Start Position</h3>
+                  <p>
+                    Click the <strong>"Set Start"</strong> button, then click
+                    anywhere on Earth to select your launch location.
+                  </p>
+                </div>
+              </div>
+
+              <div className={s.step}>
+                <div className={s.stepNumber}>2</div>
+                <div className={s.stepContent}>
+                  <h3>Set Target Position</h3>
+                  <p>
+                    Click the <strong>"Set Target"</strong> button, then click
+                    on Earth to select your target location.
+                  </p>
+                </div>
+              </div>
+
+              <div className={s.step}>
+                <div className={s.stepNumber}>3</div>
+                <div className={s.stepContent}>
+                  <h3>Calculate Trajectory</h3>
+                  <p>
+                    Click the <strong>"Calculate"</strong> button to compute the
+                    optimal flight path. This may take a few moments.
+                  </p>
+                </div>
+              </div>
+
+              <div className={s.step}>
+                <div className={s.stepNumber}>4</div>
+                <div className={s.stepContent}>
+                  <h3>Launch!</h3>
+                  <p>
+                    Once calculation is complete, click the{' '}
+                    <strong>"Launch 🚀"</strong> button to fire your rocket!
+                  </p>
+                </div>
+              </div>
+
+              <div className={s.tip}>
+                <strong>⚡ Tip:</strong> Increase the{' '}
+                <strong>Time Multiplier</strong> in the Main Controls panel to
+                speed up the simulation.
+              </div>
+
+              <div className={s.tip}>
+                <strong>💡 Tip:</strong> Press <kbd>Esc</kbd> to cancel position
+                selection at any time.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
