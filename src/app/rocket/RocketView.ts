@@ -9,15 +9,25 @@ export class ExplosionEffect {
   private startTime: number = 0;
   private duration: number = 2000; // 2 seconds
   private isActive: boolean = false;
+  private audio: HTMLAudioElement;
 
   constructor(
     private readonly scene: THREE.Scene,
     private readonly ringCount: number = 3
-  ) {}
+  ) {
+    this.audio = new Audio('/sound/nuke.mp3');
+    this.audio.volume = 0.5;
+  }
 
   start(position: THREE.Vector3, normal: THREE.Vector3) {
     this.startTime = Date.now();
     this.isActive = true;
+
+    // Play explosion sound
+    this.audio.currentTime = 0;
+    this.audio.play().catch((error) => {
+      console.warn('Failed to play explosion sound:', error);
+    });
 
     // Create expanding rings
     for (let i = 0; i < this.ringCount; i++) {
