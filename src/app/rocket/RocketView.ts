@@ -68,7 +68,7 @@ export class ExplosionEffect {
       const ringProgress = Math.max(0, (progress - ringDelay) / (1 - ringDelay));
 
       // Expand the ring
-      const maxScale = 50 + index * 10;
+      const maxScale = 100 + index * 10;
       const scale = 1 + ringProgress * maxScale;
       ring.scale.set(scale, scale, 1);
 
