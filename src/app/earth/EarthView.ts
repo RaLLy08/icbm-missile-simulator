@@ -1,6 +1,7 @@
 import Earth from './Earth';
 import * as THREE from 'three';
 import earth8kTextureJpg from 'public/textures/8k_earth_daymap.jpg';
+import countriesGeoJsonData from 'public/data/countries.geo.json';
 import { atmosphereLayerKeys } from './earth.consts';
 import EarthGui from './Earth.gui';
 
@@ -13,6 +14,7 @@ export default class EarthView {
   readonly mesh: THREE.Mesh;
   private atmosphereGlow?: THREE.Mesh;
   private camera?: THREE.Camera;
+  private countryBorders?: THREE.LineSegments;
 
   public atmosphereLayers = new Map<atmosphereLayerKeys, THREE.Mesh>();
   public atmostphereBorders = new Map<
@@ -53,6 +55,7 @@ export default class EarthView {
 
     this.initAtmosphereLayers();
     this.initAtmosphereBorders();
+    this.createCountryBorders();
 
     earthGui.onAddAtmosphereLayerClicked = (layerKey) => {
       this.renderAtmosphereLayer(layerKey);
@@ -69,11 +72,18 @@ export default class EarthView {
     earthGui.onShowEarthClicked = (show) => {
       this.setVisibility(show);
     };
+    earthGui.onToggleCountryBordersClicked = (show) => {
+      this.toggleCountryBorders(show);
+    };
   }
 
   private createAtmosphericGlow() {
     // Create a realistic atmospheric glow using custom shader
-    const glowGeometry = new THREE.SphereGeometry(Earth.RADIUS * 1.015, 128, 128);
+    const glowGeometry = new THREE.SphereGeometry(
+      Earth.RADIUS * 1.015,
+      128,
+      128
+    );
 
     // Custom shader for realistic atmospheric scattering
     const glowMaterial = new THREE.ShaderMaterial({
@@ -81,7 +91,7 @@ export default class EarthView {
         c: { value: 0.3 },
         p: { value: 3.5 },
         glowColor: { value: new THREE.Color(0x88ccff) },
-        viewVector: { value: new THREE.Vector3() }
+        viewVector: { value: new THREE.Vector3() },
       },
       vertexShader: `
         uniform vec3 viewVector;
@@ -106,7 +116,7 @@ export default class EarthView {
       side: THREE.FrontSide,
       blending: THREE.AdditiveBlending,
       transparent: true,
-      depthWrite: false
+      depthWrite: false,
     });
 
     this.atmosphereGlow = new THREE.Mesh(glowGeometry, glowMaterial);
@@ -377,7 +387,7 @@ export default class EarthView {
   createLineToSkyMarker(
     position: THREE.Vector3,
     color: number = 0x00ff00,
-    length: number = 1000,
+    length: number = 1000
   ) {
     const material = new THREE.LineBasicMaterial({ color: color });
 
@@ -413,6 +423,92 @@ export default class EarthView {
         material.uniforms.viewVector.value.sub(this.earth.position);
         material.uniforms.viewVector.value.normalize();
       }
+    }
+  }
+
+  private createCountryBorders() {
+    const points: THREE.Vector3[] = [];
+
+    // Helper function to convert lat/lon to 3D coordinates
+    const latLonToVector3 = (lon: number, lat: number, radius: number) => {
+      const phi = (90 - lat) * (Math.PI / 180);
+      const theta = (lon + 180) * (Math.PI / 180);
+
+      const x = -(radius * Math.sin(phi) * Math.cos(theta));
+      const z = radius * Math.sin(phi) * Math.sin(theta);
+      const y = radius * Math.cos(phi);
+
+      return new THREE.Vector3(x, y, z);
+    };
+
+    // Process GeoJSON features
+    const countriesGeoJson: any = countriesGeoJsonData;
+    countriesGeoJson.features.forEach((feature: any) => {
+      const geometry = feature.geometry;
+
+      const processCoordinates = (coords: any[], depth: number = 0) => {
+        if (depth === 0 && Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+          // This is a coordinate pair [lon, lat]
+          return;
+        }
+
+        if (Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+          // Process line string
+          for (let i = 0; i < coords.length - 1; i++) {
+            const [lon1, lat1] = coords[i];
+            const [lon2, lat2] = coords[i + 1];
+
+            const p1 = latLonToVector3(lon1, lat1, Earth.RADIUS + 2);
+            const p2 = latLonToVector3(lon2, lat2, Earth.RADIUS + 2);
+
+            points.push(p1, p2);
+          }
+        } else {
+          // Recurse deeper
+          coords.forEach((subCoords: any) => processCoordinates(subCoords, depth + 1));
+        }
+      };
+
+      if (geometry.type === 'Polygon') {
+        processCoordinates(geometry.coordinates);
+      } else if (geometry.type === 'MultiPolygon') {
+        geometry.coordinates.forEach((polygon: any) => processCoordinates(polygon));
+      }
+    });
+
+    // Create line segments from points
+    const borderGeometry = new THREE.BufferGeometry().setFromPoints(points);
+    const borderMaterial = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      opacity: 0.5,
+      transparent: true,
+      linewidth: 1,
+    });
+
+    this.countryBorders = new THREE.LineSegments(borderGeometry, borderMaterial);
+    this.countryBorders.position.copy(this.earth.position);
+
+    // Add to scene by default
+    this.scene.add(this.countryBorders);
+  }
+
+  toggleCountryBorders(visible: boolean) {
+    if (this.countryBorders) {
+      this.countryBorders.visible = visible;
+    }
+  }
+
+  setCountryBordersColor(color: number) {
+    if (this.countryBorders) {
+      const material = this.countryBorders.material as THREE.LineBasicMaterial;
+      material.color.setHex(color);
+    }
+  }
+
+  setCountryBordersOpacity(opacity: number) {
+    if (this.countryBorders) {
+      const material = this.countryBorders.material as THREE.LineBasicMaterial;
+      material.opacity = opacity;
     }
   }
 }

@@ -8,6 +8,7 @@ export default class EarthGui {
   private atmosphereBordersFolder: FolderApi;
 
   showEarth = true;
+  showCountryBorders = true;
   massKg = Earth.MASS;
   gravityConst = Earth.G;
 
@@ -50,6 +51,7 @@ export default class EarthGui {
   onRemoveAtmosphereBorderClicked: (layerKey: atmosphereLayerKeys) => void =
     () => {};
   onShowEarthClicked: (show: boolean) => void = () => {};
+  onToggleCountryBordersClicked: (show: boolean) => void = () => {};
 
   onFocusCameraClick: () => void = () => {};
 
@@ -128,6 +130,17 @@ export default class EarthGui {
       .on('change', (ev) => {
         this.onShowEarthClicked(ev.value);
       });
+
+    this.folder
+      .addBinding(this, 'showCountryBorders', {
+        label: 'Show Country Borders',
+        input: 'checkbox',
+        view: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.onToggleCountryBordersClicked(ev.value);
+      });
+
     this.folder
       .addButton({
         title: 'Focus Camera',
