@@ -1,7 +1,6 @@
 import { FolderApi, Pane } from 'tweakpane';
 import Earth from './Earth';
 import { atmosphereLayerKeys } from './earth.consts';
-import CameraManager from 'app/helpers/CameraManager';
 
 export default class EarthGui {
   private folder: FolderApi;
@@ -15,7 +14,7 @@ export default class EarthGui {
   readonly atmosphereLayersStates = {
     [atmosphereLayerKeys.TROPOSPHERE]: false,
     [atmosphereLayerKeys.STRATOSPHERE]: false,
-    [atmosphereLayerKeys.MESOSPHERE]: true,
+    [atmosphereLayerKeys.MESOSPHERE]: false,
     [atmosphereLayerKeys.THERMOSPHERE]: true,
     [atmosphereLayerKeys.EXOSPHERE]: true,
   };
