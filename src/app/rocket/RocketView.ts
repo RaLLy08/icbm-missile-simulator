@@ -3,6 +3,7 @@ import Rocket from './Rocket';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
+import nukeAudio from 'public/audio/nuke.mp3';
 
 export class ExplosionEffect {
   private rings: THREE.Mesh[] = [];
@@ -15,7 +16,7 @@ export class ExplosionEffect {
     private readonly scene: THREE.Scene,
     private readonly ringCount: number = 3
   ) {
-    this.audio = new Audio('/sound/nuke.mp3');
+    this.audio = new Audio(nukeAudio);
     this.audio.volume = 0.5;
   }
 
