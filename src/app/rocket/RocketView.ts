@@ -66,7 +66,10 @@ export class ExplosionEffect {
     this.rings.forEach((ring, index) => {
       // Stagger the start of each ring
       const ringDelay = (index / this.ringCount) * 0.3;
-      const ringProgress = Math.max(0, (progress - ringDelay) / (1 - ringDelay));
+      const ringProgress = Math.max(
+        0,
+        (progress - ringDelay) / (1 - ringDelay)
+      );
 
       // Expand the ring
       const maxScale = 100 + index * 10;
@@ -605,7 +608,7 @@ export default class RocketView {
 
     if (!this.rocket.hasLanded) {
       this.extendTrail();
-    };
+    }
 
     if (this.rocket.hasLanded && this.endPositionSkyMarker == null) {
       this.endPositionSkyMarker = this.earthView.createLineToSkyMarker(
@@ -618,7 +621,11 @@ export default class RocketView {
     }
 
     // Trigger explosion effect when rocket lands
-    if (this.rocket.hasLanded && !this.hasTriggeredExplosion && this.explosionEffect) {
+    if (
+      this.rocket.hasLanded &&
+      !this.hasTriggeredExplosion &&
+      this.explosionEffect
+    ) {
       const normal = this.rocket.position.clone().normalize();
       this.explosionEffect.start(this.rocket.position.clone(), normal);
       this.hasTriggeredExplosion = true;
@@ -687,7 +694,10 @@ export default class RocketView {
           .clone()
           .applyQuaternion(this.group.quaternion.clone().invert());
 
-        this.thrustDirectionFireMesh.quaternion.setFromAxisAngle(localRotationAxis, angle);
+        this.thrustDirectionFireMesh.quaternion.setFromAxisAngle(
+          localRotationAxis,
+          angle
+        );
       } else {
         this.thrustDirectionFireMesh.quaternion.identity();
       }

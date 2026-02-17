@@ -447,7 +447,11 @@ export default class EarthView {
       const geometry = feature.geometry;
 
       const processCoordinates = (coords: any[], depth: number = 0) => {
-        if (depth === 0 && Array.isArray(coords[0]) && typeof coords[0][0] === 'number') {
+        if (
+          depth === 0 &&
+          Array.isArray(coords[0]) &&
+          typeof coords[0][0] === 'number'
+        ) {
           // This is a coordinate pair [lon, lat]
           return;
         }
@@ -465,14 +469,18 @@ export default class EarthView {
           }
         } else {
           // Recurse deeper
-          coords.forEach((subCoords: any) => processCoordinates(subCoords, depth + 1));
+          coords.forEach((subCoords: any) =>
+            processCoordinates(subCoords, depth + 1)
+          );
         }
       };
 
       if (geometry.type === 'Polygon') {
         processCoordinates(geometry.coordinates);
       } else if (geometry.type === 'MultiPolygon') {
-        geometry.coordinates.forEach((polygon: any) => processCoordinates(polygon));
+        geometry.coordinates.forEach((polygon: any) =>
+          processCoordinates(polygon)
+        );
       }
     });
 
@@ -485,7 +493,10 @@ export default class EarthView {
       linewidth: 1,
     });
 
-    this.countryBorders = new THREE.LineSegments(borderGeometry, borderMaterial);
+    this.countryBorders = new THREE.LineSegments(
+      borderGeometry,
+      borderMaterial
+    );
     this.countryBorders.position.copy(this.earth.position);
 
     // Add to scene by default
