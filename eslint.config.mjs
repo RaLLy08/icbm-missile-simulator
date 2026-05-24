@@ -4,7 +4,7 @@ import pluginJs from '@eslint/js';
 import pluginReact from 'eslint-plugin-react';
 
 export default [
-  { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'], ignores: ['.config/*'] },
+  { files: ['**/*.{js,mjs,cjs,ts,jsx,tsx}'], ignores: ['config/*'] },
   { languageOptions: { globals: globals.browser } },
   { ...pluginJs.configs.recommended, ignorePatterns: ['*.config/*'] },
   // ...tseslint.configs.recommended,

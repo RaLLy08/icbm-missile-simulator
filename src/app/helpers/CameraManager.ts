@@ -82,8 +82,6 @@ export default class CameraManager {
       this.rocketCameraController.setRocketView(rocketView);
     }
 
-    this.rocketCameraController;
-
     this.cameraController = this.rocketCameraController;
   }
 

@@ -181,9 +181,6 @@ export default class DE {
   /**
    * Adding new population by creating children from population
    */
-  /**
-   * Adding new population by creating children from population
-  */
   addNewPopulation() {
       const newPopulation = [];
 

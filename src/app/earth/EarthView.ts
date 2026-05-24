@@ -17,7 +17,7 @@ export default class EarthView {
   private countryBorders?: THREE.LineSegments;
 
   public atmosphereLayers = new Map<atmosphereLayerKeys, THREE.Mesh>();
-  public atmostphereBorders = new Map<
+  public atmosphereBorders = new Map<
     atmosphereLayerKeys,
     THREE.LineSegments
   >();
@@ -100,8 +100,8 @@ export default class EarthView {
         varying float intensity;
         void main() {
           vec3 vNormal = normalize(normalMatrix * normal);
-          vec3 vNormel = normalize(normalMatrix * viewVector);
-          intensity = pow(c - dot(vNormal, vNormel), p);
+          vec3 vViewNormal = normalize(normalMatrix * viewVector);
+          intensity = pow(c - dot(vNormal, vViewNormal), p);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
@@ -216,9 +216,9 @@ export default class EarthView {
   }
 
   private initAtmosphereBorders() {
-    this.atmostphereBorders.clear();
+    this.atmosphereBorders.clear();
 
-    this.atmostphereBorders.set(
+    this.atmosphereBorders.set(
       atmosphereLayerKeys.TROPOSPHERE,
       this.createAtmosphereBorder(
         Earth.RADIUS +
@@ -227,7 +227,7 @@ export default class EarthView {
       )
     );
 
-    this.atmostphereBorders.set(
+    this.atmosphereBorders.set(
       atmosphereLayerKeys.STRATOSPHERE,
       this.createAtmosphereBorder(
         Earth.RADIUS +
@@ -236,7 +236,7 @@ export default class EarthView {
       )
     );
 
-    this.atmostphereBorders.set(
+    this.atmosphereBorders.set(
       atmosphereLayerKeys.MESOSPHERE,
       this.createAtmosphereBorder(
         Earth.RADIUS +
@@ -245,7 +245,7 @@ export default class EarthView {
       )
     );
 
-    this.atmostphereBorders.set(
+    this.atmosphereBorders.set(
       atmosphereLayerKeys.THERMOSPHERE,
       this.createAtmosphereBorder(
         Earth.RADIUS +
@@ -254,7 +254,7 @@ export default class EarthView {
       )
     );
 
-    this.atmostphereBorders.set(
+    this.atmosphereBorders.set(
       atmosphereLayerKeys.EXOSPHERE,
       this.createAtmosphereBorder(
         Earth.RADIUS +
@@ -263,7 +263,7 @@ export default class EarthView {
       )
     );
 
-    this.atmostphereBorders.forEach((border) => {
+    this.atmosphereBorders.forEach((border) => {
       border.castShadow = false;
       border.receiveShadow = false;
     });
@@ -278,14 +278,14 @@ export default class EarthView {
   }
 
   renderAtmosphereBorder(name: atmosphereLayerKeys) {
-    const atmosphereBorder = this.atmostphereBorders.get(name);
+    const atmosphereBorder = this.atmosphereBorders.get(name);
     if (atmosphereBorder) {
       this.scene.add(atmosphereBorder);
     }
   }
 
   removeAtmosphereBorder(name: atmosphereLayerKeys) {
-    const atmosphereBorder = this.atmostphereBorders.get(name);
+    const atmosphereBorder = this.atmosphereBorders.get(name);
 
     if (atmosphereBorder) {
       this.scene.remove(atmosphereBorder);

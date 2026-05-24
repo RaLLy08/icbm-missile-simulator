@@ -12,7 +12,7 @@ describe('Rocket', () => {
     .sub(rocketTargetPosition)
     .normalize();
 
-  it('should match the velocity according the Tsiolkovsky rocket equation', () => {
+  it('should match the velocity according to the Tsiolkovsky rocket equation', () => {
     const rocketPayloadMass = 1000;
     const rocketFuelMass = 18400;
     const exhaustVelocity = 3;
@@ -25,20 +25,25 @@ describe('Rocket', () => {
       1,
       1,
       THREE.MathUtils.degToRad(0.5),
-      rocketPayloadMass,
       rocketFuelMass,
       exhaustVelocity,
-      massFlowRate
+      massFlowRate,
+      rocketPayloadMass
     );
 
     const simulatedFlightTime = 60 * 2; // seconds
 
     for (let tick = 0; tick < simulatedFlightTime; tick++) {
       rocket.update();
-       console.log(rocket.velocity);
     }
 
-    console.log(rocket.velocity);
+    // Tsiolkovsky: Δv = ve * ln(m0 / mf)
+    const m0 = rocketFuelMass + rocketPayloadMass;
+    const mf = rocketPayloadMass;
+    const expectedDeltaV = exhaustVelocity * Math.log(m0 / mf);
+    const actualSpeed = rocket.velocity.length();
+
+    expect(actualSpeed).toBeCloseTo(expectedDeltaV, 0);
 
   });
 });

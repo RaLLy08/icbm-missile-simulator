@@ -29,7 +29,7 @@ type DEParams = {
 export class FlightTrajectory {
   private de: DE | null = null;
   public onProgress: (bestGenome: any, progress: number) => void = () => {};
-  ellapsedTime: number = 0;
+  elapsedTime: number = 0;
   private _tempDistanceVec = new THREE.Vector3();
 
   constructor(
@@ -60,7 +60,7 @@ export class FlightTrajectory {
       );
     }
 
-    this.ellapsedTime = 0;
+    this.elapsedTime = 0;
     const startTime = performance.now();
 
     const populationSize = this.increaseCalculationAccuracy ? 200 : 80;
@@ -89,7 +89,7 @@ export class FlightTrajectory {
       delayBetweenGenerationsMs
     );
 
-    this.ellapsedTime = (performance.now() - startTime) / 1000;
+    this.elapsedTime = (performance.now() - startTime) / 1000;
 
     return bestGenome;
   }
@@ -99,10 +99,6 @@ export class FlightTrajectory {
     delayBetweenGenerationsMs?: number | null
   ) => {
     this.de = new DE(deParams);
-
-    if (!this.de) {
-      throw new Error('DE instance is not set. Call setDe() first.');
-    }
 
     return new Promise<any>((resolve) => {
       let lastBestFitness = Infinity;
