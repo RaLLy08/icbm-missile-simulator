@@ -3,6 +3,7 @@ import { FlightTrajectory } from '../FlightTrajectory';
 import Earth from '../earth/Earth';
 import LauncherGui from './Launcher.gui';
 import Rocket from 'app/rocket/Rocket';
+import { getMissileById, type MissileSpec } from './MissileDatabase';
 
 export default class Launcher {
   counter = 0;
@@ -15,13 +16,46 @@ export default class Launcher {
   fuelMass = 30000; // kg
   exhaustVelocity = 4; // km/s
   massFlowRate = 50; // kg/s
+  payloadMass = 800; // kg
 
   rocketCount = 0;
 
   constructor(
     private launcherGui: LauncherGui,
     private earth: Earth
-  ) {}
+  ) {
+    this.applyCurrentMissilePreset();
+
+    launcherGui.onMissileSelected = (spec: MissileSpec) => {
+      this.applyMissileSpec(spec);
+    };
+  }
+
+  private applyCurrentMissilePreset() {
+    const spec = getMissileById(this.launcherGui.selectedMissileId);
+    if (spec) {
+      this.applyMissileSpec(spec);
+    }
+  }
+
+  private applyMissileSpec(spec: MissileSpec) {
+    this.exhaustVelocity = spec.exhaustVelocity;
+    this.massFlowRate = spec.massFlowRate;
+    this.fuelMass = spec.fuelMass;
+    this.payloadMass = spec.payloadMass;
+    this.startInclineAfterDistance = spec.startInclineAfterDistance;
+    this.thrustInclineMaxDuration = spec.thrustInclineMaxDuration;
+    this.thrustInclineVelocity = THREE.MathUtils.degToRad(spec.thrustInclineVelocityDeg);
+
+    this.launcherGui.startInclineAfterDistance = spec.startInclineAfterDistance;
+    this.launcherGui.currentThrustInclineDuration = 0;
+    this.launcherGui.thrustInclineVelocity = THREE.MathUtils.degToRad(spec.thrustInclineVelocityDeg);
+    this.launcherGui.fuelCombustionTime = spec.fuelMass / spec.massFlowRate;
+    this.launcherGui.fuelMass = spec.fuelMass;
+    this.launcherGui.massFlowRate = spec.massFlowRate;
+    this.launcherGui.exhaustVelocity = spec.exhaustVelocity;
+    this.launcherGui.payloadMass = spec.payloadMass;
+  }
 
   setStartPosition = (coordinates: THREE.Vector3) => {
     this.rocketStartPosition = coordinates.clone();
@@ -119,6 +153,7 @@ export default class Launcher {
     this.launcherGui.travelledDistance = rocket.travelledDistance.length();
     this.launcherGui.flightTime = rocket.flightTime;
 
+    this.payloadMass = rocket.payloadMass;
     this.launcherGui.payloadMass = rocket.payloadMass;
     this.launcherGui.fuelMass = rocket.fuelMass;
     this.launcherGui.massFlowRate = rocket.massFlowRate;
@@ -148,6 +183,7 @@ export default class Launcher {
       this.fuelMass,
       this.exhaustVelocity,
       this.massFlowRate,
+      this.payloadMass,
     );
 
     rocket.id = this.counter++;
