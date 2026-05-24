@@ -350,7 +350,9 @@ const OrbitalVelocity = () => {
         const rocket = launcher.createRocket();
 
         if (!rocket) {
-          console.error('Rocket could not be created. Check launcher settings.');
+          console.error(
+            'Rocket could not be created. Check launcher settings.'
+          );
           return prevQueue;
         }
         const rocketView = new RocketView(rocket, scene, earthView);
@@ -796,6 +798,8 @@ const OrbitalVelocity = () => {
             </div>
           );
         })()}
+
+        <div className={s.versionBadge}>v{__VERSION__}</div>
 
         <div className={s.githubLink}>
           <a
