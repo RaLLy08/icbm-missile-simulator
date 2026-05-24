@@ -18,6 +18,7 @@
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 1;
     background: rgba(0, 0, 0, 0.6);
     border: 1px solid #0ff;
     border-radius: 12px;
@@ -168,6 +169,7 @@
     position: absolute;
     top: 10px;
     left: 10px;
+    z-index: 1;
     padding: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     max-height: 50%;
@@ -182,6 +184,7 @@
     position: absolute;
     bottom: 10px;
     right: 10px;
+    z-index: 1;
     padding: 5px;
     border-radius: 5px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -193,6 +196,7 @@
     position: absolute;
     top: 10px;
     right: 10px;
+    z-index: 1;
     padding: 10px;
     border-radius: 5px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
@@ -210,6 +214,7 @@
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 1;
 
     display: flex;
     flex-direction: column;
