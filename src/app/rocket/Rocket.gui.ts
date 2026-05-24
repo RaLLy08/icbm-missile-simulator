@@ -103,7 +103,7 @@ export default class RocketGui {
     });
 
     this.folder.addBinding(this.rocket, 'flightTime', {
-      label: 'Fligth Time',
+      label: 'Flight Time',
       readonly: true,
       format: (v) => {
         const formatted = formatSeconds(v);
