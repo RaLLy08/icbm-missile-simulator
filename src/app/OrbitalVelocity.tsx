@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Pane } from 'tweakpane';
 import Stats from 'three/examples/jsm/libs/stats.module';
@@ -18,6 +19,11 @@ import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
+import DefenseGui from './defense/DefenseGui';
+import DefenseSystem from './defense/DefenseSystem';
+import { getDefenseSpec } from './defense/DefenseDatabase';
+import DefenseView from './defense/DefenseView';
+import CityLabels from './earth/CityLabels';
 
 const scene = new THREE.Scene();
 
@@ -52,6 +58,7 @@ const OrbitalVelocity = () => {
     onLaunchRocket: () => {},
     focusOnEarth: () => {},
     onCancelSelectionClick: () => {},
+    stopPlacingDefense: () => {},
   });
   const [calcWasReset, setCalcWasReset] = useState(true);
   const [rocketCount, setRocketCount] = useState(0);
@@ -118,6 +125,13 @@ const OrbitalVelocity = () => {
   const miniWindowId = useId();
 
   const queueMarkersRef = useRef<(THREE.Mesh | THREE.Group)[]>([]);
+  const defenseSystemsRef = useRef<DefenseSystem[]>([]);
+  const defenseViewsRef = useRef<DefenseView[]>([]);
+  const isPlacingDefenseRef = useRef(false);
+  const pendingDefenseSystemIdRef = useRef('');
+  const activeHostilesRef = useRef<{ id: number; getPosition: () => THREE.Vector3; getVelocity: () => THREE.Vector3; isDead: () => boolean; die: () => void }[]>([]);
+  const [defenseSitesCount, setDefenseSitesCount] = useState(0);
+  const [isPlacingDefense, setIsPlacingDefense] = useState(false);
 
   const handleFocusOnEarthClick = () => {
     setIsFocusedOnEarth(true);
@@ -182,6 +196,14 @@ const OrbitalVelocity = () => {
 
     const fullScreenRenderer = createFullScreenRenderer();
     const miniWindowRenderer = createMiniWindowRenderer();
+
+    sceneContainer!.style.position = 'relative';
+
+    const css2DRenderer = new CSS2DRenderer();
+    css2DRenderer.setSize(window.innerWidth, window.innerHeight);
+    css2DRenderer.domElement.style.cssText =
+      'position:absolute;top:0;left:0;pointer-events:none;z-index:0;';
+    sceneContainer!.appendChild(css2DRenderer.domElement);
 
     const mouseTracker = new MouseTracker(window);
 
@@ -275,6 +297,41 @@ const OrbitalVelocity = () => {
     const mouseTrackedGui = new MouseTrackerGui(worldGui.folder, mouseTracker);
     updateTriggers.push(mouseTrackedGui);
 
+    const cityLabels = new CityLabels(scene);
+
+    const defenseGui = new DefenseGui(mainPane);
+
+    defenseGui.onPlaceDefenseClicked = (systemId: string) => {
+      isPlacingDefenseRef.current = true;
+      pendingDefenseSystemIdRef.current = systemId;
+      setIsPlacingDefense(true);
+    };
+
+    defenseGui.onRemoveLastSiteClicked = () => {
+      const systems = defenseSystemsRef.current;
+      const views = defenseViewsRef.current;
+      if (systems.length === 0) return;
+      views[views.length - 1].remove();
+      defenseSystemsRef.current = systems.slice(0, -1);
+      defenseViewsRef.current = views.slice(0, -1);
+      setDefenseSitesCount(defenseSystemsRef.current.length);
+      defenseGui.statusText = defenseSystemsRef.current.length > 0
+        ? `${defenseSystemsRef.current.length} site(s) placed`
+        : 'Place a defense site on Earth';
+      defenseGui.refresh();
+    };
+
+    defenseGui.onClearAllSitesClicked = () => {
+      for (const view of defenseViewsRef.current) {
+        view.remove();
+      }
+      defenseSystemsRef.current = [];
+      defenseViewsRef.current = [];
+      setDefenseSitesCount(0);
+      defenseGui.statusText = 'Place a defense site on Earth';
+      defenseGui.refresh();
+    };
+
     launchPadListeners.onCalculateTrajectory = () => {
       if (!launcher.rocketStartPosition || !launcher.rocketTargetPosition) {
         console.error('Start or target position is not set.');
@@ -325,7 +382,6 @@ const OrbitalVelocity = () => {
     let activeRocketGui: RocketGui | null = null;
 
     launchPadListeners.onLaunchRocket = () => {
-      // Launch from queue
       setLaunchQueue((prevQueue) => {
         if (prevQueue.length === 0) {
           console.error('No launches in queue.');
@@ -353,61 +409,72 @@ const OrbitalVelocity = () => {
           console.error('Rocket could not be created. Check launcher settings.');
           return prevQueue;
         }
-        const rocketView = new RocketView(rocket, scene, earthView);
-        rocketView.setSize(launcherGui.rocketSizeMultiplier);
-        rocketView.init();
-        rocketView.updatePrevFromRocket();
 
-        const frameTimeManager = new FrameTimeManager(
-          rocket,
-          rocketView,
-          worldGui
-        );
+        activeHostilesRef.current.push({
+          id: rocket.id,
+          getPosition: () => rocket.position,
+          getVelocity: () => rocket.velocity,
+          isDead: () => rocket.hasLanded,
+          die: () => { rocket.hasLanded = true; },
+        });
 
-        earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4);
-        earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4);
-        launcherView.remove();
+        setTimeout(() => {
+          const rocketView = new RocketView(rocket, scene, earthView);
+          rocketView.setSize(launcherGui.rocketSizeMultiplier);
+          rocketView.init();
+          rocketView.updatePrevFromRocket();
 
-        setRocketCount(launcher.rocketCount);
-
-        const setActiveRocketGui = () => {
-          if (activeRocketGui) {
-            activeRocketGui.remove();
-            updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
-          }
-
-          activeRocketGui = new RocketGui(
-            rocketGuiPane,
-            rocketGuiContainer!,
+          const frameTimeManager = new FrameTimeManager(
             rocket,
-            rocketView
+            rocketView,
+            worldGui
           );
 
-          activeRocketGui.onFocusCameraClick = () => {
-            cameraManager.setRocketCamera(earthView, rocketView);
-            setIsMiniWindowOpen(true);
-            setIsFocusedOnEarth(false);
+          earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4);
+          earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4);
+          launcherView.remove();
+
+          setRocketCount(launcher.rocketCount);
+
+          const setActiveRocketGui = () => {
+            if (activeRocketGui) {
+              activeRocketGui.remove();
+              updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
+            }
+
+            activeRocketGui = new RocketGui(
+              rocketGuiPane,
+              rocketGuiContainer!,
+              rocket,
+              rocketView
+            );
+
+            activeRocketGui.onFocusCameraClick = () => {
+              cameraManager.setRocketCamera(earthView, rocketView);
+              setIsMiniWindowOpen(true);
+              setIsFocusedOnEarth(false);
+            };
+
+            updateTriggers.push(activeRocketGui);
           };
 
-          updateTriggers.push(activeRocketGui);
-        };
+          rocketGuiPane
+            .addButton({
+              title: `Focus on Missile ${rocket.id}`,
+            })
+            .on('click', () => {
+              cameraManager.setRocketCamera(earthView, rocketView);
 
-        rocketGuiPane
-          .addButton({
-            title: `Focus on Missile ${rocket.id}`,
-          })
-          .on('click', () => {
-            cameraManager.setRocketCamera(earthView, rocketView);
+              setIsMiniWindowOpen(true);
+              setIsFocusedOnEarth(false);
+              setActiveRocketGui();
+            });
 
-            setIsMiniWindowOpen(true);
-            setIsFocusedOnEarth(false);
-            setActiveRocketGui();
-          });
+          setActiveRocketGui();
+          activeRocketGui?.scrollToEnd();
 
-        setActiveRocketGui();
-        activeRocketGui?.scrollToEnd();
-
-        updateTriggers.push(frameTimeManager);
+          updateTriggers.push(frameTimeManager);
+        }, 0);
 
         // Return remaining queue (removing the launched item)
         return remainingQueue;
@@ -429,6 +496,27 @@ const OrbitalVelocity = () => {
         return;
       }
       const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
+
+      if (isPlacingDefenseRef.current) {
+        const spec = getDefenseSpec(pendingDefenseSystemIdRef.current);
+        if (spec) {
+          const system = new DefenseSystem(
+            earth,
+            earthIntersection,
+            spec,
+            defenseSystemsRef.current.length
+          );
+          defenseSystemsRef.current.push(system);
+          const view = new DefenseView(scene, system);
+          defenseViewsRef.current.push(view);
+          setDefenseSitesCount(defenseSystemsRef.current.length);
+        }
+        // Keep placement mode active so user can place multiple sites in a row.
+        // Press Escape or click "Place Defense Site" again to stop.
+        defenseGui.statusText = `${defenseSystemsRef.current.length} site(s) placed — click to add more, Esc to stop`;
+        defenseGui.refresh();
+        return;
+      }
 
       if (launchPadStatesRef.current.startPositionSetIsActive) {
         launcherView.setStartPosition(earthIntersection);
@@ -511,20 +599,26 @@ const OrbitalVelocity = () => {
       resetActivePosition();
     };
 
+    const stopPlacingDefense = () => {
+      isPlacingDefenseRef.current = false;
+      pendingDefenseSystemIdRef.current = '';
+      setIsPlacingDefense(false);
+      defenseGui.statusText = `${defenseSystemsRef.current.length} site(s) placed`;
+      defenseGui.refresh();
+    };
+    launchPadListenersRef.current.stopPlacingDefense = stopPlacingDefense;
+
     window.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
         resetActivePosition();
+        if (isPlacingDefenseRef.current) {
+          stopPlacingDefense();
+        }
       }
     });
 
     const animateLoop = () => {
       const deltaTime = clock.getDelta();
-
-      // rockets.forEach((rocket) => {
-      //   for (let i = 0; i < worldGui.timeMultiplier; i++) {
-      //     rocket.update();
-      //   }
-      // });
 
       mouseTracker.update(deltaTime);
       onMove();
@@ -532,13 +626,83 @@ const OrbitalVelocity = () => {
       updateTriggers.forEach((trigger) => {
         trigger.update(deltaTime);
       });
+
+      const hostiles = activeHostilesRef.current;
+
+      for (let hi = hostiles.length - 1; hi >= 0; hi--) {
+        if (hostiles[hi].isDead()) {
+          hostiles.splice(hi, 1);
+        }
+      }
+
+      const systems = defenseSystemsRef.current;
+      const views = defenseViewsRef.current;
+
+      // Advance defense physics at the same simulated rate as the rockets:
+      // simDelta = real elapsed seconds × time multiplier, split into
+      // sub-steps of at most 1 sim-second for integration stability.
+      const simDelta = deltaTime * worldGui.timeMultiplier;
+      const numSteps = Math.max(1, Math.ceil(simDelta));
+      const stepSize = simDelta / numSteps;
+
+      for (let step = 0; step < numSteps; step++) {
+        for (let si = 0; si < systems.length; si++) {
+          const system = systems[si];
+          const view = views[si];
+
+          for (const hostile of hostiles) {
+            if (!system.engagedTargetIds.has(hostile.id) && system.isInRadarRange(hostile.getPosition())) {
+              const interceptor = system.tryEngage(hostile);
+              if (interceptor) {
+                defenseGui.statusText = `${system.spec.name} engaging target!`;
+                defenseGui.refresh();
+              }
+            }
+          }
+
+          system.update(stepSize);
+
+          for (const ic of system.interceptors) {
+            for (const hostile of hostiles) {
+              if (ic.checkIntercept(hostile.getPosition())) {
+                hostile.die();
+                if (view) view.showInterceptEffect(ic.position);
+                defenseGui.statusText = `${system.spec.name} intercepted a target!`;
+                defenseGui.refresh();
+              }
+            }
+            ic.checkExpired();
+          }
+        }
+      }
+
+      for (const view of views) {
+        view.update();
+      }
+
+      const cam = cameraManager.getCamera();
+      if (cam) {
+        cityLabels.update(cam);
+        css2DRenderer.render(scene, cam);
+      }
     };
 
     fullScreenRenderer.setAnimationLoop(animateLoop);
 
     return () => {
       sceneContainer.removeChild(fullScreenRenderer.domElement);
+      if (css2DRenderer.domElement.parentNode) {
+        css2DRenderer.domElement.parentNode.removeChild(css2DRenderer.domElement);
+      }
       fullScreenRenderer.setAnimationLoop(null);
+
+      cityLabels.remove();
+
+      for (const view of defenseViewsRef.current) {
+        view.remove();
+      }
+      defenseSystemsRef.current = [];
+      defenseViewsRef.current = [];
 
       fullScreenRenderer.dispose();
       miniWindowRenderer.dispose();
@@ -874,6 +1038,20 @@ const OrbitalVelocity = () => {
             }}
           >
             Cancel
+          </button>
+        </div>
+      )}
+
+      {isPlacingDefense && (
+        <div className={s.clearLaunchPad}>
+          <button
+            className={s.button}
+            onClick={(e) => {
+              e.stopPropagation();
+              launchPadListenersRef?.current?.stopPlacingDefense?.();
+            }}
+          >
+            Stop Placing Defense Sites
           </button>
         </div>
       )}

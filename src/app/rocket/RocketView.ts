@@ -620,21 +620,36 @@ export default class RocketView {
       this.scene.add(this.endPositionSkyMarker);
     }
 
-    // Trigger explosion effect when rocket lands
-    if (
-      this.rocket.hasLanded &&
-      !this.hasTriggeredExplosion &&
-      this.explosionEffect
-    ) {
-      const normal = this.rocket.position.clone().normalize();
-      this.explosionEffect.start(this.rocket.position.clone(), normal);
+    // Trigger explosion + scorch only for natural ground impacts,
+    // not for missiles killed in-air by interceptors (altitude > 1 km).
+    if (this.rocket.hasLanded && !this.hasTriggeredExplosion) {
       this.hasTriggeredExplosion = true;
+      if (this.rocket.altitude < 1 && this.explosionEffect) {
+        const normal = this.rocket.position.clone().normalize();
+        this.explosionEffect.start(this.rocket.position.clone(), normal);
+        this.addScorchMark(this.rocket.position, normal);
+      }
     }
 
     // Update explosion effect animation
     if (this.explosionEffect) {
       this.explosionEffect.update();
     }
+  }
+
+  private addScorchMark(position: THREE.Vector3, normal: THREE.Vector3) {
+    const geo = new THREE.CircleGeometry(120, 64);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x111111,
+      transparent: true,
+      opacity: 0.88,
+      depthWrite: false,
+    });
+    const scorch = new THREE.Mesh(geo, mat);
+    // Offset slightly above surface to avoid z-fighting
+    scorch.position.copy(position).addScaledVector(normal, 3);
+    scorch.lookAt(scorch.position.clone().add(normal));
+    this.scene.add(scorch);
   }
 
   private updateBurningFireScale() {

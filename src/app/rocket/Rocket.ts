@@ -167,6 +167,7 @@ class Rocket {
   }
 
   update(tick = 1) {
+    if (this.hasLanded) return;
     this.setAltitude();
     this.gravityForce = this.earth.gravityForce(this.position);
 
