@@ -563,7 +563,7 @@ export default class RocketView {
     if (!this.trailView) return;
 
     const thrustPercentage =
-      this.rocket.thrust.length() / this.rocket.maxThrust;
+      this.rocket.thrust.length() / this.rocket.maxAcceleration;
 
     this.trailView.extendFromVectors(
       this.prevPosition.clone(),
@@ -639,7 +639,7 @@ export default class RocketView {
 
   private updateBurningFireScale() {
     let thrustPercentage =
-      this.rocket.thrust.length() / (this.rocket.maxThrust * 0.3);
+      this.rocket.thrust.length() / (this.rocket.maxAcceleration * 0.3);
 
     thrustPercentage = Math.min(thrustPercentage, 2);
 

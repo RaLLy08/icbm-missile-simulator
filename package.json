@@ -1,5 +1,5 @@
 {
-  "name": "name",
+  "name": "icbm-missile-simulator",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "start": "webpack serve --config ./config/webpack.config.js --mode=development --node-env=development",
     "prettier": "prettier . --write"
   },
-  "author": "",
+  "author": "chinmayrozekar (github.com/chinmayrozekar), RaLLy08 (github.com/RaLLy08)",
   "license": "ISC",
   "description": "",
   "dependencies": {

@@ -1,9 +1,13 @@
 import { formatSeconds } from 'app/utils';
 import * as THREE from 'three';
 import { FolderApi, Pane } from 'tweakpane';
+import { getMissileOptions, getMissileById, type MissileSpec } from './MissileDatabase';
 
 export default class LauncherGui {
   private folder: FolderApi;
+
+  selectedMissileId = 'us_minuteman3';
+  selectedMissileLabel = '';
 
   startInclineAfterDistance = 0;
   currentThrustInclineDuration = 0;
@@ -26,11 +30,33 @@ export default class LauncherGui {
   rocketCount = 0;
   rocketSizeMultiplier = 1;
 
+  onMissileSelected: (spec: MissileSpec) => void = () => {};
+
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
       title: 'Launcher',
       expanded: true,
     });
+
+    const missile = getMissileById(this.selectedMissileId);
+    if (missile) {
+      this.selectedMissileLabel = `${missile.country} - ${missile.name}`;
+    }
+
+    this.folder
+      .addBinding(this, 'selectedMissileId', {
+        label: 'Missile Preset',
+        view: 'list',
+        options: getMissileOptions(),
+      })
+      .on('change', (ev) => {
+        this.selectedMissileId = ev.value;
+        const spec = getMissileById(this.selectedMissileId);
+        if (spec) {
+          this.selectedMissileLabel = `${spec.country} - ${spec.name}`;
+          this.onMissileSelected(spec);
+        }
+      });
 
     this.folder
       .addBinding(this, 'minimizeFlightTime', {

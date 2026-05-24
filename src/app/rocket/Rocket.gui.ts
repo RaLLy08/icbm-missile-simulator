@@ -39,7 +39,7 @@ export default class RocketGui {
       readonly: true,
       view: 'graph',
       min: 0,
-      max: this.rocket.maxThrust,
+      max: this.rocket.maxAcceleration,
       format: (v) => (v * 1000).toFixed(5) + ' kg*(m/s²)',
     });
 

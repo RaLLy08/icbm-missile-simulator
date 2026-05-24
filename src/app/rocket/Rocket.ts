@@ -66,10 +66,10 @@ class Rocket {
    * @param startInclineAfterDistance The distance after which the rocket starts to incline 
    * @param thrustInclineMaxDuration The maximum duration for the thrust incline
    * @param thrustInclineVelocity The velocity of the thrust incline in radians per second
-   * @param payloadMass The mass of the rocket payload in kilograms 
-   * @param fuelMass The mass of the rocket fuel in kilograms
+   * @param fuelMass The mass of the rocket fuel in kilograms 
    * @param exhaustVelocity The exhaust velocity of the rocket in kilometers per second 
    * @param massFlowRate The mass flow rate of the rocket in kilograms per second 
+   * @param payloadMass The mass of the rocket payload in kilograms
    */
   constructor(
     private earth: Earth,
@@ -98,10 +98,10 @@ class Rocket {
   thrustInclineAngle = 0;
 
   /**
-   * The maximum thrust that the rocket can produce.
-   * @returns The maximum thrust in (kg*(km/s²)).
+   * The maximum acceleration the rocket can achieve (at burnout mass = payload).
+   * @returns Maximum acceleration in km/s².
    */
-  get maxThrust() {
+  get maxAcceleration() {
     return (this.massFlowRate * this.exhaustVelocity) / this.payloadMass;
   }
 
@@ -174,7 +174,7 @@ class Rocket {
 
     const displacementMagnitude = this.displacement.length();
 
-    // todo fix (if too high time multipliyer)
+    // todo fix (if too high time multiplier)
     if (displacementMagnitude > 10 && this.altitude <= 0) {
       this.velocity.set(0, 0, 0);
       this.thrust.set(0, 0, 0);
