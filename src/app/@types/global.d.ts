@@ -11,7 +11,6 @@ declare module '*.module.scss' {
 declare module '*.scss';
 declare module '*.css';
 
-
 declare interface NodeModule {
   hot?: { accept: (path: string, callback: () => void) => void };
 }
@@ -30,11 +29,10 @@ declare module '*.svg' {
   const content: string;
   export default content;
 }
+declare const __VERSION__: string;
+
 // .env variables
 
 declare namespace NodeJS {
-  interface ProcessEnv {
-    
-  }
+  interface ProcessEnv {}
 }
-

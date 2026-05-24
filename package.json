@@ -8,7 +8,8 @@
     "build": "webpack --config ./config/webpack.config.js --mode=production --node-env=production",
     "build:dev": "webpack --config ./config/webpack.config.js --mode=development",
     "start": "webpack serve --config ./config/webpack.config.js --mode=development --node-env=development",
-    "prettier": "prettier . --write"
+    "prettier:fix": "prettier . --write",
+    "prettier:check": "prettier . --check"
   },
   "author": "chinmayrozekar (github.com/chinmayrozekar), RaLLy08 (github.com/RaLLy08)",
   "license": "ISC",
