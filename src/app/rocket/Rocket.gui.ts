@@ -71,7 +71,6 @@ export default class RocketGui {
       format: (v) => (v - this.rocket.payloadMass).toFixed(1) + ' kg',
     });
 
-
     this.folder.addBinding(this.rocket, 'payloadMass', {
       label: 'Payload Mass',
       readonly: true,
@@ -157,7 +156,7 @@ export default class RocketGui {
   update() {
     this.velocity = this.rocket.velocity.length();
     this.thrust = this.rocket.thrust.length();
-  
+
     this.displacement = this.rocket.displacement.length();
     this.gravityForce = this.rocket.gravityForce.length();
     this.travelledDistance = this.rocket.travelledDistance.length();

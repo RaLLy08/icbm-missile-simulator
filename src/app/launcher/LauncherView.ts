@@ -41,7 +41,10 @@ export default class LauncherView {
     this.scene.add(this.startMarker);
   }
 
-  setActivePosition(position: THREE.Vector3, type: 'start' | 'target' = 'start') {
+  setActivePosition(
+    position: THREE.Vector3,
+    type: 'start' | 'target' = 'start'
+  ) {
     if (this.activeMarker) {
       this.scene.remove(this.activeMarker);
       this.activeMarker = null;
@@ -60,7 +63,7 @@ export default class LauncherView {
     } else if (type === 'target') {
       this.activeMarker = createMarker(position, this.earth, 0xff0000);
     }
-    
+
     this.scene.add(this.activeMarker!);
   }
 
@@ -76,7 +79,6 @@ export default class LauncherView {
       this.targetMarker.visible = true;
     }
   }
-
 
   removeStartPositionIfExist() {
     if (this.startMarker) {

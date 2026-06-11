@@ -30,10 +30,7 @@ export default class MouseTracker {
    * @param target   element on which to listen for `mousemove` (defaults to `window`)
    * @param normalize convert to –1…+1 space (default `true`). Pass `false` for raw pixels.
    */
-  constructor(
-    target: (Window & typeof globalThis) | HTMLElement = window,
-  ) {
-
+  constructor(target: (Window & typeof globalThis) | HTMLElement = window) {
     this._listener = (e: MouseEvent) => {
       const { innerWidth: w, innerHeight: h } = window;
 
@@ -47,12 +44,10 @@ export default class MouseTracker {
     target.addEventListener('mousemove', this._listener, { passive: true });
   }
 
-
   /**
    * Call exactly once every animation frame (e.g. inside your render loop).
    */
   update(dt: number): void {
-
     if (dt > 0) {
       // v = dx / dt
       this.velocity

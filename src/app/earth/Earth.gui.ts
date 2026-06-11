@@ -55,9 +55,7 @@ export default class EarthGui {
 
   onFocusCameraClick: () => void = () => {};
 
-  constructor(
-    private readonly pane: Pane,
-  ) {
+  constructor(private readonly pane: Pane) {
     this.folder = pane.addFolder({
       title: 'Earth',
       expanded: false,

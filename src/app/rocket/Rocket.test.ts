@@ -44,6 +44,5 @@ describe('Rocket', () => {
     const actualSpeed = rocket.velocity.length();
 
     expect(actualSpeed).toBeCloseTo(expectedDeltaV, 0);
-
   });
 });

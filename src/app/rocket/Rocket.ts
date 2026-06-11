@@ -63,12 +63,12 @@ class Rocket {
    * @param earth The Earth instance to which the rocket is associated.
    * @param initialPosition The initial position of the rocket in 3D space.
    * @param targetInclineVector Thrust straight-line direction (Euclidean) towards the target.
-   * @param startInclineAfterDistance The distance after which the rocket starts to incline 
+   * @param startInclineAfterDistance The distance after which the rocket starts to incline
    * @param thrustInclineMaxDuration The maximum duration for the thrust incline
    * @param thrustInclineVelocity The velocity of the thrust incline in radians per second
-   * @param fuelMass The mass of the rocket fuel in kilograms 
-   * @param exhaustVelocity The exhaust velocity of the rocket in kilometers per second 
-   * @param massFlowRate The mass flow rate of the rocket in kilograms per second 
+   * @param fuelMass The mass of the rocket fuel in kilograms
+   * @param exhaustVelocity The exhaust velocity of the rocket in kilometers per second
+   * @param massFlowRate The mass flow rate of the rocket in kilograms per second
    * @param payloadMass The mass of the rocket payload in kilograms
    */
   constructor(
@@ -83,7 +83,7 @@ class Rocket {
     public readonly fuelMass = 18400,
     public readonly exhaustVelocity = 3, // km/s
     public readonly massFlowRate = 50, // kg/s
-    public readonly payloadMass = 800, // kg
+    public readonly payloadMass = 800 // kg
   ) {
     this.initialPosition = initialPosition;
     this.position.copy(this.initialPosition);
@@ -146,10 +146,16 @@ class Rocket {
       this.thrustInclineVelocity * this.currentThrustInclineDuration;
 
     // Compute axis of rotation - reuse _tempVec3
-    this._tempVec3.copy(this._tempVec2).cross(targetFlatThrustDirection).normalize();
+    this._tempVec3
+      .copy(this._tempVec2)
+      .cross(targetFlatThrustDirection)
+      .normalize();
 
     // Apply the rotation directly to thrust vector
-    this.thrust.copy(this._tempVec2).applyAxisAngle(this._tempVec3, this.thrustInclineAngle).multiplyScalar(thrust);
+    this.thrust
+      .copy(this._tempVec2)
+      .applyAxisAngle(this._tempVec3, this.thrustInclineAngle)
+      .multiplyScalar(thrust);
   }
 
   private _cachedThrustDirection = new THREE.Vector3();
@@ -159,7 +165,8 @@ class Rocket {
     this._tempVec1.copy(gravityDir).normalize();
 
     // 3. Project targetInclineVector onto the plane perpendicular to gravity
-    this._cachedThrustDirection.copy(this.targetInclineVector)
+    this._cachedThrustDirection
+      .copy(this.targetInclineVector)
       .projectOnPlane(this._tempVec1)
       .normalize();
 
@@ -198,11 +205,13 @@ class Rocket {
       this.position.add(this._tempVec1);
 
       // Update travelled distance
-      this._tempVec1.set(
-        Math.abs(this.velocity.x),
-        Math.abs(this.velocity.y),
-        Math.abs(this.velocity.z)
-      ).multiplyScalar(tick);
+      this._tempVec1
+        .set(
+          Math.abs(this.velocity.x),
+          Math.abs(this.velocity.y),
+          Math.abs(this.velocity.z)
+        )
+        .multiplyScalar(tick);
       this.travelledDistance.add(this._tempVec1);
     }
 

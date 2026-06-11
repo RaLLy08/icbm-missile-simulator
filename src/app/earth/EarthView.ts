@@ -17,10 +17,7 @@ export default class EarthView {
   private countryBorders?: THREE.LineSegments;
 
   public atmosphereLayers = new Map<atmosphereLayerKeys, THREE.Mesh>();
-  public atmosphereBorders = new Map<
-    atmosphereLayerKeys,
-    THREE.LineSegments
-  >();
+  public atmosphereBorders = new Map<atmosphereLayerKeys, THREE.LineSegments>();
   markers: THREE.Mesh[] = [];
 
   constructor(

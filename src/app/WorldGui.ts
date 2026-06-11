@@ -5,7 +5,7 @@ import { formatSeconds } from './utils';
 export default class WorldGui {
   folder: FolderApi;
   timeMultiplier = 1;
-  timeDeltaTime = 0.01666; 
+  timeDeltaTime = 0.01666;
   timePassedSeconds = 0;
 
   constructor(
@@ -64,9 +64,7 @@ export default class WorldGui {
       max: 300,
       step: 1,
     });
-
   }
-
 
   update(tick = 1) {
     this.timeDeltaTime = tick * this.timeMultiplier;
