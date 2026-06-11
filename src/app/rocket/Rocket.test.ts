@@ -31,7 +31,7 @@ describe('Rocket', () => {
       rocketPayloadMass
     );
 
-    const simulatedFlightTime = 60 * 2; // seconds
+    const simulatedFlightTime = rocketFuelMass / massFlowRate; // seconds
 
     for (let tick = 0; tick < simulatedFlightTime; tick++) {
       rocket.update();
@@ -40,10 +40,13 @@ describe('Rocket', () => {
     // Tsiolkovsky: Δv = ve * ln(m0 / mf)
     const m0 = rocketFuelMass + rocketPayloadMass;
     const mf = rocketPayloadMass;
-    const expectedDeltaV = exhaustVelocity * Math.log(m0 / mf);
+    const gravityAtSurface =
+      (Earth.G * Earth.MASS * 0.001) / (Earth.RADIUS * 1000) ** 2;
+    const expectedDeltaV =
+      exhaustVelocity * Math.log(m0 / mf) -
+      gravityAtSurface * simulatedFlightTime;
     const actualSpeed = rocket.velocity.length();
 
     expect(actualSpeed).toBeCloseTo(expectedDeltaV, 0);
-
   });
 });

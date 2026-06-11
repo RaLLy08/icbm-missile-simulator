@@ -45,11 +45,15 @@ export default class Launcher {
     this.payloadMass = spec.payloadMass;
     this.startInclineAfterDistance = spec.startInclineAfterDistance;
     this.thrustInclineMaxDuration = spec.thrustInclineMaxDuration;
-    this.thrustInclineVelocity = THREE.MathUtils.degToRad(spec.thrustInclineVelocityDeg);
+    this.thrustInclineVelocity = THREE.MathUtils.degToRad(
+      spec.thrustInclineVelocityDeg
+    );
 
     this.launcherGui.startInclineAfterDistance = spec.startInclineAfterDistance;
     this.launcherGui.currentThrustInclineDuration = 0;
-    this.launcherGui.thrustInclineVelocity = THREE.MathUtils.degToRad(spec.thrustInclineVelocityDeg);
+    this.launcherGui.thrustInclineVelocity = THREE.MathUtils.degToRad(
+      spec.thrustInclineVelocityDeg
+    );
     this.launcherGui.fuelCombustionTime = spec.fuelMass / spec.massFlowRate;
     this.launcherGui.fuelMass = spec.fuelMass;
     this.launcherGui.massFlowRate = spec.massFlowRate;
@@ -183,7 +187,7 @@ export default class Launcher {
       this.fuelMass,
       this.exhaustVelocity,
       this.massFlowRate,
-      this.payloadMass,
+      this.payloadMass
     );
 
     rocket.id = this.counter++;

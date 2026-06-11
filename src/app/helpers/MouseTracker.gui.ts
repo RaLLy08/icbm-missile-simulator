@@ -5,8 +5,8 @@ import { FolderApi, Pane } from 'tweakpane';
 export default class MouseTrackerGui {
   readonly position = new THREE.Vector2();
 
-  velMag = 0; 
-  accMag = 0; 
+  velMag = 0;
+  accMag = 0;
 
   private readonly folder: FolderApi;
   private tracker: MouseTracker;
@@ -27,7 +27,6 @@ export default class MouseTrackerGui {
       readonly: true,
       format: n2,
     });
-
 
     this.folder.addBinding(this, 'velMag', {
       label: '‖Velocity‖',

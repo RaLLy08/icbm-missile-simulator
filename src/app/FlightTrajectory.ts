@@ -115,7 +115,9 @@ export class FlightTrajectory {
         );
 
         // Early termination: check for convergence
-        const fitnessImprovement = Math.abs(lastBestFitness - bestGenome.fitness);
+        const fitnessImprovement = Math.abs(
+          lastBestFitness - bestGenome.fitness
+        );
         if (fitnessImprovement < convergenceThreshold) {
           noImprovementCount++;
           if (noImprovementCount >= maxNoImprovementGenerations) {
@@ -164,7 +166,9 @@ export class FlightTrajectory {
     genome.rocket = rocket;
 
     // Use cached vector for distance calculation to avoid allocation
-    let fitness = this._tempDistanceVec.copy(rocket.position).distanceTo(this.target);
+    let fitness = this._tempDistanceVec
+      .copy(rocket.position)
+      .distanceTo(this.target);
 
     if (this.minimizeFlightTime) {
       fitness += rocket.flightTime;

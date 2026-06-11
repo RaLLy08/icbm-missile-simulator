@@ -3,7 +3,7 @@ name: Deploy SPA to GitHub Pages
 on:
   push:
     branches:
-      - main  # or change to your default branch
+      - main # or change to your default branch
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18  # adjust if needed
+          node-version: 18 # adjust if needed
 
       - name: Install dependencies
         run: npm ci

@@ -1,7 +1,6 @@
 import { atmosphereLayerKeys } from './earth.consts';
 import * as THREE from 'three';
 
-
 class Earth {
   /**
    * Unit: km
@@ -97,6 +96,5 @@ class Earth {
     return { latitude, longitude };
   }
 }
-
 
 export default Earth;

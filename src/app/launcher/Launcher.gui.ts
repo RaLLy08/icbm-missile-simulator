@@ -1,7 +1,11 @@
 import { formatSeconds } from 'app/utils';
 import * as THREE from 'three';
 import { FolderApi, Pane } from 'tweakpane';
-import { getMissileOptions, getMissileById, type MissileSpec } from './MissileDatabase';
+import {
+  getMissileOptions,
+  getMissileById,
+  type MissileSpec,
+} from './MissileDatabase';
 
 export default class LauncherGui {
   private folder: FolderApi;

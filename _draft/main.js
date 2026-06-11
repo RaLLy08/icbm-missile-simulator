@@ -3,28 +3,24 @@ import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
-
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, WIDTH / HEIGHT, 0.1, 1000);
 
-
-
-const renderer = new THREE.WebGLRenderer( { antialias: true } );
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(WIDTH, HEIGHT);
-sceneContainer.appendChild( renderer.domElement );
+sceneContainer.appendChild(renderer.domElement);
 renderer.setClearColor(0xabcdef);
 
-renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setPixelRatio(window.devicePixelRatio);
 
-const controls = new OrbitControls( camera, renderer.domElement );
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.update();
 
-const axesHelper = new THREE.AxesHelper(3); 
+const axesHelper = new THREE.AxesHelper(3);
 axesHelper.position.set(3, -3, 0);
 scene.add(axesHelper);
 
@@ -33,7 +29,6 @@ const light = new THREE.AmbientLight(0xffffff, 2);
 scene.add(light);
 
 const modelLoader = new OBJLoader();
-
 
 const textureLoader = new THREE.TextureLoader();
 const texture = textureLoader.load('public/textures/round-cake.png');
@@ -51,7 +46,7 @@ let roundCakeObj = null;
 let rectCakeObj = null;
 let heartCakeObj = null;
 
-modelLoader.load('public/models/round-cake.obj', function ( obj ) {
+modelLoader.load('public/models/round-cake.obj', function (obj) {
   obj.name = 'cake';
   roundCakeObj = obj;
   obj.traverse((child) => {
@@ -59,16 +54,14 @@ modelLoader.load('public/models/round-cake.obj', function ( obj ) {
       child.material.map = texture;
       child.material.needsUpdate = true;
     }
-  })
-
+  });
 });
-modelLoader.load('public/models/rect-cake.obj', function ( obj ) {
+modelLoader.load('public/models/rect-cake.obj', function (obj) {
   obj.name = 'cake';
   rectCakeObj = obj;
 });
 
-
-modelLoader.load('public/models/heart-cake.obj', function ( obj ) {
+modelLoader.load('public/models/heart-cake.obj', function (obj) {
   obj.name = 'cake';
   heartCakeObj = obj;
 
@@ -77,9 +70,8 @@ modelLoader.load('public/models/heart-cake.obj', function ( obj ) {
       child.material.map = texture;
       child.material.needsUpdate = true;
     }
-  })
+  });
 });
-
 
 const loadCake = (cakeObj) => {
   cakeObj.position.set(0, 0, 0);
@@ -106,19 +98,46 @@ const changeCakeColor = (color) => {
   });
 };
 
-
-
-
 const gui = new GUI();
 const cakeFolder = gui.addFolder('Cake');
 
-cakeFolder.add({ loadRound: () => { if (roundCakeObj) loadCake(roundCakeObj.clone()) } }, 'loadRound').name('Round Cake');
-cakeFolder.add({ loadRect: () => { if (rectCakeObj) loadCake(rectCakeObj.clone()) } }, 'loadRect').name('Rect Cake');
-cakeFolder.add({ loadHeart: () => { if (heartCakeObj) loadCake(heartCakeObj.clone()) } }, 'loadHeart').name('Heart Cake');
+cakeFolder
+  .add(
+    {
+      loadRound: () => {
+        if (roundCakeObj) loadCake(roundCakeObj.clone());
+      },
+    },
+    'loadRound'
+  )
+  .name('Round Cake');
+cakeFolder
+  .add(
+    {
+      loadRect: () => {
+        if (rectCakeObj) loadCake(rectCakeObj.clone());
+      },
+    },
+    'loadRect'
+  )
+  .name('Rect Cake');
+cakeFolder
+  .add(
+    {
+      loadHeart: () => {
+        if (heartCakeObj) loadCake(heartCakeObj.clone());
+      },
+    },
+    'loadHeart'
+  )
+  .name('Heart Cake');
 
-cakeFolder.addColor({ color: '#ffffff' }, 'color').onChange((color) => {
-  changeCakeColor(color);
-}).name('Cake Color');
+cakeFolder
+  .addColor({ color: '#ffffff' }, 'color')
+  .onChange((color) => {
+    changeCakeColor(color);
+  })
+  .name('Cake Color');
 cakeFolder.open();
 
 const textureFolder = gui.addFolder('Texture');
@@ -167,24 +186,14 @@ const textureOptions = {
         }
       });
     }
-  }
-
+  },
 };
 
 for (const [key, value] of Object.entries(textureOptions)) {
   textureFolder.add({ [key]: value }, key).name(key);
 }
 
-
-
-
-
-
-
-
-
 camera.position.z = 10;
-
 
 function animate() {
   renderer.render(scene, camera);
@@ -197,4 +206,3 @@ function animate() {
   // });
 }
 renderer.setAnimationLoop(animate);
-

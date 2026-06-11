@@ -17,10 +17,9 @@ export const formatSeconds = (
   }
 };
 
-
 export const toExponentGrowth = (
   percentage: number,
-  exponentBase = 2,
+  exponentBase = 2
 ): number => {
   return (Math.pow(exponentBase, percentage) - 1) / (exponentBase - 1);
 };
@@ -37,7 +36,7 @@ export const normalizeBetween = (
   max: number
 ): number => {
   const clampedValue = Math.max(min, Math.min(max, value));
-  return ((clampedValue - min) / (max - min));
+  return (clampedValue - min) / (max - min);
 };
 
 /**

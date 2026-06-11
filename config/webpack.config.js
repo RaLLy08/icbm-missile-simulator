@@ -9,6 +9,8 @@ const Dotenv = require('dotenv-webpack');
 const process = require('process');
 const fs = require('fs');
 const CopyPlugin = require('copy-webpack-plugin');
+const { DefinePlugin } = require('webpack');
+const version = require('../package.json').version;
 
 require('dotenv').config({
   path: path.resolve(__dirname, '.env'),
@@ -34,6 +36,9 @@ const config = {
       failOnError: false,
       allowAsyncCycles: false,
       cwd: process.cwd(),
+    }),
+    new DefinePlugin({
+      __VERSION__: JSON.stringify(version),
     }),
   ],
   module: {
@@ -127,11 +132,11 @@ module.exports = (env, argv) => {
   plugins.push(
     new CopyPlugin({
       patterns: [
-        { from: "src/public/robots.txt", to: "robots.txt" },
-        { from: "src/public/sitemap.xml", to: "sitemap.xml" },
-        { from: "preview.png", to: "preview.png" },
+        { from: 'src/public/robots.txt', to: 'robots.txt' },
+        { from: 'src/public/sitemap.xml', to: 'sitemap.xml' },
+        { from: 'preview.png', to: 'preview.png' },
       ],
-    }),
+    })
   );
 
   if (argv.mode === 'production') {
@@ -141,7 +146,7 @@ module.exports = (env, argv) => {
       test: /\.css$/,
       use: [MiniCssExtractPlugin.loader, 'css-loader'],
     });
-    
+
     config.output.publicPath = `/${REPO_NAME}/`;
 
     plugins.push(

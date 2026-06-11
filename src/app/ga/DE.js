@@ -1,7 +1,6 @@
 const clamp = (value, min, max) => {
   return Math.max(min, Math.min(max, value));
-}
-
+};
 
 const randFloat = (min, max) => {
   return Math.random() * (max - min) + min;
@@ -10,7 +9,7 @@ const randFloat = (min, max) => {
 class Genome extends Array {
   fitness = Infinity;
 
-  constructor(genes=[]) {
+  constructor(genes = []) {
     super(...genes);
   }
 }
@@ -96,9 +95,7 @@ export default class DE {
       for (let j = 0; j < this.genomeLength; j++) {
         const { min, max } = this.genomeConstraints[j];
 
-        genome.push(
-          randFloat(min, max)
-        );
+        genome.push(randFloat(min, max));
       }
 
       this.population.push(genome);
@@ -122,9 +119,7 @@ export default class DE {
   selection(bestSurvivePercent, populationSize) {
     this.calcFitness();
     // Sort population by fitness function smallers first
-    const sorted = this.population.sort(
-      (a, b) => a.fitness - b.fitness
-    );
+    const sorted = this.population.sort((a, b) => a.fitness - b.fitness);
 
     const bestParentSurviveSize = Math.floor(
       populationSize * bestSurvivePercent
@@ -146,25 +141,25 @@ export default class DE {
     this.population = [...bestSurvive, ...badSurvive];
   }
 
-
   crossover(genomeA, genomeB, genomeC) {
-      const child = [];
-  
-      for (let i = 0; i < genomeA.length; i++) {
-          let chromosome = genomeA[i];
+    const child = [];
 
-          if (Math.random() < this.CR) {
-            chromosome = genomeA[i] + this.scalingFactor * (genomeB[i] - genomeC[i])
-          }
+    for (let i = 0; i < genomeA.length; i++) {
+      let chromosome = genomeA[i];
 
-          const { min, max } = this.genomeConstraints[i];
-
-          chromosome = clamp(chromosome, min, max); // may remove?/
-
-          child.push(chromosome);
+      if (Math.random() < this.CR) {
+        chromosome =
+          genomeA[i] + this.scalingFactor * (genomeB[i] - genomeC[i]);
       }
-  
-      return child;
+
+      const { min, max } = this.genomeConstraints[i];
+
+      chromosome = clamp(chromosome, min, max); // may remove?/
+
+      child.push(chromosome);
+    }
+
+    return child;
   }
 
   /**
@@ -182,36 +177,36 @@ export default class DE {
    * Adding new population by creating children from population
    */
   addNewPopulation() {
-      const newPopulation = [];
+    const newPopulation = [];
 
-      const parents = this.population;
-      const eliteSize = Math.floor(this.elite * this.population.length);
-      const parentLength = parents.length;
+    const parents = this.population;
+    const eliteSize = Math.floor(this.elite * this.population.length);
+    const parentLength = parents.length;
 
-      for (let j = 0; j < parentLength; j++) {
-          const parentA = parents[j];
+    for (let j = 0; j < parentLength; j++) {
+      const parentA = parents[j];
 
-          if (j < eliteSize) {
-              // Elite genomes pass to next generation without changes
-              newPopulation.push(parentA);
-              continue;
-          }
-
-          const parentB = parents[Math.floor(Math.random() * parentLength)];
-          const parentC = parents[Math.floor(Math.random() * parentLength)];
-          // Crossover between best parent and random parent to increase diversity
-
-          const child = new Genome(this.crossover(parentA, parentB, parentC));
-
-          if (Math.random() < this.mutationRate) {
-              // Mutate child with probability of mutationRate
-              this.mutate(child);
-          }
-
-          newPopulation.push(child);
+      if (j < eliteSize) {
+        // Elite genomes pass to next generation without changes
+        newPopulation.push(parentA);
+        continue;
       }
 
-      this.population.push(...newPopulation);
+      const parentB = parents[Math.floor(Math.random() * parentLength)];
+      const parentC = parents[Math.floor(Math.random() * parentLength)];
+      // Crossover between best parent and random parent to increase diversity
+
+      const child = new Genome(this.crossover(parentA, parentB, parentC));
+
+      if (Math.random() < this.mutationRate) {
+        // Mutate child with probability of mutationRate
+        this.mutate(child);
+      }
+
+      newPopulation.push(child);
+    }
+
+    this.population.push(...newPopulation);
   }
 
   async run(delay, onGeneration = () => {}) {

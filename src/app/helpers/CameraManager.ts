@@ -49,7 +49,8 @@ export default class CameraManager {
         this.fullScreenRenderer.domElement
       );
     } else {
-      this.earthCameraController.camera.aspect = window.innerWidth / window.innerHeight;
+      this.earthCameraController.camera.aspect =
+        window.innerWidth / window.innerHeight;
       this.earthCameraController.camera.updateProjectionMatrix();
 
       this.earthCameraController.enable();
