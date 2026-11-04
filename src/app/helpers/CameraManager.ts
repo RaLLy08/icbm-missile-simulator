@@ -138,17 +138,69 @@ class EarthCamera {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.8;
     this.controls.enablePan = false;
+    // Zoom is handled manually for smooth easing
+    this.controls.enableZoom = false;
 
     this.camera.position.z = z + this.controls.maxDistance / 2;
     this.camera.position.y = y;
     this.camera.position.x = x;
 
+    this.targetDistance = this.controls.maxDistance / 2;
+
     this.camera.updateProjectionMatrix();
     this.controls.update();
+
+    this.domElement?.addEventListener('wheel', this.onMouseWheel, {
+      passive: false,
+    });
+  }
+
+  private targetDistance: number;
+  // Higher = snappier zoom, lower = smoother
+  private zoomSmoothness = 14;
+
+  private onMouseWheel = (event: WheelEvent) => {
+    if (!this.controls.enabled) return;
+    event.preventDefault();
+
+    // Normalize wheel delta (mouse notch ~100, trackpads send many small deltas)
+    const wheelDelta = THREE.MathUtils.clamp(event.deltaY / 100, -1, 1);
+    const scale = Math.pow(
+      0.95,
+      this.controls.zoomSpeed * Math.abs(wheelDelta)
+    );
+
+    this.targetDistance = THREE.MathUtils.clamp(
+      wheelDelta > 0
+        ? this.targetDistance / scale
+        : this.targetDistance * scale,
+      this.controls.minDistance,
+      this.controls.maxDistance
+    );
+  };
+
+  private updateZoom(delta: number) {
+    const offset = this.camera.position.clone().sub(this.earthCenter);
+    const distance = offset.length();
+
+    if (Math.abs(distance - this.targetDistance) < 0.01) return;
+
+    // Frame-rate independent exponential easing
+    const alpha = 1 - Math.exp(-this.zoomSmoothness * delta);
+    const newDistance = THREE.MathUtils.lerp(
+      distance,
+      this.targetDistance,
+      alpha
+    );
+
+    this.camera.position.copy(
+      this.earthCenter.clone().add(offset.setLength(newDistance))
+    );
   }
 
   private updateControlSpeed = () => {
-    const distance = this.camera.position.length(); // Assuming planet center at (0, 0, 0)
+    // Base speeds on the zoom target so consecutive wheel ticks scale consistently
+    const distance = this.targetDistance;
 
     const percentageOfDistanceToSurface = normalizeBetween(
       distance,
@@ -170,7 +222,7 @@ class EarthCamera {
 
     this.controls.rotateSpeed = expFactor;
 
-    const minZoomSpeed = 0.01;
+    const minZoomSpeed = 0.1;
     const maxZoomSpeed = 4;
 
     const zoomExponentBase = 2;
@@ -217,12 +269,14 @@ class EarthCamera {
     this.camera.updateProjectionMatrix();
   };
 
-  update() {
+  update(delta: number) {
+    this.updateZoom(delta);
     this.updateControlSpeed();
     this.updateCameraRotation();
   }
 
   remove() {
+    this.domElement?.removeEventListener('wheel', this.onMouseWheel);
     this.controls.dispose();
   }
 }
