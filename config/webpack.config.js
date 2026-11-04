@@ -135,6 +135,8 @@ module.exports = (env, argv) => {
         { from: 'src/public/robots.txt', to: 'robots.txt' },
         { from: 'src/public/sitemap.xml', to: 'sitemap.xml' },
         { from: 'preview.png', to: 'preview.png' },
+        { from: 'src/public/favicon', to: 'favicon' },
+        { from: 'src/public/favicon/favicon.ico', to: 'favicon.ico' },
       ],
     })
   );
