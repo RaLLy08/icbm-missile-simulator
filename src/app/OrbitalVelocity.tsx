@@ -897,8 +897,14 @@ const OrbitalVelocity = () => {
       }
     });
 
+    // Wall-clock time for camera / UI smoothing: `clock` is stopped while
+    // time is paused, which would freeze zoom and rotation easing.
+    const realClock = new THREE.Clock();
+
     const animateLoop = () => {
       const deltaTime = clock.getDelta();
+      // Capped so a background tab doesn't cause one huge jump
+      const realDeltaTime = Math.min(realClock.getDelta(), 0.1);
 
       // rockets.forEach((rocket) => {
       //   for (let i = 0; i < worldGui.timeMultiplier; i++) {
@@ -910,7 +916,7 @@ const OrbitalVelocity = () => {
       onMove();
 
       updateTriggers.forEach((trigger) => {
-        trigger.update(deltaTime);
+        trigger.update(trigger.usesRealTime ? realDeltaTime : deltaTime);
       });
     };
 

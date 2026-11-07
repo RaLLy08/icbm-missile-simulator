@@ -40,6 +40,9 @@ export default class CameraManager {
     private mouseTracker: MouseTracker
   ) {}
 
+  /** Camera smoothing runs on wall-clock time, also while time is paused. */
+  readonly usesRealTime = true;
+
   /** When false, the mini window is folded and is not rendered. */
   miniWindowEnabled = true;
 

@@ -20,6 +20,10 @@ export default class RocketGui {
 
   onFocusCameraClick: () => void = () => {};
 
+  // The tracking camera's smoothing runs on wall-clock time, also while
+  // time is paused (its delta is only used for the camera).
+  readonly usesRealTime = true;
+
   constructor(
     private readonly pane: Pane,
     private readonly paneContainer: HTMLElement,
