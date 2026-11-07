@@ -71,6 +71,8 @@ const OrbitalVelocity = () => {
     targetPositionSetIsActive: false,
   });
   const [isMiniWindowOpen, setIsMiniWindowOpen] = useState(false);
+  const [isMiniWindowFolded, setIsMiniWindowFolded] = useState(false);
+  const cameraManagerRef = useRef<CameraManager | null>(null);
 
   const [startPositionActive, setStartPositionActive] = useState(
     launchPadStatesRef.current.startPositionSetIsActive
@@ -131,6 +133,12 @@ const OrbitalVelocity = () => {
   const miniWindowId = useId();
 
   const queueMarkersRef = useRef<(THREE.Mesh | THREE.Group)[]>([]);
+
+  useEffect(() => {
+    if (cameraManagerRef.current) {
+      cameraManagerRef.current.miniWindowEnabled = !isMiniWindowFolded;
+    }
+  }, [isMiniWindowFolded]);
 
   const handleFocusOnEarthClick = () => {
     setIsFocusedOnEarth(true);
@@ -210,6 +218,7 @@ const OrbitalVelocity = () => {
       miniWindowRenderer,
       mouseTracker
     );
+    cameraManagerRef.current = cameraManager;
     updateTriggers.push(cameraManager);
 
     const earthGui = new EarthGui(mainPane);
@@ -904,6 +913,75 @@ const OrbitalVelocity = () => {
                   )}
                 </div>
               </div>
+
+              {/* Launch Queue Panel, pinned to the right of the launch pad */}
+              {launchQueue.length > 0 && (
+                <div
+                  className={clsx(s.queueWrapper, {
+                    [s.collapsed]: isQueueCollapsed,
+                  })}
+                >
+                  <div className={s.queuePanel}>
+                    <div className={s.queueHeader}>
+                      <h3>Launch Queue ({launchQueue.length})</h3>
+                      <button
+                        className={clsx(s.clearButton, {
+                          [s.confirming]: isConfirmingClear,
+                        })}
+                        onClick={handleClearQueueClick}
+                      >
+                        {isConfirmingClear ? 'Confirm' : 'Clear All'}
+                      </button>
+                    </div>
+                    {!isQueueCollapsed && (
+                      <div className={s.queueList}>
+                        {launchQueue.map((item, index) => (
+                          <div key={item.id} className={s.queueItem}>
+                            <div className={s.queueItemInfo}>
+                              <span className={s.queueItemNumber}>
+                                #{index + 1}
+                              </span>
+                              <div className={s.queueItemCoords}>
+                                <div className={s.coordPair}>
+                                  <span className={s.coordLabel}>Start</span>
+                                  <span>
+                                    {item.startGeo.latitude.toFixed(1)},
+                                    {item.startGeo.longitude.toFixed(1)}
+                                  </span>
+                                </div>
+                                <div className={s.coordPair}>
+                                  <span className={s.coordLabel}>Target</span>
+                                  <span>
+                                    {item.targetGeo.latitude.toFixed(1)},
+                                    {item.targetGeo.longitude.toFixed(1)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              className={s.removeButton}
+                              onClick={() => handleRemoveFromQueue(item.id)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className={s.collapseToggle}
+                    onClick={() => setIsQueueCollapsed((prev) => !prev)}
+                    aria-expanded={!isQueueCollapsed}
+                    title={
+                      isQueueCollapsed ? 'Expand queue' : 'Collapse queue'
+                    }
+                  >
+                    <span className={s.collapseIcon}>▾</span>
+                  </button>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -933,70 +1011,6 @@ const OrbitalVelocity = () => {
           </a>
         </div>
 
-        {/* Launch Queue Panel */}
-        {launchQueue.length > 0 && isFocusedOnEarth && (
-          <div
-            className={clsx(s.queueWrapper, {
-              [s.collapsed]: isQueueCollapsed,
-            })}
-          >
-            <div className={s.queuePanel}>
-              <div className={s.queueHeader}>
-                <h3>Launch Queue ({launchQueue.length})</h3>
-                <button
-                  className={clsx(s.clearButton, {
-                    [s.confirming]: isConfirmingClear,
-                  })}
-                  onClick={handleClearQueueClick}
-                >
-                  {isConfirmingClear ? 'Confirm' : 'Clear All'}
-                </button>
-              </div>
-              {!isQueueCollapsed && (
-                <div className={s.queueList}>
-                  {launchQueue.map((item, index) => (
-                    <div key={item.id} className={s.queueItem}>
-                      <div className={s.queueItemInfo}>
-                        <span className={s.queueItemNumber}>#{index + 1}</span>
-                        <div className={s.queueItemCoords}>
-                          <div className={s.coordPair}>
-                            <span className={s.coordLabel}>Start</span>
-                            <span>
-                              {item.startGeo.latitude.toFixed(1)},
-                              {item.startGeo.longitude.toFixed(1)}
-                            </span>
-                          </div>
-                          <div className={s.coordPair}>
-                            <span className={s.coordLabel}>Target</span>
-                            <span>
-                              {item.targetGeo.latitude.toFixed(1)},
-                              {item.targetGeo.longitude.toFixed(1)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        className={s.removeButton}
-                        onClick={() => handleRemoveFromQueue(item.id)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button
-              type="button"
-              className={s.collapseToggle}
-              onClick={() => setIsQueueCollapsed((prev) => !prev)}
-              aria-expanded={!isQueueCollapsed}
-              title={isQueueCollapsed ? 'Expand queue' : 'Collapse queue'}
-            >
-              <span className={s.collapseIcon}>▾</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {isPositionSelectionActive && (
@@ -1034,15 +1048,26 @@ const OrbitalVelocity = () => {
       </div>
 
       <div
-        className={s.miniWindowContainer}
+        className={`${s.miniWindowContainer} ${
+          isMiniWindowFolded ? s.miniWindowFolded : ''
+        }`}
         style={{
           visibility: isMiniWindowOpen ? 'visible' : 'hidden',
         }}
       >
+        <button
+          className={s.miniWindowToggle}
+          onClick={() => setIsMiniWindowFolded((folded) => !folded)}
+          aria-expanded={!isMiniWindowFolded}
+          title={isMiniWindowFolded ? 'Expand minimap' : 'Fold minimap'}
+        >
+          {isMiniWindowFolded ? '▴ Minimap' : '▾'}
+        </button>
         <div
           id={miniWindowId}
           style={{
             position: 'absolute',
+            display: isMiniWindowFolded ? 'none' : undefined,
           }}
         ></div>
       </div>

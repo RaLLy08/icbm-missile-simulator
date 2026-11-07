@@ -37,6 +37,9 @@ export default class CameraManager {
     private mouseTracker: MouseTracker
   ) {}
 
+  /** When false, the mini window is folded and is not rendered. */
+  miniWindowEnabled = true;
+
   setEarthCamera(earth: Earth) {
     if (this.rocketCameraController) {
       this.rocketCameraController.disable();
@@ -93,6 +96,7 @@ export default class CameraManager {
     this.fullScreenRenderer.render(this.scene, this.cameraController.camera);
 
     if (
+      this.miniWindowEnabled &&
       this.earthCameraController &&
       this.cameraController === this.rocketCameraController
     ) {
