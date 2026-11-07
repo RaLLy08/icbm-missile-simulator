@@ -718,10 +718,88 @@ $queue_panel_max_height: 200px;
 }
 
 // rendered inside .launchPad, pinned to its right edge
-.queueWrapper {
+// Row of panels pinned to the right of the launch pad (queue, then candidate)
+.sidePanels {
   position: absolute;
   bottom: 0;
   left: calc(100% + 12px);
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: max-content;
+}
+
+.candidatePanel {
+  width: max-content;
+  min-width: 220px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid #0ff;
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+  color: #0ff;
+  pointer-events: none;
+
+  .candidateHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #0ff3;
+
+    h3 {
+      margin: 0;
+      font-size: 0.85rem;
+    }
+  }
+
+  .candidateGeneration {
+    font-size: 0.7rem;
+    color: #aff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .candidateList {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .candidateRow {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 0.7rem;
+
+    dt {
+      color: #aff;
+      opacity: 0.8;
+    }
+
+    dd {
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    &.highlight dd {
+      color: orangered;
+      font-weight: bold;
+    }
+  }
+
+  .candidateDivider {
+    width: 100%;
+    margin: 4px 0;
+    border: none;
+    border-top: 1px solid #0ff2;
+  }
+}
+
+.queueWrapper {
   width: max-content;
   display: flex;
   align-items: flex-end;
@@ -754,6 +832,10 @@ $queue_panel_max_height: 200px;
   }
 
   &.collapsed {
+    .queuePanel {
+      cursor: pointer;
+    }
+
     .queueHeader {
       margin-bottom: 0;
       padding-bottom: 0;

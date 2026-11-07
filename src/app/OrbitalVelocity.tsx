@@ -20,6 +20,7 @@ import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
 import { isAudioMuted, setAudioListener } from './helpers/SpatialAudio';
 import StarField from './space/StarField';
+import { formatSeconds } from './utils';
 
 const INSTRUCTIONS_MENU = 'help';
 
@@ -68,6 +69,93 @@ scene.add(hemisphereLight);
 const clock = new THREE.Clock();
 
 const TIME_MULTIPLIER_PRESETS = [1, 2, 5, 10, 50];
+
+const formatMissDistance = (km: number) => {
+  if (km < 10) return `${km.toFixed(2)} km`;
+  if (km < 1000) return `${km.toFixed(1)} km`;
+  return `${Math.round(km)} km`;
+};
+
+type BestCandidate = {
+  generation: number;
+  fitness: number;
+  missDistance: number;
+  startInclineAfterDistance: number;
+  thrustInclineMaxDuration: number;
+  thrustInclineVelocity: number;
+  fuelMass: number;
+  exhaustVelocity: number;
+  massFlowRate: number;
+  payloadMass: number;
+  fuelCombustionTime: number;
+  maxAltitude: number;
+  travelledDistance: number;
+  flightTime: number;
+};
+
+const formatDuration = (seconds: number) => {
+  const { value, unit } = formatSeconds(seconds);
+  return `${value.toFixed(1)} ${unit}`;
+};
+
+const getCandidateRows = (c: BestCandidate) => [
+  {
+    key: 'miss',
+    label: 'Miss Distance',
+    value: formatMissDistance(c.missDistance),
+    highlight: true,
+  },
+  { key: 'fitness', label: 'Fitness', value: c.fitness.toFixed(3) },
+  { key: 'd1', label: null, value: null },
+  {
+    key: 'incline',
+    label: 'Turn Start Altitude',
+    value: `${c.startInclineAfterDistance.toFixed(2)} km`,
+  },
+  {
+    key: 'turnDuration',
+    label: 'Gravity Turn Duration',
+    value: formatDuration(c.thrustInclineMaxDuration),
+  },
+  {
+    key: 'turnVelocity',
+    label: 'Gravity Turn Rate',
+    value: `${THREE.MathUtils.radToDeg(c.thrustInclineVelocity).toFixed(2)}°/s`,
+  },
+  { key: 'fuel', label: 'Fuel Mass', value: `${c.fuelMass.toFixed(1)} kg` },
+  {
+    key: 'payload',
+    label: 'Payload Mass',
+    value: `${c.payloadMass.toFixed(1)} kg`,
+  },
+  {
+    key: 'flow',
+    label: 'Mass Flow Rate (ṁ)',
+    value: `${c.massFlowRate.toFixed(1)} kg/s`,
+  },
+  {
+    key: 'exhaust',
+    label: 'Exhaust Velocity (vₑ)',
+    value: `${c.exhaustVelocity.toFixed(2)} km/s`,
+  },
+  { key: 'd2', label: null, value: null },
+  {
+    key: 'burn',
+    label: 'Burn Time',
+    value: formatDuration(c.fuelCombustionTime),
+  },
+  {
+    key: 'apogee',
+    label: 'Max Altitude',
+    value: `${c.maxAltitude.toFixed(1)} km`,
+  },
+  {
+    key: 'travelled',
+    label: 'Travelled Distance',
+    value: `${c.travelledDistance.toFixed(1)} km`,
+  },
+  { key: 'flight', label: 'Flight Time', value: formatDuration(c.flightTime) },
+];
 
 const stats = new Stats();
 stats.showPanel(0);
@@ -165,6 +253,7 @@ const OrbitalVelocity = () => {
         exhaustVelocity: number;
         massFlowRate: number;
       };
+      candidate: BestCandidate | null;
     }>
   >([]);
   const [queueIdCounter, setQueueIdCounter] = useState(0);
@@ -318,6 +407,42 @@ const OrbitalVelocity = () => {
     const launcherView = new LauncherView(earth, scene);
     const launcher = new Launcher(launcherGui, earth);
 
+    // Live preview of the best candidate's flight path while calculating
+    const bestTrajectoryLine = new THREE.Line(
+      new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({
+        color: 0xff4500,
+        transparent: true,
+        opacity: 0.9,
+      })
+    );
+    bestTrajectoryLine.frustumCulled = false;
+    bestTrajectoryLine.visible = false;
+    scene.add(bestTrajectoryLine);
+
+    const bestImpactMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(40, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xff4500 })
+    );
+    bestImpactMarker.visible = false;
+    scene.add(bestImpactMarker);
+
+    let shownTrajectory: THREE.Vector3[] | null = null;
+    const showBestTrajectory = (points: THREE.Vector3[] | null) => {
+      if (points === shownTrajectory) return;
+      shownTrajectory = points;
+
+      bestTrajectoryLine.geometry.dispose();
+      bestTrajectoryLine.geometry = new THREE.BufferGeometry().setFromPoints(
+        points ?? []
+      );
+
+      const hasPoints = !!points && points.length > 1;
+      bestTrajectoryLine.visible = hasPoints;
+      bestImpactMarker.visible = hasPoints;
+      if (hasPoints) bestImpactMarker.position.copy(points[points.length - 1]);
+    };
+
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
 
@@ -374,14 +499,54 @@ const OrbitalVelocity = () => {
 
       setCalcWasReset(false);
 
-      const onProgress = (bestGenome: any, progress: number) => {
-        setCalculationProgress(progress);
-      };
-
       setIsLaunchDisabled(true);
 
       const startPos = launcher.rocketStartPosition.clone();
       const targetPos = launcher.rocketTargetPosition.clone();
+
+      let generation = 0;
+      // Final snapshot is stored with the queue item for later inspection
+      let lastCandidate: BestCandidate | null = null;
+      const onProgress = (
+        bestGenome: any,
+        progress: number,
+        bestTrajectory: THREE.Vector3[]
+      ) => {
+        setCalculationProgress(progress);
+        showBestTrajectory(bestTrajectory);
+        generation++;
+
+        const rocket = bestGenome?.rocket;
+        if (!rocket) return;
+
+        const [
+          startInclineAfterDistance,
+          thrustInclineMaxDuration,
+          thrustInclineVelocity,
+          fuelMass,
+          exhaustVelocity,
+          massFlowRate,
+        ] = bestGenome;
+
+        lastCandidate = {
+          generation,
+          fitness: bestGenome.fitness,
+          // Real impact distance, unlike fitness which may also include
+          // flight time when "minimize flight time" is enabled
+          missDistance: rocket.position.distanceTo(targetPos),
+          startInclineAfterDistance,
+          thrustInclineMaxDuration,
+          thrustInclineVelocity,
+          fuelMass,
+          exhaustVelocity,
+          massFlowRate,
+          payloadMass: rocket.payloadMass,
+          fuelCombustionTime: rocket.fuelCombustionTime,
+          maxAltitude: rocket.maxAltitude,
+          travelledDistance: rocket.travelledDistance.length(),
+          flightTime: rocket.flightTime,
+        };
+      };
       const startGeoPos = Earth.positionToGeoCoordinates(startPos);
       const targetGeoPos = Earth.positionToGeoCoordinates(targetPos);
 
@@ -404,12 +569,14 @@ const OrbitalVelocity = () => {
                 exhaustVelocity: launcher.exhaustVelocity,
                 massFlowRate: launcher.massFlowRate,
               },
+              candidate: lastCandidate,
             },
           ]);
           return prevCounter + 1;
         });
         setIsLaunchDisabled(false);
         setCalculationProgress(null);
+        showBestTrajectory(null);
       });
     };
 
@@ -875,6 +1042,21 @@ const OrbitalVelocity = () => {
 
   const isPositionSelectionActive = startPositionActive || targetPositionActive;
 
+  // Parameters of the selected queue item; hidden while calculating
+  const panelCandidate = (() => {
+    if (calculationProgress !== null) return null;
+    const index = launchQueue.findIndex(
+      (item) => item.id === selectedQueueItemId
+    );
+    const candidate = index >= 0 ? launchQueue[index].candidate : null;
+    if (!candidate) return null;
+    return {
+      title: `Launch #${index + 1}`,
+      subtitle: `${candidate.generation} gens`,
+      data: candidate,
+    };
+  })();
+
   return (
     <>
       <div id={sceneContainerId} className={s.sceneContainer}></div>
@@ -1055,87 +1237,127 @@ const OrbitalVelocity = () => {
                 </div>
               </div>
 
-              {/* Launch Queue Panel, pinned to the right of the launch pad */}
-              {launchQueue.length > 0 && (
-                <div
-                  className={clsx(s.queueWrapper, {
-                    [s.collapsed]: isQueueCollapsed,
-                  })}
-                >
-                  <div className={s.queuePanel}>
-                    <div className={s.queueHeader}>
-                      <h3>Launch Queue ({launchQueue.length})</h3>
-                      <button
-                        className={clsx(s.clearButton, {
-                          [s.confirming]: isConfirmingClear,
-                        })}
-                        onClick={handleClearQueueClick}
-                      >
-                        {isConfirmingClear ? 'Confirm' : 'Clear All'}
-                      </button>
-                    </div>
-                    {!isQueueCollapsed && (
-                      <div className={s.queueList}>
-                        {launchQueue.map((item, index) => (
-                          <div
-                            key={item.id}
-                            className={clsx(s.queueItem, {
-                              [s.selected]: item.id === selectedQueueItemId,
-                            })}
-                            title="Show start and target on the map"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedQueueItemId((prev) =>
-                                prev === item.id ? null : item.id
-                              );
-                            }}
-                          >
-                            <div className={s.queueItemInfo}>
-                              <span className={s.queueItemNumber}>
-                                #{index + 1}
-                              </span>
-                              <div className={s.queueItemCoords}>
-                                <div className={s.coordPair}>
-                                  <span className={s.coordLabel}>Start</span>
-                                  <span>
-                                    {item.startGeo.latitude.toFixed(1)},
-                                    {item.startGeo.longitude.toFixed(1)}
-                                  </span>
-                                </div>
-                                <div className={s.coordPair}>
-                                  <span className={s.coordLabel}>Target</span>
-                                  <span>
-                                    {item.targetGeo.latitude.toFixed(1)},
-                                    {item.targetGeo.longitude.toFixed(1)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <button
-                              className={s.removeButton}
+              {/* Side panels pinned to the right of the launch pad:
+                  launch queue first, then the live best candidate */}
+              <div className={s.sidePanels}>
+                {launchQueue.length > 0 && (
+                  <div
+                    className={clsx(s.queueWrapper, {
+                      [s.collapsed]: isQueueCollapsed,
+                    })}
+                  >
+                    <div
+                      className={s.queuePanel}
+                      title={isQueueCollapsed ? 'Expand queue' : undefined}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isQueueCollapsed) setIsQueueCollapsed(false);
+                      }}
+                    >
+                      <div className={s.queueHeader}>
+                        <h3>Launch Queue ({launchQueue.length})</h3>
+                        <button
+                          className={clsx(s.clearButton, {
+                            [s.confirming]: isConfirmingClear,
+                          })}
+                          onClick={handleClearQueueClick}
+                        >
+                          {isConfirmingClear ? 'Confirm' : 'Clear All'}
+                        </button>
+                      </div>
+                      {!isQueueCollapsed && (
+                        <div className={s.queueList}>
+                          {launchQueue.map((item, index) => (
+                            <div
+                              key={item.id}
+                              className={clsx(s.queueItem, {
+                                [s.selected]: item.id === selectedQueueItemId,
+                              })}
+                              title="Show start and target on the map"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRemoveFromQueue(item.id);
+                                setSelectedQueueItemId((prev) =>
+                                  prev === item.id ? null : item.id
+                                );
                               }}
                             >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                              <div className={s.queueItemInfo}>
+                                <span className={s.queueItemNumber}>
+                                  #{index + 1}
+                                </span>
+                                <div className={s.queueItemCoords}>
+                                  <div className={s.coordPair}>
+                                    <span className={s.coordLabel}>Start</span>
+                                    <span>
+                                      {item.startGeo.latitude.toFixed(1)},
+                                      {item.startGeo.longitude.toFixed(1)}
+                                    </span>
+                                  </div>
+                                  <div className={s.coordPair}>
+                                    <span className={s.coordLabel}>Target</span>
+                                    <span>
+                                      {item.targetGeo.latitude.toFixed(1)},
+                                      {item.targetGeo.longitude.toFixed(1)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                className={s.removeButton}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveFromQueue(item.id);
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      className={s.collapseToggle}
+                      onClick={() => setIsQueueCollapsed((prev) => !prev)}
+                      aria-expanded={!isQueueCollapsed}
+                      title={
+                        isQueueCollapsed ? 'Expand queue' : 'Collapse queue'
+                      }
+                    >
+                      <span className={s.collapseIcon}>▾</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className={s.collapseToggle}
-                    onClick={() => setIsQueueCollapsed((prev) => !prev)}
-                    aria-expanded={!isQueueCollapsed}
-                    title={isQueueCollapsed ? 'Expand queue' : 'Collapse queue'}
-                  >
-                    <span className={s.collapseIcon}>▾</span>
-                  </button>
-                </div>
-              )}
+                )}
+
+                {panelCandidate !== null && (
+                  <div className={s.candidatePanel}>
+                    <div className={s.candidateHeader}>
+                      <h3>{panelCandidate.title}</h3>
+                      <span className={s.candidateGeneration}>
+                        {panelCandidate.subtitle}
+                      </span>
+                    </div>
+                    <dl className={s.candidateList}>
+                      {getCandidateRows(panelCandidate.data).map((row) =>
+                        row.label === null ? (
+                          <hr key={row.key} className={s.candidateDivider} />
+                        ) : (
+                          <div
+                            key={row.key}
+                            className={clsx(s.candidateRow, {
+                              [s.highlight]: row.highlight,
+                            })}
+                          >
+                            <dt>{row.label}</dt>
+                            <dd>{row.value}</dd>
+                          </div>
+                        )
+                      )}
+                    </dl>
+                  </div>
+                )}
+              </div>
             </div>
           );
         })()}

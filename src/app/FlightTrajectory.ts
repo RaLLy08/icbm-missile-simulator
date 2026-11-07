@@ -28,7 +28,11 @@ type DEParams = {
 
 export class FlightTrajectory {
   private de: DE | null = null;
-  public onProgress: (bestGenome: any, progress: number) => void = () => {};
+  public onProgress: (
+    bestGenome: any,
+    progress: number,
+    bestTrajectory: THREE.Vector3[]
+  ) => void = () => {};
   elapsedTime: number = 0;
   private _tempDistanceVec = new THREE.Vector3();
 
@@ -50,7 +54,8 @@ export class FlightTrajectory {
       maxAltitude?: number; // optional, not used in current implementation
     },
     private minimizeFlightTime: boolean = false,
-    private increaseCalculationAccuracy: boolean = false
+    private increaseCalculationAccuracy: boolean = false,
+    private traceBestTrajectory: boolean = false
   ) {}
 
   async calcTrajectory(delayBetweenGenerationsMs: number | null = null) {
@@ -105,13 +110,22 @@ export class FlightTrajectory {
       let noImprovementCount = 0;
       const convergenceThreshold = 0.001; // km
       const maxNoImprovementGenerations = 20;
+      let tracedGenome: any = null;
+      let bestTrajectory: THREE.Vector3[] = [];
 
       this.de.run(delayBetweenGenerationsMs, (generation: number) => {
         const bestGenome = this.de.population[0];
 
+        // Re-trace the path only when enabled and a new best genome appears
+        if (this.traceBestTrajectory && bestGenome !== tracedGenome) {
+          tracedGenome = bestGenome;
+          bestTrajectory = this.traceTrajectory(bestGenome);
+        }
+
         this.onProgress(
           bestGenome,
-          (generation * 100) / (deParams.maxGenerations - 1)
+          (generation * 100) / (deParams.maxGenerations - 1),
+          bestTrajectory
         );
 
         // Early termination: check for convergence
@@ -139,7 +153,7 @@ export class FlightTrajectory {
     });
   };
 
-  private fitnessFunction = (genome: any) => {
+  private createRocket = (genome: any) => {
     const [
       startInclineAfterDistance,
       thrustInclineMaxDuration,
@@ -149,7 +163,7 @@ export class FlightTrajectory {
       massFlowRate,
     ] = genome;
 
-    const rocket = new Rocket(
+    return new Rocket(
       this.earth,
       this.start,
       this.target,
@@ -160,6 +174,23 @@ export class FlightTrajectory {
       exhaustVelocity,
       massFlowRate
     );
+  };
+
+  /**
+   * Re-simulates a genome exactly as the fitness function does and records
+   * the rocket position after every step, for visualizing the flight path.
+   */
+  traceTrajectory = (genome: any) => {
+    const rocket = this.createRocket(genome);
+    const points: THREE.Vector3[] = [rocket.position.clone()];
+
+    this.simulateFlight(rocket, 1, () => points.push(rocket.position.clone()));
+
+    return points;
+  };
+
+  private fitnessFunction = (genome: any) => {
+    const rocket = this.createRocket(genome);
 
     this.simulateFlight(rocket);
 
@@ -177,12 +208,17 @@ export class FlightTrajectory {
     return fitness;
   };
 
-  private simulateFlight = (rocket: Rocket, stepInSeconds = 1) => {
+  private simulateFlight = (
+    rocket: Rocket,
+    stepInSeconds = 1,
+    onStep?: () => void
+  ) => {
     const { maxFlightTimeSeconds, maxDistanceThreshold, maxAltitude } =
       this.flightConstraints;
 
     for (let i = 0; i < maxFlightTimeSeconds / stepInSeconds; i++) {
       rocket.update(stepInSeconds);
+      onStep?.();
 
       const traveledDistance = rocket.travelledDistance.length();
 

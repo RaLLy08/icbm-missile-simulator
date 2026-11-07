@@ -22,6 +22,7 @@ export default class LauncherGui {
   flightTime = 0;
   minimizeFlightTime = true;
   increaseCalculationAccuracy = false;
+  showCalculationPreview = false;
 
   payloadMass = 0;
   fuelMass = 0;
@@ -80,6 +81,16 @@ export default class LauncherGui {
       })
       .on('change', (ev) => {
         this.increaseCalculationAccuracy = ev.value;
+      });
+
+    this.folder
+      .addBinding(this, 'showCalculationPreview', {
+        label: 'Animate Trajectory Calculating (slower)',
+        view: 'checkbox',
+        input: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.showCalculationPreview = ev.value;
       });
 
     this.folder.addBinding(this, 'startInclineAfterDistance', {

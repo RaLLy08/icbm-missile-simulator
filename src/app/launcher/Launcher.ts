@@ -70,7 +70,11 @@ export default class Launcher {
   };
 
   calcTrajectory = async (
-    onProgress = (bestGenome: any, progress: number) => {}
+    onProgress = (
+      _bestGenome: any,
+      _progress: number,
+      _bestTrajectory: THREE.Vector3[]
+    ) => {}
   ) => {
     if (!this.rocketStartPosition || !this.rocketTargetPosition) {
       return;
@@ -117,7 +121,8 @@ export default class Launcher {
         maxAltitude: 6000,
       },
       this.launcherGui.minimizeFlightTime,
-      this.launcherGui.increaseCalculationAccuracy
+      this.launcherGui.increaseCalculationAccuracy,
+      this.launcherGui.showCalculationPreview
     );
 
     flightTrajectory.onProgress = onProgress;
