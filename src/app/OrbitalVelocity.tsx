@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { ListBladeApi, Pane } from 'tweakpane';
 import Stats from 'three/examples/jsm/libs/stats.module';
 import s from './OrbitalVelocity.module.scss';
@@ -167,6 +167,11 @@ stats.showPanel(0);
 // stats.js sets position:fixed/top-left inline; let the CSS wrapper place it
 stats.dom.style.cssText = 'position:relative;cursor:pointer;opacity:0.9;';
 
+// Keep in sync with $mobile_breakpoint in OrbitalVelocity.module.scss
+const isMobileViewport = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(max-width: 640px)').matches;
+
 const updateTriggers: {
   [key: string]: any;
   update: (deltaTime?: number) => void;
@@ -195,7 +200,8 @@ const OrbitalVelocity = () => {
     targetPositionSetIsActive: false,
   });
   const [isMiniWindowOpen, setIsMiniWindowOpen] = useState(false);
-  const [isMiniWindowFolded, setIsMiniWindowFolded] = useState(false);
+  const [isMiniWindowFolded, setIsMiniWindowFolded] =
+    useState(isMobileViewport);
   const cameraManagerRef = useRef<CameraManager | null>(null);
 
   const [startPositionActive, setStartPositionActive] = useState(
@@ -297,13 +303,17 @@ const OrbitalVelocity = () => {
 
     if (!sceneContainer) return;
 
+    // On phones both panes start collapsed so they don't cover the globe
+    const isMobile = isMobileViewport();
     const mainPane = new Pane({
       title: 'Main Controls',
       container: mainGuiContainer!,
+      expanded: !isMobile,
     });
     const rocketGuiPane = new Pane({
       title: 'Missile Controls',
       container: rocketGuiContainer!,
+      expanded: !isMobile,
     });
 
     const createMiniWindowRenderer = () => {
@@ -314,15 +324,15 @@ const OrbitalVelocity = () => {
       renderer.setClearColor(0x000000, 1);
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      miniWindow!.style.width = '300px';
-      miniWindow!.style.height = '300px';
+      // must match .miniWindowContainer size in the stylesheet
+      const miniSize = isMobile ? 180 : 300;
+      miniWindow!.style.width = `${miniSize}px`;
+      miniWindow!.style.height = `${miniSize}px`;
 
-      const { width, height } = miniWindow!.getBoundingClientRect();
-
-      const aspect = width / height;
-
+      // Don't measure the element: on phones the minimap starts folded
+      // (display: none), which would report 0x0 and leave the canvas empty.
       renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(width, height);
+      renderer.setSize(miniSize, miniSize);
       miniWindow!.appendChild(renderer.domElement);
 
       return renderer;
@@ -1069,6 +1079,34 @@ const OrbitalVelocity = () => {
     };
   })();
 
+  // Side panels sit to the right of the launch pad; when they'd overflow the
+  // viewport, stack them above it instead. Measured from the children's own
+  // (max-content) widths, which don't depend on the mode, so it can't flap.
+  const launchPadRef = useRef<HTMLDivElement | null>(null);
+  const sidePanelsRef = useRef<HTMLDivElement | null>(null);
+  const [areSidePanelsStacked, setAreSidePanelsStacked] = useState(false);
+  useLayoutEffect(() => {
+    const check = () => {
+      const pad = launchPadRef.current;
+      const panels = sidePanelsRef.current;
+      if (!pad || !panels) return;
+      const SIDE_OFFSET = 12; // .sidePanels left: calc(100% + 12px)
+      const EDGE_MARGIN = 8;
+      const gap = parseFloat(getComputedStyle(panels).columnGap) || 0;
+      const children = Array.from(panels.children) as HTMLElement[];
+      const required =
+        children.reduce((sum, el) => sum + el.offsetWidth, 0) +
+        gap * Math.max(0, children.length - 1);
+      const fits =
+        pad.getBoundingClientRect().right + SIDE_OFFSET + required <=
+        window.innerWidth - EDGE_MARGIN;
+      setAreSidePanelsStacked((prev) => (prev === !fits ? prev : !fits));
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  });
+
   return (
     <>
       <div id={sceneContainerId} className={s.sceneContainer}></div>
@@ -1151,7 +1189,7 @@ const OrbitalVelocity = () => {
           }
 
           return (
-            <div className={s.launchPad}>
+            <div className={s.launchPad} ref={launchPadRef}>
               <button
                 className={s.infoButton}
                 onClick={handleInfoButtonClick}
@@ -1251,7 +1289,12 @@ const OrbitalVelocity = () => {
 
               {/* Side panels pinned to the right of the launch pad:
                   launch queue first, then the live best candidate */}
-              <div className={s.sidePanels}>
+              <div
+                ref={sidePanelsRef}
+                className={clsx(s.sidePanels, {
+                  [s.stacked]: areSidePanelsStacked,
+                })}
+              >
                 {launchQueue.length > 0 && (
                   <div
                     className={clsx(s.queueWrapper, {
@@ -1349,6 +1392,18 @@ const OrbitalVelocity = () => {
                       <span className={s.candidateGeneration}>
                         {panelCandidate.subtitle}
                       </span>
+                      <button
+                        type="button"
+                        className={s.candidateClose}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedQueueItemId(null);
+                        }}
+                        title="Close launch data"
+                        aria-label="Close launch data"
+                      >
+                        ✕
+                      </button>
                     </div>
                     <dl className={s.candidateList}>
                       {getCandidateRows(panelCandidate.data).map((row) =>

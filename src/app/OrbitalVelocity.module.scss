@@ -1,5 +1,7 @@
 $github_link_svg_height: 32px;
 $queue_panel_max_height: 200px;
+// Keep in sync with isMobileViewport() in OrbitalVelocity.tsx
+$mobile_breakpoint: 640px;
 
 .container {
   width: 100%;
@@ -727,6 +729,18 @@ $queue_panel_max_height: 200px;
   align-items: flex-end;
   gap: 12px;
   width: max-content;
+
+  // not enough room on the right: above the launch pad (and its time / info
+  // buttons), right-aligned with its right edge, wrapping if too wide.
+  // The pad is centered, so the room to its left edge is 50vw + half its width.
+  &.stacked {
+    left: auto;
+    right: 0;
+    bottom: calc(100% + 46px);
+    max-width: calc(50vw + 50% - 8px);
+    flex-wrap: wrap-reverse;
+    justify-content: flex-end;
+  }
 }
 
 .candidatePanel {
@@ -756,9 +770,34 @@ $queue_panel_max_height: 200px;
   }
 
   .candidateGeneration {
+    margin-left: auto;
     font-size: 0.7rem;
     color: #aff;
     font-variant-numeric: tabular-nums;
+  }
+
+  // the panel ignores pointer events; only the close button takes clicks
+  .candidateClose {
+    pointer-events: auto;
+    align-self: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: #0ff;
+    border: 1px solid #0ff6;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    &:hover {
+      background: rgba(0, 255, 255, 0.15);
+    }
   }
 
   .candidateList {
@@ -970,5 +1009,294 @@ $queue_panel_max_height: 200px;
         background: rgba(255, 85, 85, 0.2);
       }
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Smartphones: launch pad spans the screen width, side panels stack above it,
+// GUI panes share the top row, minimap shrinks and moves out of the way.
+// ---------------------------------------------------------------------------
+@media (max-width: $mobile_breakpoint) {
+  $gutter: 8px;
+  $safe_bottom: env(safe-area-inset-bottom, 0px);
+
+  .container {
+    .launchPad {
+      left: $gutter;
+      right: $gutter;
+      bottom: calc(#{$gutter} + #{$safe_bottom});
+      transform: none;
+      padding: 8px 10px;
+      border-radius: 10px;
+
+      .infoButton {
+        top: -38px;
+        right: 0;
+        font-size: 1.3rem;
+        padding: 6px;
+      }
+
+      .muteButton {
+        right: 38px;
+      }
+
+      .infoPanel .infoText {
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+      }
+
+      .controls {
+        width: 100%;
+        gap: 8px;
+        align-items: flex-start;
+
+        .positionBlock {
+          flex: 1 1 0;
+          min-width: 0;
+          gap: 4px;
+
+          .button {
+            width: 100%;
+            height: 40px;
+            font-size: 0.75rem;
+          }
+
+          .coordinates {
+            font-size: 0.65rem;
+          }
+        }
+
+        .trajectoryBlock {
+          flex: 1.3 1 0;
+          min-width: 0;
+          gap: 6px;
+
+          .calculateButton {
+            width: 100%;
+            height: 40px;
+          }
+
+          .launchButton {
+            width: 100%;
+            height: 44px;
+            font-size: 1rem;
+          }
+        }
+      }
+    }
+
+    // both panes share the top row under the time badge
+    .rocketGui {
+      top: 36px;
+      left: $gutter;
+      padding: 0;
+      width: calc(50% - #{$gutter * 1.5});
+      max-height: 55vh;
+    }
+
+    .topRightPanel {
+      top: 36px;
+      right: $gutter;
+      width: calc(50% - #{$gutter * 1.5});
+      height: auto;
+      max-height: 55vh;
+    }
+
+    // an expanded pane is unreadable at half width: let it span the screen
+    // (covering the other pane's header) until it is collapsed again
+    .rocketGui:has(> :global(.tp-rotv-expanded)),
+    .topRightPanel:has(:global(.tp-rotv-expanded)) {
+      width: calc(100% - #{$gutter * 2});
+      z-index: 2;
+    }
+
+    .stats {
+      display: none;
+    }
+
+    .mainGui {
+      width: 100%;
+      padding: 0;
+      max-height: 55vh;
+    }
+
+    .rocketGui,
+    .mainGui {
+      overflow-x: hidden;
+
+      // Tweakpane gives values a fixed 160px column and the label whatever is
+      // left; share the row instead so neither side gets crushed
+      :global(.tp-lblv_l) {
+        flex: 1 1 45%;
+        min-width: 0;
+        overflow-wrap: break-word;
+      }
+
+      :global(.tp-lblv_v) {
+        flex: 1 1 55%;
+        width: auto;
+        min-width: 0;
+      }
+    }
+  }
+
+  .timePassed {
+    top: 8px;
+  }
+
+  .clearLaunchPad {
+    bottom: calc(#{$gutter * 2} + #{$safe_bottom});
+
+    .inlineMuteButton {
+      font-size: 1.3rem;
+      padding: 6px;
+    }
+  }
+
+  // bigger tap targets for the time controls
+  .timeMultiplier .timeMultiplierButton {
+    height: 30px;
+    min-width: 48px;
+    font-size: 0.8rem;
+  }
+
+  // stacked full-width above the launch pad instead of to its right
+  .sidePanels,
+  .sidePanels.stacked {
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 46px);
+    transform: none;
+    max-width: none;
+    flex-wrap: nowrap;
+    width: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    max-height: 40vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .queueWrapper {
+    width: auto;
+
+    .collapseToggle {
+      width: 30px;
+      height: 30px;
+    }
+  }
+
+  .queuePanel {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    max-height: 120px;
+
+    .queueItem .removeButton {
+      padding: 4px 8px;
+    }
+  }
+
+  .candidatePanel {
+    width: auto;
+    min-width: 0;
+    padding: 8px 10px;
+    max-height: 28vh;
+    overflow-y: auto;
+    pointer-events: auto; // allow scrolling the list by touch
+    scrollbar-width: thin;
+    scrollbar-color: #0ff transparent;
+
+    .candidateHeader {
+      position: sticky;
+      top: -8px;
+      margin: -8px -10px 6px;
+      padding: 8px 10px 6px;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 1;
+    }
+
+    .candidateClose {
+      width: 28px;
+      height: 28px;
+      font-size: 0.8rem;
+    }
+
+    // two columns of label/value pairs to halve the height
+    .candidateList {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 14px;
+      row-gap: 3px;
+    }
+
+    .candidateRow {
+      gap: 8px;
+      font-size: 0.65rem;
+      min-width: 0;
+
+      dt {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .candidateDivider {
+      grid-column: 1 / -1;
+    }
+  }
+
+  // top-right under the GUI panes, away from the launch pad
+  .miniWindowContainer {
+    top: 80px;
+    bottom: auto;
+    right: $gutter;
+    width: 180px;
+    height: 180px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .miniWindowFolded {
+    width: auto;
+    height: auto;
+  }
+
+  .versionBadge {
+    display: none;
+  }
+
+  // modal: close/back buttons can't hang outside a full-width dialog
+  .modalWrapper {
+    width: calc(100% - #{$gutter * 2});
+  }
+
+  .modalContent {
+    padding: 48px 16px 20px;
+    max-height: 85vh;
+  }
+
+  .closeButton {
+    top: 10px;
+    left: auto;
+    right: 10px;
+  }
+
+  .backButton {
+    top: 10px;
+    right: auto;
+    left: 10px;
+  }
+
+  .modalTitle {
+    font-size: 1.4rem;
+    margin-bottom: 16px;
+  }
+
+  .step {
+    padding: 12px;
+    gap: 10px;
   }
 }

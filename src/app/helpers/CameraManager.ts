@@ -65,9 +65,10 @@ export default class CameraManager {
   setRocketCamera(earthView: EarthView, rocketView: RocketView) {
     if (this.earthCameraController) {
       this.earthCameraController.disable();
-      this.earthCameraController.camera.aspect =
-        this.miniWindowRenderer.domElement.clientWidth /
-        this.miniWindowRenderer.domElement.clientHeight;
+      // Use the drawing size, not clientWidth/Height: those are 0 while the
+      // minimap is folded (display: none) and would give a NaN aspect.
+      const miniSize = this.miniWindowRenderer.getSize(new THREE.Vector2());
+      this.earthCameraController.camera.aspect = miniSize.x / miniSize.y;
       this.earthCameraController.camera.updateProjectionMatrix();
     }
 
@@ -301,11 +302,11 @@ class RocketCamera {
   phi: number = THREE.MathUtils.degToRad(45); // Vertical angle
   theta: number = THREE.MathUtils.degToRad(0); // Horizontal angle
 
-  // DOM element for mouse events
+  // DOM element for pointer events (mouse + touch)
   domElement: HTMLElement;
-  isMouseDown: boolean = false;
-  prevMouseX: number = 0;
-  prevMouseY: number = 0;
+  // Active pointers by id -> last position. 1 = rotate, 2 = pinch zoom.
+  private pointers = new Map<number, { x: number; y: number }>();
+  private prevPinchDistance = 0;
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -321,11 +322,13 @@ class RocketCamera {
     this.minDistance = this.rocketView.size;
     this.distance = this.rocketView.size * 3;
 
-    // Set up mouse controls
-    this.domElement.addEventListener('mousedown', this.onMouseDown.bind(this));
-    window.addEventListener('mouseup', this.onMouseUp.bind(this));
-    this.domElement.addEventListener('mousemove', this.onMouseMove.bind(this));
-    this.domElement.addEventListener('wheel', this.onMouseWheel.bind(this), {
+    // Pointer events cover mouse and touch. Up/cancel are on window so a drag
+    // that ends outside the canvas still releases.
+    this.domElement.addEventListener('pointerdown', this.onPointerDown);
+    window.addEventListener('pointermove', this.onPointerMove);
+    window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('pointercancel', this.onPointerUp);
+    this.domElement.addEventListener('wheel', this.onMouseWheel, {
       passive: false,
     });
   }
@@ -358,38 +361,61 @@ class RocketCamera {
     return rocketPosition.add(earthNormal.clone().multiplyScalar(offset));
   }
 
-  onMouseDown(event: MouseEvent) {
-    this.isMouseDown = true;
-    this.prevMouseX = event.clientX;
-    this.prevMouseY = event.clientY;
+  private getPinchDistance() {
+    const [a, b] = Array.from(this.pointers.values());
+    return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  onMouseUp() {
-    this.isMouseDown = false;
-  }
-
-  onMouseMove(event: MouseEvent) {
+  private onPointerDown = (event: PointerEvent) => {
     if (this.disabled) return;
-    if (!this.isMouseDown) return;
+    // Left mouse button only; any touch/pen contact
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
 
-    const deltaX = event.clientX - this.prevMouseX;
-    const deltaY = event.clientY - this.prevMouseY;
+    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (this.pointers.size === 2) {
+      this.prevPinchDistance = this.getPinchDistance();
+    }
+  };
 
-    // Update angles based on mouse movement
+  private onPointerUp = (event: PointerEvent) => {
+    this.pointers.delete(event.pointerId);
+    if (this.pointers.size === 2) {
+      this.prevPinchDistance = this.getPinchDistance();
+    }
+  };
+
+  private onPointerMove = (event: PointerEvent) => {
+    const prev = this.pointers.get(event.pointerId);
+    if (!prev) return;
+    if (this.disabled) {
+      this.pointers.clear();
+      return;
+    }
+
+    const deltaX = event.clientX - prev.x;
+    const deltaY = event.clientY - prev.y;
+    prev.x = event.clientX;
+    prev.y = event.clientY;
+
+    if (this.pointers.size >= 2) {
+      // Pinch: fingers apart -> zoom in (smaller distance)
+      const pinchDistance = this.getPinchDistance();
+      const pinchDelta = this.prevPinchDistance - pinchDistance;
+      this.prevPinchDistance = pinchDistance;
+      this.zoomBy(pinchDelta * 2);
+      return;
+    }
+
+    // Single pointer: orbit around the missile
     this.theta -= deltaX * this.mouseSensitivity; // Horizontal rotation
     this.phi = Math.max(
       0.1,
       Math.min(Math.PI - 0.1, this.phi - deltaY * this.mouseSensitivity)
     ); // Vertical rotation (clamped)
+  };
 
-    this.prevMouseX = event.clientX;
-    this.prevMouseY = event.clientY;
-  }
-
-  onMouseWheel(event: WheelEvent) {
-    if (this.disabled) return;
-    if (this.transitioningToRocketView != null) return;
-
+  /** Positive = zoom out. `amount` is in wheel-deltaY units. */
+  private zoomBy(amount: number) {
     // Zoom in/out
     const minStep = 0.001;
     const maxStep = 1;
@@ -400,7 +426,6 @@ class RocketCamera {
       this.maxDistance
     );
 
-    // const step = maxStep;
     const step = THREE.MathUtils.mapLinear(
       1 - Math.pow(1 - percentageOfApproach, 8),
       0,
@@ -409,15 +434,19 @@ class RocketCamera {
       maxStep
     );
 
-    const wheelStep = event.deltaY * step;
-
     this.distance = Math.max(
       this.minDistance,
-      Math.min(this.maxDistance, this.distance + wheelStep)
+      Math.min(this.maxDistance, this.distance + amount * step)
     );
-
-    event.preventDefault();
   }
+
+  private onMouseWheel = (event: WheelEvent) => {
+    if (this.disabled) return;
+    if (this.transitioningToRocketView != null) return;
+
+    this.zoomBy(event.deltaY);
+    event.preventDefault();
+  };
 
   private getCameraPosition(targetPos: THREE.Vector3) {
     const surfaceNormal = new THREE.Vector3()
@@ -509,9 +538,10 @@ class RocketCamera {
 
   remove() {
     // Clean up event listeners
-    this.domElement.removeEventListener('mousedown', this.onMouseDown);
-    window.removeEventListener('mouseup', this.onMouseUp);
-    this.domElement.removeEventListener('mousemove', this.onMouseMove);
+    this.domElement.removeEventListener('pointerdown', this.onPointerDown);
+    window.removeEventListener('pointermove', this.onPointerMove);
+    window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('pointercancel', this.onPointerUp);
     this.domElement.removeEventListener('wheel', this.onMouseWheel);
   }
 }
