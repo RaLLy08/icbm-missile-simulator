@@ -37,6 +37,22 @@ export default class RocketGui {
       this.folder.element.querySelector('.tp-fldv_c') ?? this.folder.element;
     folderContent.prepend(this.trackingView.element);
 
+    const cameraViewBinding = this.folder.addBinding(
+      this.trackingView,
+      'mode',
+      {
+        label: 'Camera View',
+        options: {
+          Chase: 'chase',
+          'First-Person': 'fpv',
+        },
+      }
+    );
+    // Keep dropdown in sync when the mode is toggled by clicking the viewport
+    this.trackingView.onModeChange = () => cameraViewBinding.refresh();
+    // Place the selector right below the viewport
+    this.trackingView.element.after(cameraViewBinding.element);
+
     this.folder.addBinding(this, 'velocity', {
       label: 'Velocity',
       readonly: true,

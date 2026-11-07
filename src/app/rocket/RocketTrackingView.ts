@@ -2,13 +2,45 @@ import * as THREE from 'three';
 import Earth from 'app/earth/Earth';
 import RocketView from './RocketView';
 
+export type TrackingCameraMode = 'chase' | 'fpv';
+
 /**
- * Small embedded viewport with its own camera that chases a missile in realtime.
+ * Small embedded viewport with its own camera that follows a missile in realtime.
+ * Supports a third-person chase camera and a first-person (nose) camera.
  */
 export default class RocketTrackingView {
+  // Remembered across GUI re-creation (e.g. switching focused missile)
+  private static lastMode: TrackingCameraMode = 'chase';
+
   readonly element: HTMLDivElement;
   private renderer: THREE.WebGLRenderer;
   private camera: THREE.PerspectiveCamera;
+  private label: HTMLDivElement;
+  private _mode: TrackingCameraMode = RocketTrackingView.lastMode;
+
+  onModeChange: (mode: TrackingCameraMode) => void = () => {};
+
+  get mode() {
+    return this._mode;
+  }
+
+  set mode(mode: TrackingCameraMode) {
+    if (mode === this._mode) return;
+    this._mode = mode;
+    RocketTrackingView.lastMode = mode;
+    // Snap instead of easing when re-entering chase mode
+    this.initialized = false;
+    this.updateLabel();
+    this.onModeChange(mode);
+  }
+
+  toggleMode() {
+    this.mode = this._mode === 'chase' ? 'fpv' : 'chase';
+  }
+
+  private updateLabel() {
+    this.label.textContent = `● LIVE · ${this._mode === 'fpv' ? 'FPV' : 'CHASE'}`;
+  }
 
   private readonly target = new THREE.Vector3();
   private readonly desiredOffset = new THREE.Vector3();
@@ -35,10 +67,19 @@ export default class RocketTrackingView {
       overflow: 'hidden',
       border: '1px solid rgba(0, 255, 255, 0.5)',
       background: '#000',
+      cursor: 'pointer',
     });
+    this.element.title = 'Click to switch Chase / First-Person view';
+    this.element.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggleMode();
+    });
+    // Don't let clicks in the viewport reach the global Earth-picking handler
+    this.element.addEventListener('mousedown', (e) => e.stopPropagation());
 
     const label = document.createElement('div');
-    label.textContent = '● LIVE';
+    this.label = label;
+    this.updateLabel();
     Object.assign(label.style, {
       position: 'absolute',
       top: '4px',
@@ -130,8 +171,45 @@ export default class RocketTrackingView {
     return up;
   }
 
+  private updateFirstPerson() {
+    const { group, size, earthView } = this.rocketView;
+    const earthCenter = earthView.mesh.position;
+
+    // Just ahead of the nose cone tip (body = size, cone = 0.3 * size)
+    this.camera.position.set(0, size * 1.35, 0);
+    group.localToWorld(this.camera.position);
+
+    const forward = new THREE.Vector3(0, 1, 0)
+      .applyQuaternion(group.quaternion)
+      .normalize();
+
+    // Keep the horizon level: "up" is the surface normal projected
+    // perpendicular to the flight direction.
+    const surfaceUp = group.position.clone().sub(earthCenter).normalize();
+    let up = surfaceUp.clone().addScaledVector(forward, -surfaceUp.dot(forward));
+
+    if (up.lengthSq() < 1e-6) {
+      // Flying straight up/down – fall back to the missile's own local axis
+      up = new THREE.Vector3(0, 0, -1).applyQuaternion(group.quaternion);
+    }
+
+    this.camera.up.copy(up.normalize());
+    this.camera.lookAt(this.camera.position.clone().add(forward));
+  }
+
   update(deltaTime = 0) {
     if (!this.element.isConnected || !this.syncSize()) return;
+
+    if (this._mode === 'fpv') {
+      this.updateFirstPerson();
+
+      // Force arrows start at the tail and pass through the nose – hide them
+      // so they don't block the first-person view.
+      this.rocketView.setArrowsVisible(false);
+      this.renderer.render(this.scene, this.camera);
+      this.rocketView.setArrowsVisible(true);
+      return;
+    }
 
     const up = this.computeDesiredPose();
 

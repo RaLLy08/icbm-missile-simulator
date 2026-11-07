@@ -744,6 +744,12 @@ export default class RocketView {
     this.prevThrust.copy(this.rocket.thrust.clone());
   }
 
+  setArrowsVisible(visible: boolean) {
+    this.arrows.forEach((arrow) => {
+      arrow.visible = visible;
+    });
+  }
+
   applyScaleToArrows(scale: number) {
     this.arrowLength = scale;
   }
