@@ -35,11 +35,6 @@ export default class WorldGui {
   }
 
   private initGui() {
-    this.guiStopTimeButton = this.folder.addButton({
-      title: 'Stop Time',
-    });
-    this.guiStopTimeButton.on('click', () => this.toggleTime());
-
     const guiDeltaTime = this.folder.addBinding(this, 'timeDeltaTime', {
       label: 'Seconds Passed Between Frames (s)',
       readonly: true,
@@ -65,6 +60,11 @@ export default class WorldGui {
       max: 300,
       step: 1,
     });
+
+    this.guiStopTimeButton = this.folder.addButton({
+      title: 'Stop Time',
+    });
+    this.guiStopTimeButton.on('click', () => this.toggleTime());
 
     this.guiTimeMultiplier.on('change', (ev) => {
       this.onTimeMultiplierChange?.(Number(ev.value));
