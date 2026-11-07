@@ -12,6 +12,53 @@ export default class RocketTrackingView {
   // Remembered across GUI re-creation (e.g. switching focused missile)
   private static lastMode: TrackingCameraMode = 'chase';
 
+  // One WebGL context shared by every tracking view. Creating a renderer per
+  // missile means a fresh context that has to re-upload every texture and
+  // recompile every shader on its first frame -> big hitch on launch.
+  private static sharedRenderer: THREE.WebGLRenderer | null = null;
+
+  private static getRenderer() {
+    if (!RocketTrackingView.sharedRenderer) {
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        logarithmicDepthBuffer: true,
+      });
+      renderer.setClearColor(0x000000, 1);
+      // Small viewport: full devicePixelRatio is wasted fill-rate here
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      Object.assign(renderer.domElement.style, {
+        position: 'absolute',
+        inset: '0',
+        width: '100%',
+        height: '100%',
+        display: 'block',
+      });
+      RocketTrackingView.sharedRenderer = renderer;
+    }
+    return RocketTrackingView.sharedRenderer;
+  }
+
+  /**
+   * Creates the shared context ahead of time and uploads the scene's
+   * textures / compiles its shaders, so the first launch doesn't stall.
+   * Re-runs once all pending loader requests (e.g. Earth textures) finish.
+   */
+  static prewarm(scene: THREE.Scene, camera: THREE.Camera) {
+    const renderer = RocketTrackingView.getRenderer();
+    const warm = () => {
+      renderer.setSize(1, 1, false);
+      renderer.render(scene, camera);
+    };
+    warm();
+
+    const manager = THREE.DefaultLoadingManager;
+    const prevOnLoad = manager.onLoad;
+    manager.onLoad = () => {
+      prevOnLoad?.();
+      warm();
+    };
+  }
+
   readonly element: HTMLDivElement;
   private renderer: THREE.WebGLRenderer;
   private camera: THREE.PerspectiveCamera;
@@ -142,19 +189,8 @@ export default class RocketTrackingView {
     });
     this.element.appendChild(label);
 
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      logarithmicDepthBuffer: true,
-    });
-    this.renderer.setClearColor(0x000000, 1);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    Object.assign(this.renderer.domElement.style, {
-      position: 'absolute',
-      inset: '0',
-      width: '100%',
-      height: '100%',
-      display: 'block',
-    });
+    this.renderer = RocketTrackingView.getRenderer();
+    // Moves the shared canvas out of the previous view (if any)
     this.element.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(
@@ -310,8 +346,11 @@ export default class RocketTrackingView {
   }
 
   dispose() {
-    this.renderer.dispose();
-    this.renderer.forceContextLoss();
+    // The renderer is shared and stays alive; only detach its canvas if it
+    // still belongs to this view.
+    if (this.renderer.domElement.parentElement === this.element) {
+      this.element.removeChild(this.renderer.domElement);
+    }
     this.element.remove();
   }
 }

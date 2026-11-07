@@ -14,6 +14,7 @@ import Launcher from './launcher/Launcher';
 import LauncherView from './launcher/LauncherView';
 import LauncherGui from './launcher/Launcher.gui';
 import RocketGui from './rocket/Rocket.gui';
+import RocketTrackingView from './rocket/RocketTrackingView';
 import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
@@ -371,6 +372,8 @@ const OrbitalVelocity = () => {
     // Set camera for atmospheric glow updates
     const camera = cameraManager.getCamera();
     if (camera) {
+      // Warm up the missile camera's GL context so launch doesn't stall
+      RocketTrackingView.prewarm(scene, camera);
       earthView.setCamera(camera);
     }
 
