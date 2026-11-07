@@ -14,7 +14,19 @@ import nukeVariant07 from 'public/audio/nuke_explosion_variants/explosion_07.mp3
 import nukeVariant08 from 'public/audio/nuke_explosion_variants/explosion_08.mp3';
 import nukeVariant09 from 'public/audio/nuke_explosion_variants/explosion_09.mp3';
 import nukeVariant10 from 'public/audio/nuke_explosion_variants/explosion_10.mp3';
-import distantNukeAudio from 'public/audio/distant_nuke_explosion.mp3';
+import distantVariant00 from 'public/audio/distant_explosion_variants/distant_explosion_00.mp3';
+import distantVariant01 from 'public/audio/distant_explosion_variants/distant_explosion_01.mp3';
+import distantVariant02 from 'public/audio/distant_explosion_variants/distant_explosion_02.mp3';
+import distantVariant03 from 'public/audio/distant_explosion_variants/distant_explosion_03.mp3';
+import distantVariant04 from 'public/audio/distant_explosion_variants/distant_explosion_04.mp3';
+import distantVariant05 from 'public/audio/distant_explosion_variants/distant_explosion_05.mp3';
+import distantVariant06 from 'public/audio/distant_explosion_variants/distant_explosion_06.mp3';
+import distantVariant07 from 'public/audio/distant_explosion_variants/distant_explosion_07.mp3';
+import distantVariant08 from 'public/audio/distant_explosion_variants/distant_explosion_08.mp3';
+import distantVariant09 from 'public/audio/distant_explosion_variants/distant_explosion_09.mp3';
+import distantVariant10 from 'public/audio/distant_explosion_variants/distant_explosion_10.mp3';
+import distantVariant11 from 'public/audio/distant_explosion_variants/distant_explosion_11.mp3';
+import distantVariant12 from 'public/audio/distant_explosion_variants/distant_explosion_12.mp3';
 import engineStartAudio from 'public/audio/start.mp3';
 import engineFlightAudio from 'public/audio/flight.mp3';
 import engineEndAudio from 'public/audio/end.mp3';
@@ -39,10 +51,24 @@ const NUKE_EXPLOSION_VARIANTS: string[] = [
   nukeVariant10,
 ];
 
-const pickRandomNukeVariant = () =>
-  NUKE_EXPLOSION_VARIANTS[
-    Math.floor(Math.random() * NUKE_EXPLOSION_VARIANTS.length)
-  ];
+const DISTANT_EXPLOSION_VARIANTS: string[] = [
+  distantVariant00,
+  distantVariant01,
+  distantVariant02,
+  distantVariant03,
+  distantVariant04,
+  distantVariant05,
+  distantVariant06,
+  distantVariant07,
+  distantVariant08,
+  distantVariant09,
+  distantVariant10,
+  distantVariant11,
+  distantVariant12,
+];
+
+const pickRandom = <T>(items: T[]): T =>
+  items[Math.floor(Math.random() * items.length)];
 
 /**
  * Engine sounds: plays `start` on ignition, then loops `flight` while the
@@ -130,9 +156,9 @@ export class ExplosionEffect {
     private readonly ringCount: number = 3
   ) {
     // Each explosion gets a random variant
-    this.audio = new Audio(pickRandomNukeVariant());
+    this.audio = new Audio(pickRandom(NUKE_EXPLOSION_VARIANTS));
     this.audio.volume = 0;
-    this.distantAudio = new Audio(distantNukeAudio);
+    this.distantAudio = new Audio(pickRandom(DISTANT_EXPLOSION_VARIANTS));
     this.distantAudio.volume = this.baseVolume;
   }
 
