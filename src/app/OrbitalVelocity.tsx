@@ -726,9 +726,14 @@ const OrbitalVelocity = () => {
     //   });
     // };
 
-    const onMouseDown = () => {
+    const pickAt = (clientX: number, clientY: number) => {
+      const ndc = new THREE.Vector2(
+        (clientX / window.innerWidth) * 2 - 1,
+        -(clientY / window.innerHeight) * 2 + 1
+      );
       const earthIntersection = cameraManager.getMeshIntersectionPoint(
-        earthView.mesh
+        earthView.mesh,
+        ndc
       );
 
       if (earthIntersection == null) {
@@ -769,6 +774,12 @@ const OrbitalVelocity = () => {
       );
     };
 
+    // Pointer position for the selection preview, taken only from pointers
+    // over the 3D canvas. The global mouse tracker also receives the emulated
+    // mousemove of a tap on a UI button (e.g. "Set Start" on mobile), which
+    // would put the preview on the Earth behind the panel.
+    const previewPointer = { x: 0, y: 0, valid: false };
+
     const onMove = () => {
       if (
         !launchPadStatesRef.current.startPositionSetIsActive &&
@@ -778,12 +789,21 @@ const OrbitalVelocity = () => {
       }
 
       if (mouseFollower) {
-        mouseFollower.style.left = `${mouseTracker.position.x}px`;
-        mouseFollower.style.top = `${mouseTracker.position.y}px`;
+        mouseFollower.style.visibility = previewPointer.valid ? '' : 'hidden';
+      }
+      if (!previewPointer.valid) return;
+
+      if (mouseFollower) {
+        mouseFollower.style.left = `${previewPointer.x}px`;
+        mouseFollower.style.top = `${previewPointer.y}px`;
       }
 
       const earthIntersection = cameraManager.getMeshIntersectionPoint(
-        earthView.mesh
+        earthView.mesh,
+        new THREE.Vector2(
+          (previewPointer.x / window.innerWidth) * 2 - 1,
+          -(previewPointer.y / window.innerHeight) * 2 + 1
+        )
       );
 
       if (earthIntersection == null) {
@@ -803,7 +823,51 @@ const OrbitalVelocity = () => {
       }
     };
 
-    window.addEventListener('mousedown', onMouseDown, false);
+    // Pick only on a tap/click that starts and ends on the 3D canvas without
+    // dragging. Listening on window made presses on UI buttons (e.g. the tap
+    // that enables "Set Start" on mobile) immediately pick the point behind
+    // them, and rotating the globe placed a point too.
+    const canvas = fullScreenRenderer.domElement;
+    const TAP_MAX_MOVE_PX = 8;
+    let tapStart: { id: number; x: number; y: number } | null = null;
+
+    const onCanvasPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      // Second finger -> pinch/rotate gesture, not a tap
+      tapStart = tapStart
+        ? null
+        : { id: e.pointerId, x: e.clientX, y: e.clientY };
+    };
+    const onCanvasPointerUp = (e: PointerEvent) => {
+      const start = tapStart;
+      tapStart = null;
+      if (!start || start.id !== e.pointerId) return;
+      if (e.target !== canvas) return;
+      const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      if (moved > TAP_MAX_MOVE_PX) return;
+      pickAt(e.clientX, e.clientY);
+    };
+    const onCanvasPointerCancel = () => {
+      tapStart = null;
+    };
+
+    canvas.addEventListener('pointerdown', onCanvasPointerDown);
+    window.addEventListener('pointerup', onCanvasPointerUp);
+    window.addEventListener('pointercancel', onCanvasPointerCancel);
+
+    // Preview follows only pointers over the canvas (hover for mouse, the
+    // finger for touch). Any press elsewhere (UI) invalidates it.
+    const onPreviewPointer = (e: PointerEvent) => {
+      if (e.target !== canvas) {
+        if (e.type === 'pointerdown') previewPointer.valid = false;
+        return;
+      }
+      previewPointer.x = e.clientX;
+      previewPointer.y = e.clientY;
+      previewPointer.valid = true;
+    };
+    window.addEventListener('pointerdown', onPreviewPointer, true);
+    window.addEventListener('pointermove', onPreviewPointer, true);
 
     const resetActivePosition = () => {
       launchPadStatesRef.current.startPositionSetIsActive = false;

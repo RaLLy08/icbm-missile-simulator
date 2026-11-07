@@ -1019,12 +1019,15 @@ $mobile_breakpoint: 640px;
 @media (max-width: $mobile_breakpoint) {
   $gutter: 8px;
   $safe_bottom: env(safe-area-inset-bottom, 0px);
+  // Android browsers (e.g. Xiaomi/MIUI) often report a 0 inset even though the
+  // gesture bar overlaps the page, so never sit closer than this to the edge
+  $min_bottom: 12px;
 
   .container {
     .launchPad {
       left: $gutter;
       right: $gutter;
-      bottom: calc(#{$gutter} + #{$safe_bottom});
+      bottom: max(#{$min_bottom}, calc(#{$gutter} + #{$safe_bottom}));
       transform: none;
       padding: 8px 10px;
       border-radius: 10px;
@@ -1110,8 +1113,20 @@ $mobile_breakpoint: 640px;
       z-index: 2;
     }
 
+    // tuck a half-size FPS meter into the free top-right corner, beside the
+    // time badge, so it doesn't steal width from the main pane
     .stats {
-      display: none;
+      position: absolute;
+      top: -30px;
+      right: -20px;
+      height: 28px;
+      padding: 0;
+      overflow: hidden;
+
+      > * {
+        transform: scale(0.7);
+        transform-origin: top left;
+      }
     }
 
     .mainGui {
@@ -1145,7 +1160,10 @@ $mobile_breakpoint: 640px;
   }
 
   .clearLaunchPad {
-    bottom: calc(#{$gutter * 2} + #{$safe_bottom});
+    bottom: max(
+      #{$min_bottom + $gutter},
+      calc(#{$gutter * 2} + #{$safe_bottom})
+    );
 
     .inlineMuteButton {
       font-size: 1.3rem;

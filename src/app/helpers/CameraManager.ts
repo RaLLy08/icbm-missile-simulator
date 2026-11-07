@@ -9,6 +9,10 @@ import RocketView from 'app/rocket/RocketView';
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
 
+// Pinch zoom = (finger spread ratio) ^ PINCH_SENSITIVITY.
+// 1 = zoom follows fingers 1:1, lower = slower.
+const PINCH_SENSITIVITY = 0.5;
+
 export default class CameraManager {
   private createCamera(aspectRatio = WIDTH / HEIGHT) {
     return new THREE.PerspectiveCamera(
@@ -108,16 +112,21 @@ export default class CameraManager {
     }
   }
 
-  getMeshIntersectionPoint(mesh: THREE.Mesh): THREE.Vector3 | null {
+  /**
+   * @param ndc pointer in normalized device coords (-1..1). Defaults to the
+   * last tracked mouse position; pass it explicitly for touch, where there is
+   * no hover `mousemove` before the tap.
+   */
+  getMeshIntersectionPoint(
+    mesh: THREE.Mesh,
+    ndc: THREE.Vector2 = this.mouseTracker.normalizedPosition
+  ): THREE.Vector3 | null {
     if (!this.cameraController) {
       return null;
     }
 
     const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(
-      this.mouseTracker.normalizedPosition,
-      this.cameraController.camera
-    );
+    raycaster.setFromCamera(ndc, this.cameraController.camera);
 
     const intersects = raycaster.intersectObject(mesh);
 
@@ -143,8 +152,13 @@ class EarthCamera {
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.8;
     this.controls.enablePan = false;
-    // Zoom is handled manually for smooth easing
+    // Zoom is handled manually for smooth easing (wheel + pinch below)
     this.controls.enableZoom = false;
+    // Default TWO = DOLLY_PAN bails out when zoom & pan are both disabled and
+    // leaves the controls in one-finger rotate state; the next move is then
+    // measured from the first finger to the two-finger midpoint -> the globe
+    // jumps. DOLLY_ROTATE re-anchors rotation at the midpoint instead.
+    this.controls.touches.TWO = THREE.TOUCH.DOLLY_ROTATE;
 
     this.camera.position.z = z + this.controls.maxDistance / 2;
     this.camera.position.y = y;
@@ -158,7 +172,59 @@ class EarthCamera {
     this.domElement?.addEventListener('wheel', this.onMouseWheel, {
       passive: false,
     });
+    this.domElement?.addEventListener('pointerdown', this.onPinchPointerDown);
+    window.addEventListener('pointermove', this.onPinchPointerMove);
+    window.addEventListener('pointerup', this.onPinchPointerUp);
+    window.addEventListener('pointercancel', this.onPinchPointerUp);
   }
+
+  // --- Pinch zoom (touch) ---------------------------------------------------
+  private touches = new Map<number, { x: number; y: number }>();
+  private prevPinchDistance = 0;
+
+  private getPinchDistance() {
+    const [a, b] = Array.from(this.touches.values());
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  private onPinchPointerDown = (event: PointerEvent) => {
+    if (event.pointerType !== 'touch') return;
+    this.touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (this.touches.size === 2)
+      this.prevPinchDistance = this.getPinchDistance();
+  };
+
+  private onPinchPointerMove = (event: PointerEvent) => {
+    const touch = this.touches.get(event.pointerId);
+    if (!touch) return;
+    touch.x = event.clientX;
+    touch.y = event.clientY;
+
+    if (this.touches.size !== 2 || !this.controls.enabled) return;
+
+    const pinchDistance = this.getPinchDistance();
+    if (this.prevPinchDistance > 0 && pinchDistance > 0) {
+      // Fingers apart -> closer to the surface. Scale the altitude above the
+      // surface (not the distance from Earth's center), so zoom slows down
+      // near the ground instead of racing through the last few hundred km.
+      const altitude = this.targetDistance - Earth.RADIUS;
+      const newAltitude =
+        altitude *
+        Math.pow(this.prevPinchDistance / pinchDistance, PINCH_SENSITIVITY);
+      this.targetDistance = THREE.MathUtils.clamp(
+        Earth.RADIUS + newAltitude,
+        this.controls.minDistance,
+        this.controls.maxDistance
+      );
+    }
+    this.prevPinchDistance = pinchDistance;
+  };
+
+  private onPinchPointerUp = (event: PointerEvent) => {
+    this.touches.delete(event.pointerId);
+    if (this.touches.size === 2)
+      this.prevPinchDistance = this.getPinchDistance();
+  };
 
   private targetDistance: number;
   // Higher = snappier zoom, lower = smoother
@@ -282,6 +348,13 @@ class EarthCamera {
 
   remove() {
     this.domElement?.removeEventListener('wheel', this.onMouseWheel);
+    this.domElement?.removeEventListener(
+      'pointerdown',
+      this.onPinchPointerDown
+    );
+    window.removeEventListener('pointermove', this.onPinchPointerMove);
+    window.removeEventListener('pointerup', this.onPinchPointerUp);
+    window.removeEventListener('pointercancel', this.onPinchPointerUp);
     this.controls.dispose();
   }
 }
@@ -398,11 +471,17 @@ class RocketCamera {
     prev.y = event.clientY;
 
     if (this.pointers.size >= 2) {
-      // Pinch: fingers apart -> zoom in (smaller distance)
+      // Pinch: fingers apart -> zoom in, proportional to the spread
       const pinchDistance = this.getPinchDistance();
-      const pinchDelta = this.prevPinchDistance - pinchDistance;
+      if (this.prevPinchDistance > 0 && pinchDistance > 0) {
+        this.distance = THREE.MathUtils.clamp(
+          this.distance *
+            Math.pow(this.prevPinchDistance / pinchDistance, PINCH_SENSITIVITY),
+          this.minDistance,
+          this.maxDistance
+        );
+      }
       this.prevPinchDistance = pinchDistance;
-      this.zoomBy(pinchDelta * 2);
       return;
     }
 
