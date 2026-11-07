@@ -394,7 +394,8 @@ const OrbitalVelocity = () => {
             rocketGuiPane,
             rocketGuiContainer!,
             rocket,
-            rocketView
+            rocketView,
+            scene
           );
 
           activeRocketGui.onFocusCameraClick = () => {
@@ -418,10 +419,12 @@ const OrbitalVelocity = () => {
             setActiveRocketGui();
           });
 
+        // Physics/view must update before the GUI so the tracking camera
+        // renders the current frame's missile position.
+        updateTriggers.push(frameTimeManager);
+
         setActiveRocketGui();
         activeRocketGui?.scrollToEnd();
-
-        updateTriggers.push(frameTimeManager);
 
         // Return remaining queue (removing the launched item)
         return remainingQueue;

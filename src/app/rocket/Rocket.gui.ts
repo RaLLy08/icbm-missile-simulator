@@ -3,9 +3,11 @@ import Rocket from './Rocket';
 import RocketView from './RocketView';
 import * as THREE from 'three';
 import { formatSeconds } from 'app/utils';
+import RocketTrackingView from './RocketTrackingView';
 
 export default class RocketGui {
   private folder: FolderApi;
+  private trackingView: RocketTrackingView;
   velocity = 0;
   thrust = 0;
   displacement = 0;
@@ -21,12 +23,19 @@ export default class RocketGui {
     private readonly pane: Pane,
     private readonly paneContainer: HTMLElement,
     private readonly rocket: Rocket,
-    private readonly rocketView: RocketView
+    private readonly rocketView: RocketView,
+    scene: THREE.Scene
   ) {
     this.folder = this.pane.addFolder({
       title: `Missile ${this.rocket.id}`,
       expanded: true,
     });
+
+    // Live camera viewport tracking the missile, placed at the top of the folder
+    this.trackingView = new RocketTrackingView(scene, this.rocketView);
+    const folderContent =
+      this.folder.element.querySelector('.tp-fldv_c') ?? this.folder.element;
+    folderContent.prepend(this.trackingView.element);
 
     this.folder.addBinding(this, 'velocity', {
       label: 'Velocity',
@@ -153,7 +162,9 @@ export default class RocketGui {
     this.paneContainer.scrollTo(0, this.paneContainer.scrollHeight);
   }
 
-  update() {
+  update(deltaTime = 0) {
+    this.trackingView.update(deltaTime);
+
     this.velocity = this.rocket.velocity.length();
     this.thrust = this.rocket.thrust.length();
 
@@ -177,6 +188,7 @@ export default class RocketGui {
   }
 
   remove() {
+    this.trackingView.dispose();
     this.folder.dispose();
   }
 }
