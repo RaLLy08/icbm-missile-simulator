@@ -31,10 +31,12 @@ import engineStartAudio from 'public/audio/start.mp3';
 import engineFlightAudio from 'public/audio/flight.mp3';
 import engineEndAudio from 'public/audio/end.mp3';
 import {
-    ENGINE_FALLOFF,
-    EXPLOSION_FALLOFF,
-    getDistanceVolume,
-    getListenerDistance,
+      ENGINE_FALLOFF,
+      EXPLOSION_FALLOFF,
+      createAudio,
+      getDistanceVolume,
+      getListenerDistance,
+      releaseAudio,
 } from 'app/helpers/SpatialAudio';
 
 const NUKE_EXPLOSION_VARIANTS: string[] = [
@@ -82,9 +84,9 @@ export class EngineSound {
   private state: 'idle' | 'running' | 'finished' = 'idle';
 
   constructor(private readonly baseVolume = 0.5) {
-    this.startAudio = new Audio(engineStartAudio);
-    this.flightAudio = new Audio(engineFlightAudio);
-    this.endAudio = new Audio(engineEndAudio);
+    this.startAudio = createAudio(engineStartAudio);
+    this.flightAudio = createAudio(engineFlightAudio);
+    this.endAudio = createAudio(engineEndAudio);
 
     this.flightAudio.loop = true;
     this.setVolume(0);
@@ -138,6 +140,7 @@ export class EngineSound {
     this.stop(this.startAudio);
     this.stop(this.flightAudio);
     this.stop(this.endAudio);
+    [this.startAudio, this.flightAudio, this.endAudio].forEach(releaseAudio);
   }
 }
 
@@ -146,24 +149,18 @@ export class ExplosionEffect {
   private startTime: number = 0;
   private duration: number = 2000; // 2 seconds
   private isActive: boolean = false;
-  private audio: HTMLAudioElement;
-  private distantAudio: HTMLAudioElement;
+  /** Close-range blast; volume follows camera distance while playing. */
+  private audio: HTMLAudioElement | null = null;
   private readonly baseVolume = 0.5;
   private position: THREE.Vector3 | null = null;
 
   constructor(
     private readonly scene: THREE.Scene,
     private readonly ringCount: number = 3
-  ) {
-    // Each explosion gets a random variant
-    this.audio = new Audio(pickRandom(NUKE_EXPLOSION_VARIANTS));
-    this.audio.volume = 0;
-    this.distantAudio = new Audio(pickRandom(DISTANT_EXPLOSION_VARIANTS));
-    this.distantAudio.volume = this.baseVolume;
-  }
+  ) {}
 
   private updateVolume() {
-    if (!this.position) return;
+    if (!this.position || !this.audio) return;
     this.audio.volume =
       this.baseVolume * getDistanceVolume(this.position, EXPLOSION_FALLOFF);
   }
@@ -177,11 +174,22 @@ export class ExplosionEffect {
     // Beyond the falloff range: always play the distant rumble instead.
     const isDistant =
       getListenerDistance(this.position) >= EXPLOSION_FALLOFF.maxDistance;
-    const sound = isDistant ? this.distantAudio : this.audio;
+    // Each explosion gets a random variant
+    const sound = createAudio(
+      pickRandom(
+        isDistant ? DISTANT_EXPLOSION_VARIANTS : NUKE_EXPLOSION_VARIANTS
+      )
+    );
+    sound.addEventListener('ended', () => releaseAudio(sound), { once: true });
 
-    if (!isDistant) this.updateVolume();
-    sound.currentTime = 0;
+    if (isDistant) {
+      sound.volume = this.baseVolume;
+    } else {
+      this.audio = sound;
+      this.updateVolume();
+    }
     sound.play().catch((error) => {
+      releaseAudio(sound);
       console.warn('Failed to play explosion sound:', error);
     });
 
@@ -209,7 +217,7 @@ export class ExplosionEffect {
 
   update() {
     // Keep adjusting while the sound plays (it may outlast the visual effect)
-    if (!this.audio.paused) this.updateVolume();
+    if (this.audio && !this.audio.paused) this.updateVolume();
 
     if (!this.isActive) return;
 

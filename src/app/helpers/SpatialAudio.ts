@@ -19,6 +19,49 @@ export const EXPLOSION_FALLOFF: AudioFalloff = {
   maxDistance: 2000,
 };
 
+const MUTED_STORAGE_KEY = 'audioMuted';
+
+const readStoredMuted = (): boolean => {
+  try {
+    return localStorage.getItem(MUTED_STORAGE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+let isMuted = readStoredMuted();
+const activeAudio = new Set<HTMLAudioElement>();
+
+/** Creates an audio element that follows the global mute switch. */
+export function createAudio(src: string): HTMLAudioElement {
+  const audio = new Audio(src);
+  audio.muted = isMuted;
+  activeAudio.add(audio);
+  return audio;
+}
+
+/** Stops tracking an audio element (call once it will never play again). */
+export function releaseAudio(audio: HTMLAudioElement) {
+  activeAudio.delete(audio);
+}
+
+export function isAudioMuted(): boolean {
+  return isMuted;
+}
+
+/** Mutes/unmutes every sound, including ones currently playing. */
+export function setAudioMuted(muted: boolean) {
+  isMuted = muted;
+  activeAudio.forEach((audio) => {
+    audio.muted = muted;
+  });
+  try {
+    localStorage.setItem(MUTED_STORAGE_KEY, muted ? '1' : '0');
+  } catch {
+    // storage unavailable — mute still works for this session
+  }
+}
+
 let getListener: () => THREE.Object3D | null = () => null;
 
 /** Registers a getter for the current "ears" of the scene (the active camera). */

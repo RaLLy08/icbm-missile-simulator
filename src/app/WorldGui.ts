@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FolderApi, Pane } from 'tweakpane';
 import { formatSeconds } from './utils';
+import { isAudioMuted, setAudioMuted } from './helpers/SpatialAudio';
 
 export default class WorldGui {
   folder: FolderApi;
@@ -9,6 +10,9 @@ export default class WorldGui {
   timePassedSeconds = 0;
   showStars = true;
   onShowStarsChange?: (show: boolean) => void;
+  muted = isAudioMuted();
+  onMutedChange?: (muted: boolean) => void;
+  private guiMuted?: ReturnType<FolderApi['addBinding']>;
   onTimeMultiplierChange?: (value: number) => void;
   onTimeRunningChange?: (isRunning: boolean) => void;
   /** Called every update with the formatted total time passed. */
@@ -69,6 +73,21 @@ export default class WorldGui {
       .on('change', (ev) => {
         this.onShowStarsChange?.(ev.value);
       });
+
+    this.guiMuted = this.folder.addBinding(this, 'muted', {
+      label: 'Mute All Sounds',
+    });
+    this.guiMuted.on('change', (ev) => {
+      setAudioMuted(ev.value);
+      this.onMutedChange?.(ev.value);
+    });
+  }
+
+  setMuted(muted: boolean) {
+    this.muted = muted;
+    setAudioMuted(muted);
+    this.guiMuted?.refresh();
+    this.onMutedChange?.(muted);
   }
 
   toggleTime() {

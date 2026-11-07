@@ -52,6 +52,11 @@ $queue_panel_max_height: 200px;
       }
     }
 
+    // sits just left of the info button
+    .muteButton {
+      right: 18px;
+    }
+
     .infoPanel {
       text-align: center;
       .infoText {
@@ -209,6 +214,33 @@ $queue_panel_max_height: 200px;
   flex-direction: column;
   align-items: center;
   user-select: none;
+
+  // "Return to Earth" with the mute toggle beside it (chase mode)
+  .returnRow {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  // hangs off the right edge so "Return to Earth" stays centered
+  .inlineMuteButton {
+    position: absolute;
+    left: calc(100% + 8px);
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 4px;
+    transition:
+      opacity 0.2s,
+      transform 0.2s;
+
+    &:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+  }
 }
 
 // simulated time passed, pinned to the top center of the page
@@ -647,6 +679,19 @@ $queue_panel_max_height: 200px;
     border-radius: 4px;
     padding: 4px 8px;
     font-size: 0.65rem;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      border-color 0.2s;
+
+    &:hover {
+      background: rgba(0, 255, 255, 0.12);
+    }
+
+    &.selected {
+      background: rgba(0, 255, 255, 0.2);
+      border-color: #0ff;
+    }
 
     .queueItemInfo {
       display: flex;

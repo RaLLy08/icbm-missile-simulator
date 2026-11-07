@@ -18,7 +18,7 @@ import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
-import { setAudioListener } from './helpers/SpatialAudio';
+import { isAudioMuted, setAudioListener } from './helpers/SpatialAudio';
 import StarField from './space/StarField';
 
 const scene = new THREE.Scene();
@@ -58,9 +58,11 @@ const OrbitalVelocity = () => {
     onCancelSelectionClick: () => {},
     setTimeMultiplier: (_value: number) => {},
     toggleTime: () => {},
+    setMuted: (_muted: boolean) => {},
   });
   const [timeMultiplier, setTimeMultiplier] = useState(1);
   const [isTimeRunning, setIsTimeRunning] = useState(true);
+  const [isMuted, setIsMuted] = useState(isAudioMuted);
   // Updated imperatively every frame to avoid re-rendering React
   const timePassedTextRef = useRef(WorldGui.formatTimePassed(0));
   const timePassedElRef = useRef<HTMLDivElement | null>(null);
@@ -123,7 +125,10 @@ const OrbitalVelocity = () => {
     }>
   >([]);
   const [queueIdCounter, setQueueIdCounter] = useState(0);
-  const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
+  const [isQueueCollapsed, setIsQueueCollapsed] = useState(true);
+  const [selectedQueueItemId, setSelectedQueueItemId] = useState<number | null>(
+    null
+  );
   const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   const sceneContainerId = useId();
@@ -275,6 +280,8 @@ const OrbitalVelocity = () => {
 
     starField.setVisible(worldGui.showStars);
     worldGui.onShowStarsChange = (show) => starField.setVisible(show);
+    worldGui.onMutedChange = (muted) => setIsMuted(muted);
+    launchPadListeners.setMuted = (muted) => worldGui.setMuted(muted);
     worldGui.onTimeMultiplierChange = (value) => setTimeMultiplier(value);
     launchPadListeners.setTimeMultiplier = (value) =>
       worldGui.setTimeMultiplier(value);
@@ -639,8 +646,41 @@ const OrbitalVelocity = () => {
       scene.add(startMarker);
       scene.add(targetMarker);
       queueMarkersRef.current.push(startMarker, targetMarker);
+
+      // Highlight rings around start and target of the selected item
+      if (item.id === selectedQueueItemId) {
+        const startRing = createHighlightRing(item.startPosition, 0x00ffff);
+        const targetRing = createHighlightRing(item.targetPosition, 0xffff00);
+        scene.add(startRing);
+        scene.add(targetRing);
+        queueMarkersRef.current.push(startRing, targetRing);
+      }
     });
-  }, [launchQueue]);
+  }, [launchQueue, selectedQueueItemId]);
+
+  // Drop the selection when its item leaves the queue
+  useEffect(() => {
+    if (
+      selectedQueueItemId !== null &&
+      !launchQueue.some((item) => item.id === selectedQueueItemId)
+    ) {
+      setSelectedQueueItemId(null);
+    }
+  }, [launchQueue, selectedQueueItemId]);
+
+  const createHighlightRing = (position: THREE.Vector3, color: number) => {
+    const geometry = new THREE.TorusGeometry(150, 14, 16, 100);
+    const material = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const ring = new THREE.Mesh(geometry, material);
+    ring.position.copy(position);
+    const normal = position.clone().normalize();
+    ring.lookAt(position.clone().add(normal));
+    return ring;
+  };
 
   const createQueueMarker = (
     position: THREE.Vector3,
@@ -755,6 +795,13 @@ const OrbitalVelocity = () => {
     setIsInstructionsOpen(false);
   };
 
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    launchPadListenersRef.current.setMuted(!isMuted);
+  };
+  const muteTitle = isMuted ? 'Unmute all sounds' : 'Mute all sounds';
+  const muteIcon = isMuted ? '🔇' : '🔊';
+
   const isPositionSelectionActive = startPositionActive || targetPositionActive;
 
   return (
@@ -816,9 +863,22 @@ const OrbitalVelocity = () => {
             return (
               <div className={s.clearLaunchPad}>
                 {timeControls}
-                <button className={s.button} onClick={handleFocusOnEarthClick}>
-                  Return to Earth
-                </button>
+                <div className={s.returnRow}>
+                  <button
+                    className={s.button}
+                    onClick={handleFocusOnEarthClick}
+                  >
+                    Return to Earth
+                  </button>
+                  <button
+                    className={s.inlineMuteButton}
+                    onClick={toggleMute}
+                    title={muteTitle}
+                    aria-pressed={isMuted}
+                  >
+                    {muteIcon}
+                  </button>
+                </div>
               </div>
             );
           }
@@ -831,6 +891,14 @@ const OrbitalVelocity = () => {
                 title="How to launch a rocket"
               >
                 ℹ️
+              </button>
+              <button
+                className={clsx(s.infoButton, s.muteButton)}
+                onClick={toggleMute}
+                title={muteTitle}
+                aria-pressed={isMuted}
+              >
+                {muteIcon}
               </button>
 
               <div className={s.infoPanel}>
@@ -936,7 +1004,19 @@ const OrbitalVelocity = () => {
                     {!isQueueCollapsed && (
                       <div className={s.queueList}>
                         {launchQueue.map((item, index) => (
-                          <div key={item.id} className={s.queueItem}>
+                          <div
+                            key={item.id}
+                            className={clsx(s.queueItem, {
+                              [s.selected]: item.id === selectedQueueItemId,
+                            })}
+                            title="Show start and target on the map"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedQueueItemId((prev) =>
+                                prev === item.id ? null : item.id
+                              );
+                            }}
+                          >
                             <div className={s.queueItemInfo}>
                               <span className={s.queueItemNumber}>
                                 #{index + 1}
@@ -960,7 +1040,10 @@ const OrbitalVelocity = () => {
                             </div>
                             <button
                               className={s.removeButton}
-                              onClick={() => handleRemoveFromQueue(item.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveFromQueue(item.id);
+                              }}
                             >
                               ✕
                             </button>
@@ -974,9 +1057,7 @@ const OrbitalVelocity = () => {
                     className={s.collapseToggle}
                     onClick={() => setIsQueueCollapsed((prev) => !prev)}
                     aria-expanded={!isQueueCollapsed}
-                    title={
-                      isQueueCollapsed ? 'Expand queue' : 'Collapse queue'
-                    }
+                    title={isQueueCollapsed ? 'Expand queue' : 'Collapse queue'}
                   >
                     <span className={s.collapseIcon}>▾</span>
                   </button>
@@ -1010,7 +1091,6 @@ const OrbitalVelocity = () => {
             </svg>
           </a>
         </div>
-
       </div>
 
       {isPositionSelectionActive && (
