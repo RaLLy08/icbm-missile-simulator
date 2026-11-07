@@ -66,7 +66,9 @@ const config = {
           {
             loader: 'file-loader',
             options: {
-              name: '[name].[ext]',
+              // Keep sub-folders so same-named files (e.g. missile.wav) don't collide
+              name: '[path][name].[ext]',
+              context: path.resolve(__dirname, '../src/public/audio'),
               outputPath: 'audio',
             },
           },

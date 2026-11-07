@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FolderApi, Pane } from 'tweakpane';
 import { formatSeconds } from './utils';
 import { isAudioMuted, setAudioMuted } from './helpers/SpatialAudio';
+import { isSpeechEnabled, setSpeechEnabled } from './helpers/Speech';
 
 export default class WorldGui {
   folder: FolderApi;
@@ -11,6 +12,7 @@ export default class WorldGui {
   showStars = true;
   onShowStarsChange?: (show: boolean) => void;
   muted = isAudioMuted();
+  speechEnabled = isSpeechEnabled();
   onMutedChange?: (muted: boolean) => void;
   private guiMuted?: ReturnType<FolderApi['addBinding']>;
   onTimeMultiplierChange?: (value: number) => void;
@@ -81,6 +83,12 @@ export default class WorldGui {
       setAudioMuted(ev.value);
       this.onMutedChange?.(ev.value);
     });
+
+    this.folder
+      .addBinding(this, 'speechEnabled', { label: 'Voice Announcements' })
+      .on('change', (ev) => {
+        setSpeechEnabled(ev.value);
+      });
   }
 
   setMuted(muted: boolean) {

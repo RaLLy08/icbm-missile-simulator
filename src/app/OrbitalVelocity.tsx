@@ -19,6 +19,10 @@ import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
 import { isAudioMuted, setAudioListener } from './helpers/SpatialAudio';
+import {
+    announceCalculatingTrajectory,
+    announceLaunch,
+} from './helpers/Speech';
 import StarField from './space/StarField';
 import { formatSeconds } from './utils';
 
@@ -501,6 +505,8 @@ const OrbitalVelocity = () => {
 
       setIsLaunchDisabled(true);
 
+      announceCalculatingTrajectory();
+
       const startPos = launcher.rocketStartPosition.clone();
       const targetPos = launcher.rocketTargetPosition.clone();
 
@@ -658,6 +664,9 @@ const OrbitalVelocity = () => {
         launcherView.remove();
 
         setRocketCount(launcher.rocketCount);
+
+        // Same number as the "Missile N" label in the GUI
+        announceLaunch(rocket.id);
 
         const setActiveRocketGui = () => {
           if (activeRocketGui) {

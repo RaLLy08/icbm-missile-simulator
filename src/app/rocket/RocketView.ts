@@ -38,6 +38,7 @@ import {
     getListenerDistance,
     releaseAudio,
 } from 'app/helpers/SpatialAudio';
+import { announceTargetReached } from 'app/helpers/Speech';
 
 const NUKE_EXPLOSION_VARIANTS: string[] = [
   nukeVariant00,
@@ -801,6 +802,8 @@ export default class RocketView {
       const normal = this.rocket.position.clone().normalize();
       this.explosionEffect.start(this.rocket.position.clone(), normal);
       this.hasTriggeredExplosion = true;
+      // Same number as the "Missile N" label in the GUI
+      announceTargetReached(this.rocket.id);
     }
 
     // Update explosion effect animation
