@@ -19,6 +19,7 @@ import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
 import { setAudioListener } from './helpers/SpatialAudio';
+import StarField from './space/StarField';
 
 const scene = new THREE.Scene();
 
@@ -194,6 +195,9 @@ const OrbitalVelocity = () => {
 
     const mouseTracker = new MouseTracker(window);
 
+    const starField = new StarField(scene);
+    updateTriggers.push(starField);
+
     const earth = new Earth();
     updateTriggers.push(earth);
 
@@ -257,6 +261,8 @@ const OrbitalVelocity = () => {
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
 
+    starField.setVisible(worldGui.showStars);
+    worldGui.onShowStarsChange = (show) => starField.setVisible(show);
     worldGui.onTimeMultiplierChange = (value) => setTimeMultiplier(value);
     launchPadListeners.setTimeMultiplier = (value) =>
       worldGui.setTimeMultiplier(value);
@@ -581,6 +587,7 @@ const OrbitalVelocity = () => {
     return () => {
       sceneContainer.removeChild(fullScreenRenderer.domElement);
       fullScreenRenderer.setAnimationLoop(null);
+      starField.dispose();
 
       fullScreenRenderer.dispose();
       miniWindowRenderer.dispose();

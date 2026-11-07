@@ -7,6 +7,8 @@ export default class WorldGui {
   timeMultiplier = 1;
   timeDeltaTime = 0.01666;
   timePassedSeconds = 0;
+  showStars = true;
+  onShowStarsChange?: (show: boolean) => void;
   onTimeMultiplierChange?: (value: number) => void;
   onTimeRunningChange?: (isRunning: boolean) => void;
   private guiTimeMultiplier?: ReturnType<FolderApi['addBinding']>;
@@ -40,7 +42,7 @@ export default class WorldGui {
       this,
       'timePassedSeconds',
       {
-        label: 'Time Passed (s)',
+        label: 'Time Passed',
         readonly: true,
         format: (v) => {
           const formatted = formatSeconds(v);
@@ -63,6 +65,12 @@ export default class WorldGui {
     this.guiTimeMultiplier.on('change', (ev) => {
       this.onTimeMultiplierChange?.(Number(ev.value));
     });
+
+    this.folder
+      .addBinding(this, 'showStars', { label: 'Show Stars' })
+      .on('change', (ev) => {
+        this.onShowStarsChange?.(ev.value);
+      });
   }
 
   toggleTime() {
