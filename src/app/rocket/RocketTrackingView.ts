@@ -18,8 +18,6 @@ export default class RocketTrackingView {
   private label: HTMLDivElement;
   private _mode: TrackingCameraMode = RocketTrackingView.lastMode;
 
-  onModeChange: (mode: TrackingCameraMode) => void = () => {};
-
   get mode() {
     return this._mode;
   }
@@ -30,16 +28,64 @@ export default class RocketTrackingView {
     RocketTrackingView.lastMode = mode;
     // Snap instead of easing when re-entering chase mode
     this.initialized = false;
+    this.resetRotation();
     this.updateLabel();
-    this.onModeChange(mode);
   }
 
-  toggleMode() {
-    this.mode = this._mode === 'chase' ? 'fpv' : 'chase';
+  // --- User rotation (drag on the viewport) --------------------------------
+  // Radians, relative to the default camera direction of the current mode
+  private yaw = 0;
+  private pitch = 0;
+  rotateSensitivity = 0.008;
+
+  private pointerId: number | null = null;
+  private pointerPrevX = 0;
+  private pointerPrevY = 0;
+
+  resetRotation() {
+    this.yaw = 0;
+    this.pitch = 0;
   }
+
+  private onPointerDown = (e: PointerEvent) => {
+    if (this.pointerId !== null) return;
+    e.stopPropagation();
+    this.pointerId = e.pointerId;
+    this.element.setPointerCapture(e.pointerId);
+    this.pointerPrevX = e.clientX;
+    this.pointerPrevY = e.clientY;
+    this.element.style.cursor = 'grabbing';
+  };
+
+  private onPointerMove = (e: PointerEvent) => {
+    if (e.pointerId !== this.pointerId) return;
+
+    const dx = e.clientX - this.pointerPrevX;
+    const dy = e.clientY - this.pointerPrevY;
+    this.pointerPrevX = e.clientX;
+    this.pointerPrevY = e.clientY;
+
+    const maxPitch = THREE.MathUtils.degToRad(this._mode === 'fpv' ? 85 : 65);
+
+    this.yaw -= dx * this.rotateSensitivity;
+    this.pitch = THREE.MathUtils.clamp(
+      this.pitch + dy * this.rotateSensitivity,
+      -maxPitch,
+      maxPitch
+    );
+  };
+
+  private onPointerUp = (e: PointerEvent) => {
+    if (e.pointerId !== this.pointerId) return;
+    if (this.element.hasPointerCapture(e.pointerId)) {
+      this.element.releasePointerCapture(e.pointerId);
+    }
+    this.pointerId = null;
+    this.element.style.cursor = 'grab';
+  };
 
   private updateLabel() {
-    this.label.textContent = `● LIVE · ${this._mode === 'fpv' ? 'FPV' : 'CHASE'}`;
+    this.label.textContent = `● LIVE`;
   }
 
   private readonly target = new THREE.Vector3();
@@ -67,15 +113,19 @@ export default class RocketTrackingView {
       overflow: 'hidden',
       border: '1px solid rgba(0, 255, 255, 0.5)',
       background: '#000',
-      cursor: 'pointer',
+      cursor: 'grab',
+      // Handle touch drags ourselves instead of the browser scrolling the panel
+      touchAction: 'none',
+      userSelect: 'none',
     });
-    this.element.title = 'Click to switch Chase / First-Person view';
-    this.element.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.toggleMode();
-    });
+    this.element.title = 'Drag to rotate view · Double-click to reset';
     // Don't let clicks in the viewport reach the global Earth-picking handler
     this.element.addEventListener('mousedown', (e) => e.stopPropagation());
+    this.element.addEventListener('pointerdown', this.onPointerDown);
+    this.element.addEventListener('pointermove', this.onPointerMove);
+    this.element.addEventListener('pointerup', this.onPointerUp);
+    this.element.addEventListener('pointercancel', this.onPointerUp);
+    this.element.addEventListener('dblclick', () => this.resetRotation());
 
     const label = document.createElement('div');
     this.label = label;
@@ -168,6 +218,20 @@ export default class RocketTrackingView {
       .addScaledVector(side, d * 0.5)
       .addScaledVector(up, d * 0.35);
 
+    // User orbit: yaw around the surface normal, pitch around the horizontal
+    // axis perpendicular to the offset (positive pitch raises the camera).
+    if (this.pitch !== 0) {
+      const pitchAxis = new THREE.Vector3()
+        .crossVectors(up, this.desiredOffset)
+        .normalize();
+      if (pitchAxis.lengthSq() > 0) {
+        this.desiredOffset.applyAxisAngle(pitchAxis, -this.pitch);
+      }
+    }
+    if (this.yaw !== 0) {
+      this.desiredOffset.applyAxisAngle(up, this.yaw);
+    }
+
     return up;
   }
 
@@ -186,15 +250,27 @@ export default class RocketTrackingView {
     // Keep the horizon level: "up" is the surface normal projected
     // perpendicular to the flight direction.
     const surfaceUp = group.position.clone().sub(earthCenter).normalize();
-    let up = surfaceUp.clone().addScaledVector(forward, -surfaceUp.dot(forward));
+    let up = surfaceUp
+      .clone()
+      .addScaledVector(forward, -surfaceUp.dot(forward));
 
     if (up.lengthSq() < 1e-6) {
       // Flying straight up/down – fall back to the missile's own local axis
       up = new THREE.Vector3(0, 0, -1).applyQuaternion(group.quaternion);
     }
 
-    this.camera.up.copy(up.normalize());
-    this.camera.lookAt(this.camera.position.clone().add(forward));
+    up.normalize();
+
+    // User look-around: yaw around camera up, pitch around camera right
+    const lookDir = forward.clone();
+    if (this.yaw !== 0) lookDir.applyAxisAngle(up, this.yaw);
+    if (this.pitch !== 0) {
+      const right = new THREE.Vector3().crossVectors(lookDir, up).normalize();
+      lookDir.applyAxisAngle(right, -this.pitch);
+    }
+
+    this.camera.up.copy(up);
+    this.camera.lookAt(this.camera.position.clone().add(lookDir));
   }
 
   update(deltaTime = 0) {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Pane } from 'tweakpane';
+import { ListBladeApi, Pane } from 'tweakpane';
 import Stats from 'three/examples/jsm/libs/stats.module';
 import s from './OrbitalVelocity.module.scss';
 import clsx from 'clsx';
@@ -335,6 +335,35 @@ const OrbitalVelocity = () => {
     };
 
     let activeRocketGui: RocketGui | null = null;
+    let activeRocketId: number | null = null;
+    const missileActivators = new Map<number, () => void>();
+    let missileSelector: ListBladeApi<number> | null = null;
+
+    const updateMissileSelector = (selectedId: number) => {
+      const options = [...missileActivators.keys()].map((id) => ({
+        text: `Missile ${id}`,
+        value: id,
+      }));
+
+      if (!missileSelector) {
+        missileSelector = rocketGuiPane.addBlade({
+          view: 'list',
+          label: 'Missile',
+          options,
+          value: selectedId,
+          index: 0,
+        }) as ListBladeApi<number>;
+
+        missileSelector.on('change', (ev) => {
+          if (ev.value === activeRocketId) return;
+          missileActivators.get(ev.value)?.();
+        });
+        return;
+      }
+
+      missileSelector.options = options;
+      missileSelector.value = selectedId;
+    };
 
     launchPadListeners.onLaunchRocket = () => {
       // Launch from queue
@@ -405,26 +434,18 @@ const OrbitalVelocity = () => {
           };
 
           updateTriggers.push(activeRocketGui);
+          activeRocketId = rocket.id;
         };
 
-        rocketGuiPane
-          .addButton({
-            title: `Focus on Missile ${rocket.id}`,
-          })
-          .on('click', () => {
-            cameraManager.setRocketCamera(earthView, rocketView);
-
-            setIsMiniWindowOpen(true);
-            setIsFocusedOnEarth(false);
-            setActiveRocketGui();
-          });
+        missileActivators.set(rocket.id, setActiveRocketGui);
 
         // Physics/view must update before the GUI so the tracking camera
         // renders the current frame's missile position.
         updateTriggers.push(frameTimeManager);
 
         setActiveRocketGui();
-        activeRocketGui?.scrollToEnd();
+        updateMissileSelector(rocket.id);
+        // activeRocketGui?.scrollToEnd();
 
         // Return remaining queue (removing the launched item)
         return remainingQueue;

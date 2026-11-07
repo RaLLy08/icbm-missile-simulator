@@ -31,12 +31,10 @@ export default class RocketGui {
       expanded: true,
     });
 
-    // Live camera viewport tracking the missile, placed at the top of the folder
+    // Live camera viewport tracking the missile
     this.trackingView = new RocketTrackingView(scene, this.rocketView);
-    const folderContent =
-      this.folder.element.querySelector('.tp-fldv_c') ?? this.folder.element;
-    folderContent.prepend(this.trackingView.element);
 
+    // First blade in the folder -> stays on top
     const cameraViewBinding = this.folder.addBinding(
       this.trackingView,
       'mode',
@@ -48,10 +46,14 @@ export default class RocketGui {
         },
       }
     );
-    // Keep dropdown in sync when the mode is toggled by clicking the viewport
-    this.trackingView.onModeChange = () => cameraViewBinding.refresh();
-    // Place the selector right below the viewport
-    this.trackingView.element.after(cameraViewBinding.element);
+
+    this.folder
+      .addButton({
+        title: 'Chase Missile',
+      })
+      .on('click', () => {
+        this.onFocusCameraClick();
+      });
 
     this.folder.addBinding(this, 'velocity', {
       label: 'Velocity',
@@ -165,13 +167,10 @@ export default class RocketGui {
       format: (v) => THREE.MathUtils.radToDeg(v).toFixed(2) + '°',
     });
 
-    this.folder
-      .addButton({
-        title: 'Focus on Missile',
-      })
-      .on('click', () => {
-        this.onFocusCameraClick();
-      });
+    // Insert the viewport into the DOM only after all blades are added:
+    // tweakpane inserts blades by child index, so a foreign element added
+    // earlier would get pushed to the bottom.
+    cameraViewBinding.element.after(this.trackingView.element);
   }
 
   scrollToEnd() {
