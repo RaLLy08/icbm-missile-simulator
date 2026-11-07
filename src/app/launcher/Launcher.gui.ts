@@ -2,9 +2,9 @@ import { formatSeconds } from 'app/utils';
 import * as THREE from 'three';
 import { FolderApi, Pane } from 'tweakpane';
 import {
-  getMissileOptions,
-  getMissileById,
-  type MissileSpec,
+    getMissileOptions,
+    getMissileById,
+    type MissileSpec,
 } from './MissileDatabase';
 
 export default class LauncherGui {
@@ -39,7 +39,7 @@ export default class LauncherGui {
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
       title: 'Launcher',
-      expanded: true,
+      expanded: false,
     });
 
     const missile = getMissileById(this.selectedMissileId);

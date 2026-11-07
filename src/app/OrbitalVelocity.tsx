@@ -38,6 +38,8 @@ scene.add(hemisphereLight);
 
 const clock = new THREE.Clock();
 
+const TIME_MULTIPLIER_PRESETS = [1, 2, 5, 10, 50];
+
 const stats = new Stats();
 stats.showPanel(0);
 
@@ -52,7 +54,11 @@ const OrbitalVelocity = () => {
     onLaunchRocket: () => {},
     focusOnEarth: () => {},
     onCancelSelectionClick: () => {},
+    setTimeMultiplier: (_value: number) => {},
+    toggleTime: () => {},
   });
+  const [timeMultiplier, setTimeMultiplier] = useState(1);
+  const [isTimeRunning, setIsTimeRunning] = useState(true);
   const [calcWasReset, setCalcWasReset] = useState(true);
   const [rocketCount, setRocketCount] = useState(0);
   const launchPadStatesRef = useRef({
@@ -246,6 +252,12 @@ const OrbitalVelocity = () => {
 
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
+
+    worldGui.onTimeMultiplierChange = (value) => setTimeMultiplier(value);
+    launchPadListeners.setTimeMultiplier = (value) =>
+      worldGui.setTimeMultiplier(value);
+    worldGui.onTimeRunningChange = (isRunning) => setIsTimeRunning(isRunning);
+    launchPadListeners.toggleTime = () => worldGui.toggleTime();
 
     ///
 
@@ -728,6 +740,32 @@ const OrbitalVelocity = () => {
                     Click on Earth to set Target Position
                   </div>
                 )}
+              </div>
+
+              <div className={s.timeMultiplier}>
+                <button
+                  className={s.timeMultiplierButton}
+                  title={isTimeRunning ? 'Pause time' : 'Resume time'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    launchPadListenersRef.current.toggleTime();
+                  }}
+                >
+                  {isTimeRunning ? '⏸️' : '▶️'}
+                </button>
+                <button
+                  className={s.timeMultiplierButton}
+                  title="Click to change time multiplier"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next =
+                      TIME_MULTIPLIER_PRESETS.find((v) => v > timeMultiplier) ??
+                      TIME_MULTIPLIER_PRESETS[0];
+                    launchPadListenersRef.current.setTimeMultiplier(next);
+                  }}
+                >
+                  ⏩ {timeMultiplier}x
+                </button>
               </div>
 
               <div className={s.controls}>

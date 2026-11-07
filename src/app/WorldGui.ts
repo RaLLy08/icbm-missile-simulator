@@ -7,6 +7,10 @@ export default class WorldGui {
   timeMultiplier = 1;
   timeDeltaTime = 0.01666;
   timePassedSeconds = 0;
+  onTimeMultiplierChange?: (value: number) => void;
+  onTimeRunningChange?: (isRunning: boolean) => void;
+  private guiTimeMultiplier?: ReturnType<FolderApi['addBinding']>;
+  private guiStopTimeButton?: ReturnType<FolderApi['addButton']>;
 
   constructor(
     pane: Pane,
@@ -14,26 +18,17 @@ export default class WorldGui {
   ) {
     this.folder = pane.addFolder({
       title: 'World',
-      expanded: true,
+      expanded: false,
     });
 
     this.initGui();
   }
 
   private initGui() {
-    this.folder
-      .addButton({
-        title: 'Stop Time',
-      })
-      .on('click', (ev) => {
-        if (this.clock.running) {
-          this.clock.stop();
-        } else {
-          this.clock.start();
-        }
-
-        ev.target.title = this.clock.running ? 'Stop Time' : 'Resume Time';
-      });
+    this.guiStopTimeButton = this.folder.addButton({
+      title: 'Stop Time',
+    });
+    this.guiStopTimeButton.on('click', () => this.toggleTime());
 
     const guiDeltaTime = this.folder.addBinding(this, 'timeDeltaTime', {
       label: 'Seconds Passed Between Frames (s)',
@@ -55,7 +50,7 @@ export default class WorldGui {
       }
     );
 
-    const guiTimeMultiplier = this.folder.addBinding(this, 'timeMultiplier', {
+    this.guiTimeMultiplier = this.folder.addBinding(this, 'timeMultiplier', {
       label: 'Time Multiplier',
       format: (v) => {
         return v + ' X';
@@ -64,6 +59,30 @@ export default class WorldGui {
       max: 300,
       step: 1,
     });
+
+    this.guiTimeMultiplier.on('change', (ev) => {
+      this.onTimeMultiplierChange?.(Number(ev.value));
+    });
+  }
+
+  toggleTime() {
+    if (this.clock.running) {
+      this.clock.stop();
+    } else {
+      this.clock.start();
+    }
+
+    const isRunning = this.clock.running;
+    if (this.guiStopTimeButton) {
+      this.guiStopTimeButton.title = isRunning ? 'Stop Time' : 'Resume Time';
+    }
+    this.onTimeRunningChange?.(isRunning);
+  }
+
+  setTimeMultiplier(value: number) {
+    this.timeMultiplier = value;
+    this.guiTimeMultiplier?.refresh();
+    this.onTimeMultiplierChange?.(value);
   }
 
   update(tick = 1) {
