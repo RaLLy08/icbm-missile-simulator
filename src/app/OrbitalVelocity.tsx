@@ -61,6 +61,9 @@ const OrbitalVelocity = () => {
   });
   const [timeMultiplier, setTimeMultiplier] = useState(1);
   const [isTimeRunning, setIsTimeRunning] = useState(true);
+  // Updated imperatively every frame to avoid re-rendering React
+  const timePassedTextRef = useRef(WorldGui.formatTimePassed(0));
+  const timePassedElRef = useRef<HTMLDivElement | null>(null);
   const [calcWasReset, setCalcWasReset] = useState(true);
   const [rocketCount, setRocketCount] = useState(0);
   const launchPadStatesRef = useRef({
@@ -267,6 +270,13 @@ const OrbitalVelocity = () => {
     launchPadListeners.setTimeMultiplier = (value) =>
       worldGui.setTimeMultiplier(value);
     worldGui.onTimeRunningChange = (isRunning) => setIsTimeRunning(isRunning);
+    worldGui.onTimePassedUpdate = (text) => {
+      if (text === timePassedTextRef.current) return;
+      timePassedTextRef.current = text;
+      if (timePassedElRef.current) {
+        timePassedElRef.current.textContent = `⏱ ${text}`;
+      }
+    };
     launchPadListeners.toggleTime = () => worldGui.toggleTime();
 
     ///
@@ -754,6 +764,15 @@ const OrbitalVelocity = () => {
         {/* <div className={s.timeManager}>
           <div>FPS*Sec</div>
         </div> */}
+
+        <div
+          className={s.timePassed}
+          title="Simulated time passed"
+          ref={(el) => {
+            timePassedElRef.current = el;
+            if (el) el.textContent = `⏱ ${timePassedTextRef.current}`;
+          }}
+        />
 
         {(() => {
           const timeControls = (

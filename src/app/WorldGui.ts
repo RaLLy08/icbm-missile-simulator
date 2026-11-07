@@ -11,6 +11,8 @@ export default class WorldGui {
   onShowStarsChange?: (show: boolean) => void;
   onTimeMultiplierChange?: (value: number) => void;
   onTimeRunningChange?: (isRunning: boolean) => void;
+  /** Called every update with the formatted total time passed. */
+  onTimePassedUpdate?: (formatted: string) => void;
   private guiTimeMultiplier?: ReturnType<FolderApi['addBinding']>;
   private guiStopTimeButton?: ReturnType<FolderApi['addButton']>;
 
@@ -44,11 +46,7 @@ export default class WorldGui {
       {
         label: 'Time Passed',
         readonly: true,
-        format: (v) => {
-          const formatted = formatSeconds(v);
-
-          return `${formatted.value.toFixed(1)} ${formatted.unit}`;
-        },
+        format: (v) => WorldGui.formatTimePassed(v),
       }
     );
 
@@ -93,8 +91,17 @@ export default class WorldGui {
     this.onTimeMultiplierChange?.(value);
   }
 
+  static formatTimePassed(seconds: number) {
+    const formatted = formatSeconds(seconds);
+
+    return `${formatted.value.toFixed(1)} ${formatted.unit}`;
+  }
+
   update(tick = 1) {
     this.timeDeltaTime = tick * this.timeMultiplier;
     this.timePassedSeconds += tick * this.timeMultiplier;
+    this.onTimePassedUpdate?.(
+      WorldGui.formatTimePassed(this.timePassedSeconds)
+    );
   }
 }
