@@ -75,6 +75,7 @@ export default class RocketTrackingView {
     RocketTrackingView.lastMode = mode;
     // Snap instead of easing when re-entering chase mode
     this.initialized = false;
+    this.fpvHeadingValid = false;
     this.resetRotation();
     this.updateLabel();
   }
@@ -94,6 +95,48 @@ export default class RocketTrackingView {
     this.pitch = 0;
   }
 
+  /**
+   * Rotate the view by a pointer drag of (dx, dy) pixels. Shared by the
+   * embedded viewport and the main view while it is chasing this missile.
+   */
+  rotateBy(dx: number, dy: number, sensitivity = this.rotateSensitivity) {
+    // FPV pitch is an offset from the flight elevation (which can be ±90°);
+    // the final look elevation is clamped in updateFirstPerson.
+    const maxPitch = THREE.MathUtils.degToRad(this._mode === 'fpv' ? 178 : 65);
+
+    this.yaw -= dx * sensitivity;
+    this.pitch = THREE.MathUtils.clamp(
+      this.pitch + dy * sensitivity,
+      -maxPitch,
+      maxPitch
+    );
+  }
+
+  /** Multiply the chase distance by `scale` (> 1 = further away). */
+  zoomBy(scale: number) {
+    if (this._mode === 'fpv' || !Number.isFinite(scale) || scale <= 0) return;
+    const maxMultiplier = Math.max(
+      RocketTrackingView.MIN_DISTANCE_MULTIPLIER,
+      Earth.RADIUS / this.rocketView.size
+    );
+    this.distanceMultiplier = THREE.MathUtils.clamp(
+      this.distanceMultiplier * scale,
+      RocketTrackingView.MIN_DISTANCE_MULTIPLIER,
+      maxMultiplier
+    );
+  }
+
+  /** Wheel delta -> zoom scale, same feel on every screen. */
+  static wheelToZoomScale(deltaY: number) {
+    return Math.pow(1.15, THREE.MathUtils.clamp(deltaY / 100, -1, 1));
+  }
+
+  private onWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    this.zoomBy(RocketTrackingView.wheelToZoomScale(e.deltaY));
+  };
+
   private onPointerDown = (e: PointerEvent) => {
     if (this.pointerId !== null) return;
     e.stopPropagation();
@@ -112,14 +155,7 @@ export default class RocketTrackingView {
     this.pointerPrevX = e.clientX;
     this.pointerPrevY = e.clientY;
 
-    const maxPitch = THREE.MathUtils.degToRad(this._mode === 'fpv' ? 85 : 65);
-
-    this.yaw -= dx * this.rotateSensitivity;
-    this.pitch = THREE.MathUtils.clamp(
-      this.pitch + dy * this.rotateSensitivity,
-      -maxPitch,
-      maxPitch
-    );
+    this.rotateBy(dx, dy);
   };
 
   private onPointerUp = (e: PointerEvent) => {
@@ -139,8 +175,12 @@ export default class RocketTrackingView {
   private readonly desiredOffset = new THREE.Vector3();
   private readonly offset = new THREE.Vector3();
   private initialized = false;
+  // First-person heading, carried between frames for vertical flight
+  private readonly fpvHeading = new THREE.Vector3();
+  private fpvHeadingValid = false;
 
   // How far the camera sits from the missile, in missile sizes
+  private static readonly MIN_DISTANCE_MULTIPLIER = 1.5;
   distanceMultiplier = 5;
   // Higher = camera follows tighter, lower = smoother
   followSmoothness = 8;
@@ -165,7 +205,9 @@ export default class RocketTrackingView {
       touchAction: 'none',
       userSelect: 'none',
     });
-    this.element.title = 'Drag to rotate view · Double-click to reset';
+    this.element.title =
+      'Drag to rotate view · Scroll to zoom · Double-click to reset';
+    this.element.addEventListener('wheel', this.onWheel, { passive: false });
     // Don't let clicks in the viewport reach the global Earth-picking handler
     this.element.addEventListener('mousedown', (e) => e.stopPropagation());
     this.element.addEventListener('pointerdown', this.onPointerDown);
@@ -283,43 +325,90 @@ export default class RocketTrackingView {
       .applyQuaternion(group.quaternion)
       .normalize();
 
-    // Keep the horizon level: "up" is the surface normal projected
-    // perpendicular to the flight direction.
+    // Head-look relative to the local horizon, like a pilot turning their
+    // head: drag left/right turns around the local vertical, drag up/down
+    // inclines the view up/down against the horizon. The default view looks
+    // along the flight direction, so it pitches over with the gravity turn.
     const surfaceUp = group.position.clone().sub(earthCenter).normalize();
-    let up = surfaceUp
+
+    // Flight direction split into heading (horizontal) and elevation
+    const horizontal = forward
       .clone()
-      .addScaledVector(forward, -surfaceUp.dot(forward));
+      .addScaledVector(surfaceUp, -forward.dot(surfaceUp));
 
-    if (up.lengthSq() < 1e-6) {
-      // Flying straight up/down – fall back to the missile's own local axis
-      up = new THREE.Vector3(0, 0, -1).applyQuaternion(group.quaternion);
+    if (horizontal.lengthSq() > 1e-6) {
+      this.fpvHeading.copy(horizontal.normalize());
+      this.fpvHeadingValid = true;
+    } else {
+      // Flying straight up/down (launch): heading undefined, keep the last
+      // one (projected onto the current horizon) so the view stays stable.
+      if (this.fpvHeadingValid) {
+        this.fpvHeading.addScaledVector(
+          surfaceUp,
+          -this.fpvHeading.dot(surfaceUp)
+        );
+      }
+      if (!this.fpvHeadingValid || this.fpvHeading.lengthSq() < 1e-6) {
+        this.fpvHeading.set(1, 0, 0).cross(surfaceUp);
+        if (this.fpvHeading.lengthSq() < 1e-6) {
+          this.fpvHeading.set(0, 0, 1).cross(surfaceUp);
+        }
+      }
+      this.fpvHeading.normalize();
+      this.fpvHeadingValid = true;
     }
 
-    up.normalize();
+    const flightElevation = Math.asin(
+      THREE.MathUtils.clamp(forward.dot(surfaceUp), -1, 1)
+    );
 
-    // User look-around: yaw around camera up, pitch around camera right
-    const lookDir = forward.clone();
-    if (this.yaw !== 0) lookDir.applyAxisAngle(up, this.yaw);
-    if (this.pitch !== 0) {
-      const right = new THREE.Vector3().crossVectors(lookDir, up).normalize();
-      lookDir.applyAxisAngle(right, -this.pitch);
-    }
+    // Positive pitch (drag down) looks down. Keep the total just short of
+    // straight up/down so the horizon never flips, and absorb over-drag so
+    // dragging back responds immediately.
+    const maxElevation = THREE.MathUtils.degToRad(89);
+    const elevation = THREE.MathUtils.clamp(
+      flightElevation - this.pitch,
+      -maxElevation,
+      maxElevation
+    );
+    this.pitch = flightElevation - elevation;
 
-    this.camera.up.copy(up);
+    const heading = this.fpvHeading.clone().applyAxisAngle(surfaceUp, this.yaw);
+    const lookDir = heading
+      .multiplyScalar(Math.cos(elevation))
+      .addScaledVector(surfaceUp, Math.sin(elevation));
+
+    this.camera.up.copy(surfaceUp);
     this.camera.lookAt(this.camera.position.clone().add(lookDir));
   }
 
-  update(deltaTime = 0) {
-    if (!this.element.isConnected || !this.syncSize()) return;
+  /** The tracking camera; the main view copies its pose while chasing. */
+  getCamera(): THREE.PerspectiveCamera {
+    return this.camera;
+  }
 
+  /** Render the scene with this view's settings (e.g. arrows hidden in FPV). */
+  renderTo(renderer: THREE.WebGLRenderer, camera: THREE.Camera = this.camera) {
+    // Force arrows start at the tail and pass through the nose – hide them
+    // so they don't block the first-person view.
+    const hideArrows = this._mode === 'fpv';
+    if (hideArrows) this.rocketView.setArrowsVisible(false);
+    renderer.render(this.scene, camera);
+    if (hideArrows) this.rocketView.setArrowsVisible(true);
+  }
+
+  update(deltaTime = 0) {
+    // The pose is updated even when the viewport is hidden (collapsed pane):
+    // the main view may be copying it.
+    this.updatePose(deltaTime);
+
+    if (!this.element.isConnected || !this.syncSize()) return;
+    this.renderTo(this.renderer);
+  }
+
+  private updatePose(deltaTime: number) {
     if (this._mode === 'fpv') {
       this.updateFirstPerson();
-
-      // Force arrows start at the tail and pass through the nose – hide them
-      // so they don't block the first-person view.
-      this.rocketView.setArrowsVisible(false);
-      this.renderer.render(this.scene, this.camera);
-      this.rocketView.setArrowsVisible(true);
       return;
     }
 
@@ -341,8 +430,6 @@ export default class RocketTrackingView {
 
     this.camera.up.copy(up);
     this.camera.lookAt(this.target);
-
-    this.renderer.render(this.scene, this.camera);
   }
 
   dispose() {

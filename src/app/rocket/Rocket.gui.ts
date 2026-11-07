@@ -7,7 +7,8 @@ import RocketTrackingView from './RocketTrackingView';
 
 export default class RocketGui {
   private folder: FolderApi;
-  private trackingView: RocketTrackingView;
+  // Public: the main view mirrors this camera while chasing the missile
+  readonly trackingView: RocketTrackingView;
   velocity = 0;
   thrust = 0;
   displacement = 0;

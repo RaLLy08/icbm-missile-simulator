@@ -1,10 +1,9 @@
 import Earth from 'app/earth/Earth';
-import EarthView from 'app/earth/EarthView';
 import { normalizeBetween, toExponentGrowth } from 'app/utils';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import MouseTracker from './MouseTracker';
-import RocketView from 'app/rocket/RocketView';
+import RocketTrackingView from 'app/rocket/RocketTrackingView';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -66,7 +65,16 @@ export default class CameraManager {
     this.cameraController = this.earthCameraController;
   }
 
-  setRocketCamera(earthView: EarthView, rocketView: RocketView) {
+  /** True while the main view is chasing a missile. */
+  get isChasing() {
+    return (
+      this.cameraController !== null &&
+      this.cameraController === this.rocketCameraController
+    );
+  }
+
+  /** Chase a missile: the main view mirrors its tracking view. */
+  setRocketCamera(trackingView: RocketTrackingView) {
     if (this.earthCameraController) {
       this.earthCameraController.disable();
       // Use the drawing size, not clientWidth/Height: those are 0 while the
@@ -76,19 +84,15 @@ export default class CameraManager {
       this.earthCameraController.camera.updateProjectionMatrix();
     }
 
-    const camera = this.createCamera();
-    const earthCenter = earthView.mesh.position.clone();
-
     if (this.rocketCameraController == null) {
       this.rocketCameraController = new RocketCamera(
-        camera,
-        rocketView,
-        earthCenter,
+        this.createCamera(window.innerWidth / window.innerHeight),
+        trackingView,
         this.fullScreenRenderer.domElement
       );
     } else {
       this.rocketCameraController.enable();
-      this.rocketCameraController.setRocketView(rocketView);
+      this.rocketCameraController.setSource(trackingView);
     }
 
     this.cameraController = this.rocketCameraController;
@@ -98,7 +102,11 @@ export default class CameraManager {
     if (!this.cameraController) return;
 
     this.cameraController.update(delta);
-    this.fullScreenRenderer.render(this.scene, this.cameraController.camera);
+    if (this.cameraController instanceof RocketCamera) {
+      this.cameraController.render(this.fullScreenRenderer);
+    } else {
+      this.fullScreenRenderer.render(this.scene, this.cameraController.camera);
+    }
 
     if (
       this.miniWindowEnabled &&
@@ -359,21 +367,17 @@ class EarthCamera {
   }
 }
 
+/**
+ * Main-view chase camera. It has no pose logic of its own: it mirrors the
+ * missile's tracking view (Missile Controls viewport) every frame, and input
+ * on the main canvas drives that same tracking view, so both screens always
+ * show exactly the same thing (mode, rotation, zoom).
+ */
 class RocketCamera {
   camera: THREE.PerspectiveCamera;
-  earthCenter: THREE.Vector3;
 
-  // Camera settings
+  // Per-pixel drag sensitivity on the full-screen canvas
   mouseSensitivity: number = 0.005;
-
-  minDistance: number = 10; // Minimum distance from the target
-  maxDistance: number = Earth.RADIUS; // Maximum distance from the target
-  distance: number = this.minDistance;
-  currentOffset: THREE.Vector3 = new THREE.Vector3(0, 0, 0); // Default offset
-
-  // Rotation state
-  phi: number = THREE.MathUtils.degToRad(45); // Vertical angle
-  theta: number = THREE.MathUtils.degToRad(0); // Horizontal angle
 
   // DOM element for pointer events (mouse + touch)
   domElement: HTMLElement;
@@ -383,17 +387,11 @@ class RocketCamera {
 
   constructor(
     camera: THREE.PerspectiveCamera,
-    private rocketView: RocketView,
-    earthCenter: THREE.Vector3,
+    private source: RocketTrackingView,
     domElement: HTMLElement
   ) {
     this.camera = camera;
-
-    this.earthCenter = earthCenter;
     this.domElement = domElement;
-
-    this.minDistance = this.rocketView.size;
-    this.distance = this.rocketView.size * 3;
 
     // Pointer events cover mouse and touch. Up/cancel are on window so a drag
     // that ends outside the canvas still releases.
@@ -404,35 +402,28 @@ class RocketCamera {
     this.domElement.addEventListener('wheel', this.onMouseWheel, {
       passive: false,
     });
+    this.domElement.addEventListener('dblclick', this.onDoubleClick);
   }
 
   disabled = false;
-  transitioningToRocketView: RocketView | null = null;
 
-  setRocketView(newRocketView: RocketView) {
-    this.rocketView = newRocketView;
+  setSource(source: RocketTrackingView) {
+    this.source = source;
   }
 
   disable() {
     this.disabled = true;
+    this.pointers.clear();
   }
 
   enable() {
     this.disabled = false;
   }
 
-  private getRocketPosition() {
-    const rocketPosition = this.rocketView.group.position.clone();
-
-    const earthNormal = this.earthCenter
-      .clone()
-      .sub(this.rocketView.group.position)
-      .normalize();
-
-    const offset = -this.rocketView.size * 0.5;
-
-    return rocketPosition.add(earthNormal.clone().multiplyScalar(offset));
-  }
+  private onDoubleClick = () => {
+    if (this.disabled) return;
+    this.source.resetRotation();
+  };
 
   private getPinchDistance() {
     const [a, b] = Array.from(this.pointers.values());
@@ -474,145 +465,47 @@ class RocketCamera {
       // Pinch: fingers apart -> zoom in, proportional to the spread
       const pinchDistance = this.getPinchDistance();
       if (this.prevPinchDistance > 0 && pinchDistance > 0) {
-        this.distance = THREE.MathUtils.clamp(
-          this.distance *
-            Math.pow(this.prevPinchDistance / pinchDistance, PINCH_SENSITIVITY),
-          this.minDistance,
-          this.maxDistance
+        this.source.zoomBy(
+          Math.pow(this.prevPinchDistance / pinchDistance, PINCH_SENSITIVITY)
         );
       }
       this.prevPinchDistance = pinchDistance;
       return;
     }
 
-    // Single pointer: orbit around the missile
-    this.theta -= deltaX * this.mouseSensitivity; // Horizontal rotation
-    this.phi = Math.max(
-      0.1,
-      Math.min(Math.PI - 0.1, this.phi - deltaY * this.mouseSensitivity)
-    ); // Vertical rotation (clamped)
+    // Single pointer: rotate the shared tracking camera
+    this.source.rotateBy(deltaX, deltaY, this.mouseSensitivity);
   };
-
-  /** Positive = zoom out. `amount` is in wheel-deltaY units. */
-  private zoomBy(amount: number) {
-    // Zoom in/out
-    const minStep = 0.001;
-    const maxStep = 1;
-
-    const percentageOfApproach = normalizeBetween(
-      this.distance,
-      this.minDistance,
-      this.maxDistance
-    );
-
-    const step = THREE.MathUtils.mapLinear(
-      1 - Math.pow(1 - percentageOfApproach, 8),
-      0,
-      1,
-      minStep,
-      maxStep
-    );
-
-    this.distance = Math.max(
-      this.minDistance,
-      Math.min(this.maxDistance, this.distance + amount * step)
-    );
-  }
 
   private onMouseWheel = (event: WheelEvent) => {
     if (this.disabled) return;
-    if (this.transitioningToRocketView != null) return;
-
-    this.zoomBy(event.deltaY);
     event.preventDefault();
+    this.source.zoomBy(RocketTrackingView.wheelToZoomScale(event.deltaY));
   };
 
-  private getCameraPosition(targetPos: THREE.Vector3) {
-    const surfaceNormal = new THREE.Vector3()
-      .subVectors(targetPos, this.earthCenter)
-      .normalize();
+  /** Copy the tracking view's pose; the source updates it every frame. */
+  update(_delta: number) {
+    const sourceCamera = this.source.getCamera();
 
-    // Calculate camera position in spherical coordinates
-    const sphericalPos = new THREE.Spherical(
-      this.distance,
-      this.phi,
-      this.theta
-    );
+    this.camera.position.copy(sourceCamera.position);
+    this.camera.quaternion.copy(sourceCamera.quaternion);
+    this.camera.up.copy(sourceCamera.up);
 
-    // Convert spherical to Cartesian coordinates
-    this.currentOffset.setFromSpherical(sphericalPos);
-
-    // Align offset with surface normal (so "up" is away from Earth)
-    const quaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0), // Default "up"
-      surfaceNormal
-    );
-    this.currentOffset.applyQuaternion(quaternion);
-
-    // Set camera position and look at target
-    // this.camera.position.copy(targetPos).add(this.currentOffset);
-    // this.camera.lookAt(targetPos);
-    // this.camera.up.copy(surfaceNormal); // Ensure camera respects surface normal
-
-    return {
-      position: targetPos.clone().add(this.currentOffset),
-      lookAt: targetPos,
-      up: surfaceNormal,
-    };
+    // Same lens, own aspect ratio (full screen vs. the small viewport)
+    if (
+      this.camera.fov !== sourceCamera.fov ||
+      this.camera.near !== sourceCamera.near ||
+      this.camera.far !== sourceCamera.far
+    ) {
+      this.camera.fov = sourceCamera.fov;
+      this.camera.near = sourceCamera.near;
+      this.camera.far = sourceCamera.far;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
-  passedTimeAfterTransition = 0;
-
-  update(delta: number) {
-    // if (this.transitioningToRocketView != null) {
-    //   this.passedTimeAfterTransition += delta;
-
-    //   const percentOfPassedTime = Math.min(
-    //     this.passedTimeAfterTransition / 1, // Transition duration
-    //     1
-    //   );
-
-    //   const lerpAlpha = THREE.MathUtils.smoothstep(percentOfPassedTime, 0, 1);
-
-    //   const { position, lookAt, up } = this.getCameraPosition(
-    //     this.transitioningToRocketView.group.position
-    //   );
-
-    //   const targetPos = position.clone();
-    //   const currentPos = this.camera.position.clone();
-
-    //   const targetLookAt = lookAt.clone();
-    //   const currentLookAt = this.camera
-    //     .getWorldDirection(new THREE.Vector3())
-    //     .add(currentPos);
-
-    //   const targetUp = up.clone();
-    //   const currentUp = this.camera.up.clone();
-
-    //   // Lerp position
-    //   this.camera.position.lerp(targetPos, lerpAlpha);
-    //   this.camera.up.lerp(currentUp.lerp(targetUp, lerpAlpha), lerpAlpha);
-    //   // this.camera.lookAt(currentLookAt.lerp(targetLookAt, lerpAlpha));
-
-    //   const dist = currentPos.distanceTo(targetPos);
-
-    //   // If close enough, stop transitioning
-    //   if (dist < 1) {
-    //     this.rocketView = this.transitioningToRocketView;
-    //     this.transitioningToRocketView = null;
-    //     this.passedTimeAfterTransition = 0;
-    //   }
-
-    //   return;
-    // }
-
-    const { position, lookAt, up } = this.getCameraPosition(
-      this.getRocketPosition()
-    );
-
-    this.camera.position.copy(position);
-    this.camera.lookAt(lookAt);
-    this.camera.up.copy(up);
+  render(renderer: THREE.WebGLRenderer) {
+    this.source.renderTo(renderer, this.camera);
   }
 
   remove() {
@@ -622,5 +515,6 @@ class RocketCamera {
     window.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('pointercancel', this.onPointerUp);
     this.domElement.removeEventListener('wheel', this.onMouseWheel);
+    this.domElement.removeEventListener('dblclick', this.onDoubleClick);
   }
 }

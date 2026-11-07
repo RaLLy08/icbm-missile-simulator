@@ -687,21 +687,31 @@ const OrbitalVelocity = () => {
             updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
           }
 
-          activeRocketGui = new RocketGui(
+          const rocketGui = new RocketGui(
             rocketGuiPane,
             rocketGuiContainer!,
             rocket,
             rocketView,
             scene
           );
+          activeRocketGui = rocketGui;
 
-          activeRocketGui.onFocusCameraClick = () => {
-            cameraManager.setRocketCamera(earthView, rocketView);
+          rocketGui.onFocusCameraClick = () => {
+            cameraManager.setRocketCamera(rocketGui.trackingView);
             setIsMiniWindowOpen(true);
             setIsFocusedOnEarth(false);
           };
 
-          updateTriggers.push(activeRocketGui);
+          // The main view mirrors the Missile Controls viewport, so while
+          // chasing it follows whichever missile is selected there.
+          if (cameraManager.isChasing) {
+            // Compute the new view's pose now: the main view renders before
+            // the GUI updates, and would otherwise show one empty frame.
+            rocketGui.update(0);
+            cameraManager.setRocketCamera(rocketGui.trackingView);
+          }
+
+          updateTriggers.push(rocketGui);
           activeRocketId = rocket.id;
         };
 
