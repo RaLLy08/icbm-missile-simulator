@@ -18,6 +18,7 @@ import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
+import { setAudioListener } from './helpers/SpatialAudio';
 
 const scene = new THREE.Scene();
 
@@ -208,6 +209,7 @@ const OrbitalVelocity = () => {
     const earthView = new EarthView(earth, scene, earthGui);
     updateTriggers.push(earthView);
     cameraManager.setEarthCamera(earth);
+    setAudioListener(() => cameraManager.getCamera());
 
     // Set camera for atmospheric glow updates
     const camera = cameraManager.getCamera();
