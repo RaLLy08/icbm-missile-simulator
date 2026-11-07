@@ -116,6 +116,8 @@ const OrbitalVelocity = () => {
     }>
   >([]);
   const [queueIdCounter, setQueueIdCounter] = useState(0);
+  const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
+  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
@@ -697,8 +699,20 @@ const OrbitalVelocity = () => {
 
   const handleClearQueueClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!isConfirmingClear) {
+      setIsConfirmingClear(true);
+      return;
+    }
+    setIsConfirmingClear(false);
     setLaunchQueue([]);
   };
+
+  // Auto-cancel the pending "Confirm" state after a few seconds
+  useEffect(() => {
+    if (!isConfirmingClear) return;
+    const timeout = setTimeout(() => setIsConfirmingClear(false), 3000);
+    return () => clearTimeout(timeout);
+  }, [isConfirmingClear]);
 
   const handleRemoveFromQueue = (id: number) => {
     setLaunchQueue((prev) => prev.filter((item) => item.id !== id));
@@ -888,44 +902,66 @@ const OrbitalVelocity = () => {
 
         {/* Launch Queue Panel */}
         {launchQueue.length > 0 && isFocusedOnEarth && (
-          <div className={s.queuePanel}>
-            <div className={s.queueHeader}>
-              <h3>Launch Queue ({launchQueue.length})</h3>
-              <button className={s.clearButton} onClick={handleClearQueueClick}>
-                Clear All
-              </button>
-            </div>
-            <div className={s.queueList}>
-              {launchQueue.map((item, index) => (
-                <div key={item.id} className={s.queueItem}>
-                  <div className={s.queueItemInfo}>
-                    <span className={s.queueItemNumber}>#{index + 1}</span>
-                    <div className={s.queueItemCoords}>
-                      <div className={s.coordPair}>
-                        <span className={s.coordLabel}>Start</span>
-                        <span>
-                          {item.startGeo.latitude.toFixed(1)},
-                          {item.startGeo.longitude.toFixed(1)}
-                        </span>
+          <div
+            className={clsx(s.queueWrapper, {
+              [s.collapsed]: isQueueCollapsed,
+            })}
+          >
+            <div className={s.queuePanel}>
+              <div className={s.queueHeader}>
+                <h3>Launch Queue ({launchQueue.length})</h3>
+                <button
+                  className={clsx(s.clearButton, {
+                    [s.confirming]: isConfirmingClear,
+                  })}
+                  onClick={handleClearQueueClick}
+                >
+                  {isConfirmingClear ? 'Confirm' : 'Clear All'}
+                </button>
+              </div>
+              {!isQueueCollapsed && (
+                <div className={s.queueList}>
+                  {launchQueue.map((item, index) => (
+                    <div key={item.id} className={s.queueItem}>
+                      <div className={s.queueItemInfo}>
+                        <span className={s.queueItemNumber}>#{index + 1}</span>
+                        <div className={s.queueItemCoords}>
+                          <div className={s.coordPair}>
+                            <span className={s.coordLabel}>Start</span>
+                            <span>
+                              {item.startGeo.latitude.toFixed(1)},
+                              {item.startGeo.longitude.toFixed(1)}
+                            </span>
+                          </div>
+                          <div className={s.coordPair}>
+                            <span className={s.coordLabel}>Target</span>
+                            <span>
+                              {item.targetGeo.latitude.toFixed(1)},
+                              {item.targetGeo.longitude.toFixed(1)}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className={s.coordPair}>
-                        <span className={s.coordLabel}>Target</span>
-                        <span>
-                          {item.targetGeo.latitude.toFixed(1)},
-                          {item.targetGeo.longitude.toFixed(1)}
-                        </span>
-                      </div>
+                      <button
+                        className={s.removeButton}
+                        onClick={() => handleRemoveFromQueue(item.id)}
+                      >
+                        ✕
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    className={s.removeButton}
-                    onClick={() => handleRemoveFromQueue(item.id)}
-                  >
-                    ✕
-                  </button>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
+            <button
+              type="button"
+              className={s.collapseToggle}
+              onClick={() => setIsQueueCollapsed((prev) => !prev)}
+              aria-expanded={!isQueueCollapsed}
+              title={isQueueCollapsed ? 'Expand queue' : 'Collapse queue'}
+            >
+              <span className={s.collapseIcon}>▾</span>
+            </button>
           </div>
         )}
       </div>
