@@ -31,12 +31,12 @@ import engineStartAudio from 'public/audio/start.mp3';
 import engineFlightAudio from 'public/audio/flight.mp3';
 import engineEndAudio from 'public/audio/end.mp3';
 import {
-      ENGINE_FALLOFF,
-      EXPLOSION_FALLOFF,
-      createAudio,
-      getDistanceVolume,
-      getListenerDistance,
-      releaseAudio,
+    ENGINE_FALLOFF,
+    EXPLOSION_FALLOFF,
+    createAudio,
+    getDistanceVolume,
+    getListenerDistance,
+    releaseAudio,
 } from 'app/helpers/SpatialAudio';
 
 const NUKE_EXPLOSION_VARIANTS: string[] = [

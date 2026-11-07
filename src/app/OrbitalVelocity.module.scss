@@ -178,25 +178,33 @@ $queue_panel_max_height: 200px;
     scroll-behavior: smooth;
   }
 
-  .stats {
+  // stats (FPS) sits to the left of the main controls
+  .topRightPanel {
     position: absolute;
-    bottom: 10px;
+    top: 10px;
     right: 10px;
-    padding: 5px;
-    border-radius: 5px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    height: calc(90% - #{$github_link_svg_height});
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
+  }
+
+  .stats {
+    padding: 10px 0;
     font-size: 12px;
     color: #333;
   }
 
   .mainGui {
-    position: absolute;
-    top: 10px;
-    right: 10px;
     padding: 10px;
     border-radius: 5px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    max-height: calc(90% - #{$github_link_svg_height});
+    max-height: 100%;
     overflow-y: auto;
     // remove scrollbar background
     scrollbar-width: thin;
@@ -411,15 +419,17 @@ $queue_panel_max_height: 200px;
   user-select: none;
 }
 
-.githubLink {
-  position: absolute;
-  bottom: 10px;
-  right: 45px;
+.sourceLink {
+  display: flex;
+  width: fit-content;
+  margin-left: auto;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 0.85rem;
   font-family: 'Orbitron', sans-serif;
-  transition: color 0.3s ease;
-  opacity: 0.3;
+  transition: color 0.2s ease;
 
   &:hover {
     color: #fff;
@@ -442,13 +452,18 @@ $queue_panel_max_height: 200px;
 
 .modalWrapper {
   position: relative;
-  max-width: 600px;
+  max-width: 800px;
   width: 90%;
 }
 
 .modalContent {
   position: relative;
-  background: rgba(0, 0, 0, 0.96);
+  // deep navy-slate instead of pure black: softer contrast for long reading
+  background: linear-gradient(
+    180deg,
+    rgba(16, 26, 42, 0.97) 0%,
+    rgba(11, 18, 32, 0.97) 100%
+  );
   border: 2px solid #0ff;
   border-radius: 16px;
   padding: 32px;
@@ -464,9 +479,10 @@ $queue_panel_max_height: 200px;
 
 .closeButton {
   position: absolute;
-  top: -44px;
-  right: 0;
-  background: rgba(0, 0, 0, 0.96);
+  top: 0;
+  left: calc(100% + 12px);
+  z-index: 1;
+  background: rgba(16, 26, 42, 0.97);
   box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
   border: 1px solid #0ff;
   color: #0ff;
@@ -496,35 +512,85 @@ $queue_panel_max_height: 200px;
   text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
 }
 
-.modalTabs {
+.pageMenu {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
   margin: 0 0 24px 0;
 }
 
-.modalTab {
-  flex: 1;
-  padding: 10px 12px;
-  background: transparent;
+.pageMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 16px 20px;
+  background: rgba(0, 255, 255, 0.05);
   border: 1px solid rgba(0, 255, 255, 0.4);
   border-radius: 8px;
-  color: rgba(0, 255, 255, 0.7);
+  color: #fff;
   font-family: 'Orbitron', sans-serif;
-  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 255, 255, 0.12);
+    border-color: #0ff;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+  }
+}
+
+.pageMenuText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pageMenuLabel {
+  color: #0ff;
+  font-size: 1rem;
+}
+
+.pageMenuDescription {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.pageMenuArrow {
+  flex-shrink: 0;
+  color: #0ff;
+  font-size: 1.3rem;
+  transition: transform 0.2s ease;
+}
+
+.backButton {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 12px);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 12px;
+  white-space: nowrap;
+  background: rgba(16, 26, 42, 0.97);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+  border: 1px solid #0ff;
+  border-radius: 16px;
+  color: #0ff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
     border-color: #0ff;
-    color: #0ff;
+    background: rgba(0, 255, 255, 0.12);
   }
-}
-
-.modalTabActive {
-  background: rgba(0, 255, 255, 0.15);
-  border-color: #0ff;
-  color: #0ff;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
 }
 
 .modalLink {
@@ -552,17 +618,32 @@ $queue_panel_max_height: 200px;
   padding: 16px;
   background: rgba(0, 255, 255, 0.05);
   border-radius: 8px;
+
+  // consecutive steps form one box split by 1px horizontal lines
+  &:has(+ .step) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  & + & {
+    margin-top: -20px; // cancels the parent's flex gap
+    border-top: 1px solid rgba(0, 255, 255, 0.25);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
 }
 
 .stepNumber {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  background: #0ff;
-  color: #000;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 6px;
+  background: transparent;
+  border: 1px solid #0ff;
+  color: #0ff;
   font-weight: bold;
-  font-size: 1.3rem;
-  border-radius: 50%;
+  font-size: 0.8rem;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -589,14 +670,38 @@ $queue_panel_max_height: 200px;
   }
 }
 
+.paramList {
+  margin: 6px 0 0 0;
+  padding-left: 20px;
+  color: #aff;
+  line-height: 1.5;
+  font-size: 0.95rem;
+
+  li + li {
+    margin-top: 2px;
+  }
+}
+
 .tip {
   margin-top: 8px;
   padding: 12px;
   background: rgba(255, 255, 0, 0.1);
   border-radius: 8px;
-  border-left: 3px solid #ff0;
   color: #ffa;
   font-size: 0.9rem;
+
+  // consecutive tips form one box split by a 1px horizontal line
+  &:has(+ .tip) {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  & + & {
+    margin-top: -20px; // cancels the parent's flex gap
+    border-top: 1px solid rgba(255, 255, 0, 0.3);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
 
   strong {
     color: #ff0;
