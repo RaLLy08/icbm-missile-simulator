@@ -199,6 +199,19 @@
     <meta name="theme-color" content="#000000" />
     <meta name="msapplication-TileColor" content="#000000" />
 
+    <!-- Mobile / home-screen app -->
+    <meta name="application-name" content="ICBM Simulator" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ICBM Simulator" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <!-- Stop iOS turning numbers (coordinates, velocities) into phone links -->
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="preconnect" href="https://www.googletagmanager.com" />
+
     <style type="text/css"></style>
     <meta
       name="google-site-verification"
@@ -207,10 +220,15 @@
   </head>
   <body>
     <noscript>
+      <h1>ICBM Missile Trajectory Simulator</h1>
       <p>
-        This application simulates missile trajectories using evolutionary
-        algorithms. Please enable JavaScript to view the 3D simulation.
+        An interactive 3D simulator of intercontinental ballistic missile (ICBM)
+        trajectories. Pick a launch site and a target on the globe and a
+        differential evolution algorithm searches for a ballistic trajectory
+        that reaches it, then follow the missile in real time with chase and
+        first-person cameras. Works in desktop and mobile browsers.
       </p>
+      <p>Please enable JavaScript to run the 3D simulation.</p>
     </noscript>
     <div id="app"></div>
   </body>

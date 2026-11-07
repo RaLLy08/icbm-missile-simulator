@@ -1,6 +1,12 @@
 {
+  "id": "../",
   "name": "ICBM Missile Simulator",
   "short_name": "ICBM Simulator",
+  "description": "Interactive 3D simulation of intercontinental ballistic missile trajectories using a differential evolution algorithm.",
+  "start_url": "../",
+  "scope": "../",
+  "lang": "en-US",
+  "categories": ["education", "games"],
   "icons": [
     {
       "src": "android-chrome-192x192.png",
