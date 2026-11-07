@@ -28,6 +28,10 @@ const DIGITS: string[] = [
 
 const SPEECH_VOLUME = 0.8;
 
+/** Playback speeds up by this much per announcement waiting in the queue. */
+const RATE_STEP_PER_QUEUED = 0.15;
+const MAX_PLAYBACK_RATE = 2;
+
 const SPEECH_ENABLED_STORAGE_KEY = 'speechEnabled';
 
 const readStoredEnabled = (): boolean => {
@@ -66,10 +70,20 @@ export function setSpeechEnabled(enabled: boolean) {
   }
 }
 
+/** Faster speech the more announcements are backed up behind the current one. */
+const currentPlaybackRate = (): number =>
+  Math.min(MAX_PLAYBACK_RATE, 1 + queue.length * RATE_STEP_PER_QUEUED);
+
+const applyPlaybackRate = (audio: HTMLAudioElement) => {
+  audio.preservesPitch = true;
+  audio.playbackRate = currentPlaybackRate();
+};
+
 const playClip = (src: string): Promise<void> =>
   new Promise((resolve) => {
     const audio = createAudio(src);
     audio.volume = SPEECH_VOLUME;
+    applyPlaybackRate(audio);
     const done = () => {
       if (currentClip?.audio === audio) currentClip = null;
       releaseAudio(audio);
@@ -101,6 +115,8 @@ const drainQueue = async () => {
 const speak = (clips: string[]) => {
   if (!isEnabled) return;
   queue.push(clips);
+  // speed up the clip already playing too, so the backlog clears sooner
+  if (currentClip) applyPlaybackRate(currentClip.audio);
   void drainQueue();
 };
 
