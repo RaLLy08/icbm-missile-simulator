@@ -60,35 +60,6 @@ $queue_panel_max_height: 200px;
       }
     }
 
-    .timeMultiplier {
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-
-      .timeMultiplierButton {
-        min-width: 40px;
-        height: 24px;
-        padding: 0 8px;
-        background: #111;
-        color: #0ff;
-        border: 1px solid #0ff6;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        cursor: pointer;
-
-        font-weight: bold;
-
-        &:hover {
-          background: #0ff2;
-        }
-      }
-    }
-
     .controls {
       display: flex;
       gap: 24px;
@@ -236,6 +207,36 @@ $queue_panel_max_height: 200px;
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+// shared by .launchPad and .clearLaunchPad (positioned above its parent)
+.timeMultiplier {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+
+  .timeMultiplierButton {
+    min-width: 40px;
+    height: 24px;
+    padding: 0 8px;
+    background: #111;
+    color: #0ff;
+    border: 1px solid #0ff6;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+
+    font-weight: bold;
+
+    &:hover {
+      background: #0ff2;
+    }
+  }
 }
 
 .button {

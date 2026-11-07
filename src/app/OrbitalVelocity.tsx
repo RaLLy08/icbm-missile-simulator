@@ -749,9 +749,38 @@ const OrbitalVelocity = () => {
         </div> */}
 
         {(() => {
+          const timeControls = (
+            <div className={s.timeMultiplier}>
+              <button
+                className={s.timeMultiplierButton}
+                title={isTimeRunning ? 'Pause time' : 'Resume time'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  launchPadListenersRef.current.toggleTime();
+                }}
+              >
+                {isTimeRunning ? '⏸️' : '▶️'}
+              </button>
+              <button
+                className={s.timeMultiplierButton}
+                title="Click to change time multiplier"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const next =
+                    TIME_MULTIPLIER_PRESETS.find((v) => v > timeMultiplier) ??
+                    TIME_MULTIPLIER_PRESETS[0];
+                  launchPadListenersRef.current.setTimeMultiplier(next);
+                }}
+              >
+                ⏩ {timeMultiplier}x
+              </button>
+            </div>
+          );
+
           if (!isFocusedOnEarth) {
             return (
               <div className={s.clearLaunchPad}>
+                {timeControls}
                 <button className={s.button} onClick={handleFocusOnEarthClick}>
                   Return to Earth
                 </button>
@@ -782,31 +811,7 @@ const OrbitalVelocity = () => {
                 )}
               </div>
 
-              <div className={s.timeMultiplier}>
-                <button
-                  className={s.timeMultiplierButton}
-                  title={isTimeRunning ? 'Pause time' : 'Resume time'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    launchPadListenersRef.current.toggleTime();
-                  }}
-                >
-                  {isTimeRunning ? '⏸️' : '▶️'}
-                </button>
-                <button
-                  className={s.timeMultiplierButton}
-                  title="Click to change time multiplier"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const next =
-                      TIME_MULTIPLIER_PRESETS.find((v) => v > timeMultiplier) ??
-                      TIME_MULTIPLIER_PRESETS[0];
-                    launchPadListenersRef.current.setTimeMultiplier(next);
-                  }}
-                >
-                  ⏩ {timeMultiplier}x
-                </button>
-              </div>
+              {timeControls}
 
               <div className={s.controls}>
                 <div className={s.positionBlock}>
