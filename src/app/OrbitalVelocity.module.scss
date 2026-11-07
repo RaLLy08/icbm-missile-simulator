@@ -440,14 +440,18 @@ $queue_panel_max_height: 200px;
   backdrop-filter: blur(1px);
 }
 
+.modalWrapper {
+  position: relative;
+  max-width: 600px;
+  width: 90%;
+}
+
 .modalContent {
   position: relative;
   background: rgba(0, 0, 0, 0.96);
   border: 2px solid #0ff;
   border-radius: 16px;
   padding: 32px;
-  max-width: 600px;
-  width: 90%;
   max-height: 80vh;
   overflow-y: auto;
   font-family: 'Orbitron', sans-serif;
@@ -460,9 +464,10 @@ $queue_panel_max_height: 200px;
 
 .closeButton {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  background: transparent;
+  top: -44px;
+  right: 0;
+  background: rgba(0, 0, 0, 0.96);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
   border: 1px solid #0ff;
   color: #0ff;
   font-size: 1.5rem;
@@ -491,6 +496,49 @@ $queue_panel_max_height: 200px;
   text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
 }
 
+.modalTabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 24px 0;
+}
+
+.modalTab {
+  flex: 1;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid rgba(0, 255, 255, 0.4);
+  border-radius: 8px;
+  color: rgba(0, 255, 255, 0.7);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #0ff;
+    color: #0ff;
+  }
+}
+
+.modalTabActive {
+  background: rgba(0, 255, 255, 0.15);
+  border-color: #0ff;
+  color: #0ff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+}
+
+.modalLink {
+  color: #0ff;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 255, 255, 0.5);
+  text-underline-offset: 3px;
+
+  &:hover {
+    text-decoration-color: #0ff;
+    text-shadow: 0 0 6px rgba(0, 255, 255, 0.6);
+  }
+}
+
 .instructions {
   display: flex;
   flex-direction: column;
@@ -504,7 +552,6 @@ $queue_panel_max_height: 200px;
   padding: 16px;
   background: rgba(0, 255, 255, 0.05);
   border-radius: 8px;
-  border-left: 3px solid #0ff;
 }
 
 .stepNumber {

@@ -21,6 +21,20 @@ import CameraManager from './helpers/CameraManager';
 import { isAudioMuted, setAudioListener } from './helpers/SpatialAudio';
 import StarField from './space/StarField';
 
+const INSTRUCTIONS_PAGES = [
+  { id: 'how-to-launch', label: 'How to Launch a Rocket?' },
+  { id: 'how-it-works', label: 'How does it work?' },
+] as const;
+
+type InstructionsPage = (typeof INSTRUCTIONS_PAGES)[number]['id'];
+
+const getInstructionsPageFromHash = (): InstructionsPage | null => {
+  const hash = window.location.hash.replace(/^#/, '');
+  return INSTRUCTIONS_PAGES.some((p) => p.id === hash)
+    ? (hash as InstructionsPage)
+    : null;
+};
+
 const scene = new THREE.Scene();
 
 // Strong ambient light for even illumination across the entire Earth
@@ -104,7 +118,21 @@ const OrbitalVelocity = () => {
   } | null>(null);
 
   const [isFocusedOnEarth, setIsFocusedOnEarth] = useState(true);
-  const [isInstructionsOpen, setIsInstructionsOpen] = useState(false);
+  const [instructionsPage, setInstructionsPage] =
+    useState<InstructionsPage | null>(getInstructionsPageFromHash);
+  const isInstructionsOpen = instructionsPage !== null;
+
+  // Keep the modal in sync with the URL hash (back/forward, manual edits)
+  useEffect(() => {
+    const syncFromHash = () =>
+      setInstructionsPage(getInstructionsPageFromHash());
+    window.addEventListener('popstate', syncFromHash);
+    window.addEventListener('hashchange', syncFromHash);
+    return () => {
+      window.removeEventListener('popstate', syncFromHash);
+      window.removeEventListener('hashchange', syncFromHash);
+    };
+  }, []);
 
   // Launch queue state
   const [launchQueue, setLaunchQueue] = useState<
@@ -788,11 +816,29 @@ const OrbitalVelocity = () => {
 
   const handleInfoButtonClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsInstructionsOpen(true);
+    openInstructionsPage('how-to-launch', 'push');
+  };
+
+  const openInstructionsPage = (
+    page: InstructionsPage,
+    mode: 'push' | 'replace'
+  ) => {
+    const url = `${window.location.pathname}${window.location.search}#${page}`;
+    if (mode === 'push') {
+      window.history.pushState(null, '', url);
+    } else {
+      window.history.replaceState(null, '', url);
+    }
+    setInstructionsPage(page);
   };
 
   const handleCloseInstructions = () => {
-    setIsInstructionsOpen(false);
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${window.location.search}`
+    );
+    setInstructionsPage(null);
   };
 
   const toggleMute = (e: React.MouseEvent) => {
@@ -1154,84 +1200,213 @@ const OrbitalVelocity = () => {
 
       {isInstructionsOpen && (
         <div className={s.modalOverlay} onClick={handleCloseInstructions}>
-          <div className={s.modalContent} onClick={(e) => e.stopPropagation()}>
-            <button className={s.closeButton} onClick={handleCloseInstructions}>
+          <div className={s.modalWrapper} onClick={(e) => e.stopPropagation()}>
+            <button
+              className={s.closeButton}
+              onClick={handleCloseInstructions}
+              aria-label="Close"
+            >
               ✕
             </button>
-            <h2 className={s.modalTitle}>How to Launch a Rocket</h2>
-            <div className={s.instructions}>
-              <div className={s.step}>
-                <div className={s.stepNumber}>1</div>
-                <div className={s.stepContent}>
-                  <h3>Set Start Position</h3>
-                  <p>
-                    Click the <strong>"Set Start"</strong> button, then click
-                    anywhere on Earth to select your launch location.
-                  </p>
-                </div>
-              </div>
-
-              <div className={s.step}>
-                <div className={s.stepNumber}>2</div>
-                <div className={s.stepContent}>
-                  <h3>Set Target Position</h3>
-                  <p>
-                    Click the <strong>"Set Target"</strong> button, then click
-                    on Earth to select your target location.
-                  </p>
-                </div>
-              </div>
-
-              <div className={s.step}>
-                <div className={s.stepNumber}>3</div>
-                <div className={s.stepContent}>
-                  <h3>Calculate Trajectory</h3>
-                  <p>
-                    Click the <strong>"Calculate"</strong> button to compute the
-                    optimal flight path. The trajectory will be automatically
-                    added to your launch queue when complete.
-                  </p>
-                </div>
-              </div>
-
-              <div className={s.step}>
-                <div className={s.stepNumber}>4</div>
-                <div className={s.stepContent}>
-                  <h3>Queue Multiple Launches</h3>
-                  <p>
-                    You can repeat steps 1-3 to add multiple launches to your
-                    queue. All queued launches will appear in the{' '}
-                    <strong>Launch Queue</strong> panel at the bottom-left, with
-                    cyan (start) and yellow (target) markers on Earth.
-                  </p>
-                </div>
-              </div>
-
-              <div className={s.step}>
-                <div className={s.stepNumber}>5</div>
-                <div className={s.stepContent}>
-                  <h3>Launch!</h3>
-                  <p>
-                    Click the <strong>"Launch 🚀"</strong> button to fire the
-                    next rocket in your queue. Each click launches one rocket
-                    and removes it from the queue. You can launch them one by
-                    one, even while time is running!
-                  </p>
-                </div>
-              </div>
-
-              <div className={s.tip}>
-                <strong>⏸️ Tip:</strong> Stop time using the{' '}
-                <strong>"Stop Time"</strong> button in Main Controls to set up
-                multiple launches, then resume and fire them sequentially!
-              </div>
-
-              <div className={s.tip}>
-                <strong>⚡ Tip:</strong> Increase the{' '}
-                <strong>Time Multiplier</strong> in the Main Controls panel to
-                speed up the simulation.
-              </div>
+          <div className={s.modalContent}>
+            <div className={s.modalTabs} role="tablist">
+              {INSTRUCTIONS_PAGES.map((page) => (
+                <button
+                  key={page.id}
+                  role="tab"
+                  aria-selected={instructionsPage === page.id}
+                  className={clsx(
+                    s.modalTab,
+                    instructionsPage === page.id && s.modalTabActive
+                  )}
+                  onClick={() => openInstructionsPage(page.id, 'replace')}
+                >
+                  {page.label}
+                </button>
+              ))}
             </div>
+
+            {instructionsPage === 'how-it-works' && (
+              <>
+                <h2 className={s.modalTitle}>How does it work?</h2>
+                <div className={s.instructions}>
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>1</div>
+                    <div className={s.stepContent}>
+                      <h3>Gravity</h3>
+                      <p>
+                        Earth pulls the rocket toward its center using Newton's
+                        law of universal gravitation:{' '}
+                        <strong>g = G·M / r²</strong>. The pull weakens as the
+                        rocket climbs, which is what lets it coast along a long
+                        ballistic arc.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>2</div>
+                    <div className={s.stepContent}>
+                      <h3>Thrust &amp; Fuel</h3>
+                      <p>
+                        Engine thrust is <strong>F = ṁ · vₑ</strong> (mass flow
+                        rate × exhaust velocity). As fuel burns the rocket gets
+                        lighter, so acceleration <strong>a = F / m</strong>{' '}
+                        keeps growing until the fuel runs out. After burnout the
+                        rocket flies on gravity alone.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>3</div>
+                    <div className={s.stepContent}>
+                      <h3>Gravity Turn</h3>
+                      <p>
+                        The rocket lifts off straight up. After reaching a
+                        certain altitude it starts tilting its thrust toward the
+                        target at a fixed turn rate, for a limited time. This
+                        pitch-over shapes the whole trajectory.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>4</div>
+                    <div className={s.stepContent}>
+                      <h3>Trajectory Search</h3>
+                      <p>
+                        When you press <strong>"Calculate"</strong>, a{' '}
+                        <a
+                          className={s.modalLink}
+                          href="https://en.wikipedia.org/wiki/Differential_evolution"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <strong>Differential Evolution</strong>
+                        </a>{' '}
+                        algorithm
+                        searches six parameters: tilt start altitude, tilt
+                        duration, tilt rate, fuel mass, exhaust velocity and
+                        mass flow rate. Every candidate is test-flown in a full
+                        simulation, and its score is how far it lands from the
+                        target. The best candidates are mixed and mutated over
+                        many generations until the miss distance stops
+                        shrinking.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>5</div>
+                    <div className={s.stepContent}>
+                      <h3>Flight Simulation</h3>
+                      <p>
+                        The rocket's motion is described by a{' '}
+                        <a
+                          className={s.modalLink}
+                          href="https://en.wikipedia.org/wiki/Differential_equation"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          differential equation
+                        </a>
+                        , solved numerically step by step: each second, gravity
+                        and thrust are added to the velocity, and the velocity
+                        moves the rocket. The flight ends when the rocket comes
+                        back down to the surface.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.tip}>
+                    <strong>💡 Note:</strong> This is a simplified model. Air
+                    drag and Earth's rotation are not taken into account.
+                  </div>
+                </div>
+              </>
+            )}
+
+            {instructionsPage === 'how-to-launch' && (
+              <>
+                <h2 className={s.modalTitle}>How to Launch a Rocket</h2>
+                <div className={s.instructions}>
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>1</div>
+                    <div className={s.stepContent}>
+                      <h3>Set Start Position</h3>
+                      <p>
+                        Click the <strong>"Set Start"</strong> button, then
+                        click anywhere on Earth to select your launch location.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>2</div>
+                    <div className={s.stepContent}>
+                      <h3>Set Target Position</h3>
+                      <p>
+                        Click the <strong>"Set Target"</strong> button, then
+                        click on Earth to select your target location.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>3</div>
+                    <div className={s.stepContent}>
+                      <h3>Calculate Trajectory</h3>
+                      <p>
+                        Click the <strong>"Calculate"</strong> button to compute
+                        the optimal flight path. The trajectory will be
+                        automatically added to your launch queue when complete.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>4</div>
+                    <div className={s.stepContent}>
+                      <h3>Queue Multiple Launches</h3>
+                      <p>
+                        You can repeat steps 1-3 to add multiple launches to
+                        your queue. All queued launches will appear in the{' '}
+                        <strong>Launch Queue</strong> panel at the bottom-left,
+                        with cyan (start) and yellow (target) markers on Earth.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.step}>
+                    <div className={s.stepNumber}>5</div>
+                    <div className={s.stepContent}>
+                      <h3>Launch!</h3>
+                      <p>
+                        Click the <strong>"Launch 🚀"</strong> button to fire
+                        the next rocket in your queue. Each click launches one
+                        rocket and removes it from the queue. You can launch
+                        them one by one, even while time is running!
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className={s.tip}>
+                    <strong>⏸️ Tip:</strong> Stop time using the{' '}
+                    <strong>"Stop Time"</strong> button in Main Controls to set
+                    up multiple launches, then resume and fire them
+                    sequentially!
+                  </div>
+
+                  <div className={s.tip}>
+                    <strong>⚡ Tip:</strong> Increase the{' '}
+                    <strong>Time Multiplier</strong> in the Main Controls panel
+                    to speed up the simulation.
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           </div>
         </div>
       )}
