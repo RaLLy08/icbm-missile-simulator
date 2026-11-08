@@ -41,6 +41,11 @@ export type SimulationOptions = {
   extraTriggers?: Updatable[];
   /** Called with the formatted simulated time whenever it changes. */
   onTimePassedUpdate?: (text: string) => void;
+  /**
+   * Called every frame with the main-view camera's altitude above the
+   * Earth's surface, in km (Earth camera, or the chase camera in chase mode).
+   */
+  onCameraAltitudeUpdate?: (altitudeKm: number) => void;
 };
 
 /**
@@ -49,7 +54,11 @@ export type SimulationOptions = {
  */
 export const createSimulation = (
   elements: SimulationElements,
-  { extraTriggers = [], onTimePassedUpdate }: SimulationOptions = {}
+  {
+    extraTriggers = [],
+    onTimePassedUpdate,
+    onCameraAltitudeUpdate,
+  }: SimulationOptions = {}
 ) => {
   const store = useSimulatorStore.getState;
   const scene = createScene();
@@ -183,6 +192,14 @@ export const createSimulation = (
     updateTriggers.forEach((trigger) => {
       trigger.update(trigger.usesRealTime ? realDeltaTime : deltaTime);
     });
+
+    // Whichever camera drives the main view (Earth or chase camera)
+    const activeCamera = cameraManager.getCamera();
+    if (onCameraAltitudeUpdate && activeCamera) {
+      onCameraAltitudeUpdate(
+        activeCamera.position.distanceTo(earth.position) - Earth.RADIUS
+      );
+    }
   });
 
   return () => {

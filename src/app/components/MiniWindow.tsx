@@ -3,7 +3,7 @@ import s from '../App.module.scss';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 
 type Props = {
-  /** DOM id of the element the scene mounts the minimap renderer into. */
+  /** DOM id of the element the scene mounts the Earth view renderer into. */
   miniWindowId: string;
 };
 
@@ -23,9 +23,9 @@ const MiniWindow = ({ miniWindowId }: Props) => {
         className={s.miniWindowToggle}
         onClick={toggleFolded}
         aria-expanded={!isFolded}
-        title={isFolded ? 'Expand minimap' : 'Fold minimap'}
+        title={isFolded ? 'Expand Earth view' : 'Fold Earth view'}
       >
-        {isFolded ? '▴ Minimap' : '▾'}
+        {isFolded ? '▴ Earth View' : '▾'}
       </button>
       <div
         id={miniWindowId}

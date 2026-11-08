@@ -254,11 +254,18 @@ $mobile_breakpoint: 640px;
 }
 
 // simulated time passed, pinned to the top center of the page
-.timePassed {
+// time passed + Earth camera altitude, centered at the top
+.topInfo {
   position: absolute;
   top: 12px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.infoChip {
   font-size: 0.85rem;
   font-weight: bold;
   white-space: nowrap;
@@ -1155,7 +1162,7 @@ $mobile_breakpoint: 640px;
     }
   }
 
-  .timePassed {
+  .topInfo {
     top: 8px;
   }
 
