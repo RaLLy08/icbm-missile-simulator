@@ -83,6 +83,7 @@ export type SimulatorState = {
   // Engine commands (registered by the scene on mount)
   commands: SimulatorCommands;
   registerCommands: (commands: Partial<SimulatorCommands>) => void;
+  resetCommands: () => void;
 };
 
 /** Drops the selection when its item is no longer in the queue. */
@@ -208,6 +209,7 @@ export const useSimulatorStore = create<SimulatorState>()((set, get) => ({
   commands: defaultCommands,
   registerCommands: (commands) =>
     set((s) => ({ commands: { ...s.commands, ...commands } })),
+  resetCommands: () => set({ commands: defaultCommands }),
 }));
 
 /** Shorthand for imperative (non-React) access to the engine commands. */
