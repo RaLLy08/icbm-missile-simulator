@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { ListBladeApi, Pane } from 'tweakpane';
 import Stats from 'three/examples/jsm/libs/stats.module';
 import s from './OrbitalVelocity.module.scss';
@@ -19,40 +19,22 @@ import FrameTimeManager from './helpers/FrameTimeManager';
 import MouseTracker from './helpers/MouseTracker';
 import MouseTrackerGui from './helpers/MouseTracker.gui';
 import CameraManager from './helpers/CameraManager';
-import { isAudioMuted, setAudioListener } from './helpers/SpatialAudio';
+import { setAudioListener } from './helpers/SpatialAudio';
 import {
     announceCalculatingTrajectory,
     announceLaunch,
 } from './helpers/Speech';
 import StarField from './space/StarField';
-import { formatSeconds } from './utils';
-
-const INSTRUCTIONS_MENU = 'help';
-
-const INSTRUCTIONS_PAGES = [
-  {
-    id: 'how-to-launch',
-    label: 'How to Launch a Rocket?',
-    description: 'Step-by-step guide to setting up and firing launches',
-  },
-  {
-    id: 'how-it-works',
-    label: 'How does it work?',
-    description: 'The physics and the trajectory search behind the simulator',
-  },
-] as const;
-
-type InstructionsPage =
-  | typeof INSTRUCTIONS_MENU
-  | (typeof INSTRUCTIONS_PAGES)[number]['id'];
-
-const getInstructionsPageFromHash = (): InstructionsPage | null => {
-  const hash = window.location.hash.replace(/^#/, '');
-  if (hash === INSTRUCTIONS_MENU) return INSTRUCTIONS_MENU;
-  return INSTRUCTIONS_PAGES.some((p) => p.id === hash)
-    ? (hash as InstructionsPage)
-    : null;
-};
+import { isMobileViewport } from './viewport';
+import { useSimulatorStore } from './store/useSimulatorStore';
+import type { BestCandidate } from './store/types';
+import { syncQueueMarkers } from './scene/queueMarkers';
+import { subscribeInstructionsToHash } from './instructions/navigation';
+import LaunchPad from './components/LaunchPad';
+import ReturnToEarthBar from './components/ReturnToEarthBar';
+import PositionSelectionOverlay from './components/PositionSelectionOverlay';
+import MiniWindow from './components/MiniWindow';
+import InstructionsModal from './components/InstructionsModal';
 
 const scene = new THREE.Scene();
 
@@ -73,104 +55,10 @@ scene.add(hemisphereLight);
 
 const clock = new THREE.Clock();
 
-const TIME_MULTIPLIER_PRESETS = [1, 2, 5, 10, 50];
-
-const formatMissDistance = (km: number) => {
-  if (km < 10) return `${km.toFixed(2)} km`;
-  if (km < 1000) return `${km.toFixed(1)} km`;
-  return `${Math.round(km)} km`;
-};
-
-type BestCandidate = {
-  generation: number;
-  fitness: number;
-  missDistance: number;
-  startInclineAfterDistance: number;
-  thrustInclineMaxDuration: number;
-  thrustInclineVelocity: number;
-  fuelMass: number;
-  exhaustVelocity: number;
-  massFlowRate: number;
-  payloadMass: number;
-  fuelCombustionTime: number;
-  maxAltitude: number;
-  travelledDistance: number;
-  flightTime: number;
-};
-
-const formatDuration = (seconds: number) => {
-  const { value, unit } = formatSeconds(seconds);
-  return `${value.toFixed(1)} ${unit}`;
-};
-
-const getCandidateRows = (c: BestCandidate) => [
-  {
-    key: 'miss',
-    label: 'Miss Distance',
-    value: formatMissDistance(c.missDistance),
-    highlight: true,
-  },
-  { key: 'fitness', label: 'Fitness', value: c.fitness.toFixed(3) },
-  { key: 'd1', label: null, value: null },
-  {
-    key: 'incline',
-    label: 'Turn Start Altitude',
-    value: `${c.startInclineAfterDistance.toFixed(2)} km`,
-  },
-  {
-    key: 'turnDuration',
-    label: 'Gravity Turn Duration',
-    value: formatDuration(c.thrustInclineMaxDuration),
-  },
-  {
-    key: 'turnVelocity',
-    label: 'Gravity Turn Rate',
-    value: `${THREE.MathUtils.radToDeg(c.thrustInclineVelocity).toFixed(2)}°/s`,
-  },
-  { key: 'fuel', label: 'Fuel Mass', value: `${c.fuelMass.toFixed(1)} kg` },
-  {
-    key: 'payload',
-    label: 'Payload Mass',
-    value: `${c.payloadMass.toFixed(1)} kg`,
-  },
-  {
-    key: 'flow',
-    label: 'Mass Flow Rate (ṁ)',
-    value: `${c.massFlowRate.toFixed(1)} kg/s`,
-  },
-  {
-    key: 'exhaust',
-    label: 'Exhaust Velocity (vₑ)',
-    value: `${c.exhaustVelocity.toFixed(2)} km/s`,
-  },
-  { key: 'd2', label: null, value: null },
-  {
-    key: 'burn',
-    label: 'Burn Time',
-    value: formatDuration(c.fuelCombustionTime),
-  },
-  {
-    key: 'apogee',
-    label: 'Max Altitude',
-    value: `${c.maxAltitude.toFixed(1)} km`,
-  },
-  {
-    key: 'travelled',
-    label: 'Travelled Distance',
-    value: `${c.travelledDistance.toFixed(1)} km`,
-  },
-  { key: 'flight', label: 'Flight Time', value: formatDuration(c.flightTime) },
-];
-
 const stats = new Stats();
 stats.showPanel(0);
 // stats.js sets position:fixed/top-left inline; let the CSS wrapper place it
 stats.dom.style.cssText = 'position:relative;cursor:pointer;opacity:0.9;';
-
-// Keep in sync with $mobile_breakpoint in OrbitalVelocity.module.scss
-const isMobileViewport = () =>
-  typeof window !== 'undefined' &&
-  window.matchMedia('(max-width: 640px)').matches;
 
 const updateTriggers: {
   [key: string]: any;
@@ -178,101 +66,14 @@ const updateTriggers: {
 }[] = [stats];
 
 const OrbitalVelocity = () => {
-  const launchPadListenersRef = useRef({
-    onCalculateTrajectory: () => {},
-    onLaunchRocket: () => {},
-    focusOnEarth: () => {},
-    onCancelSelectionClick: () => {},
-    setTimeMultiplier: (_value: number) => {},
-    toggleTime: () => {},
-    setMuted: (_muted: boolean) => {},
-  });
-  const [timeMultiplier, setTimeMultiplier] = useState(1);
-  const [isTimeRunning, setIsTimeRunning] = useState(true);
-  const [isMuted, setIsMuted] = useState(isAudioMuted);
   // Updated imperatively every frame to avoid re-rendering React
   const timePassedTextRef = useRef(WorldGui.formatTimePassed(0));
   const timePassedElRef = useRef<HTMLDivElement | null>(null);
-  const [calcWasReset, setCalcWasReset] = useState(true);
-  const [rocketCount, setRocketCount] = useState(0);
-  const launchPadStatesRef = useRef({
-    startPositionSetIsActive: false,
-    targetPositionSetIsActive: false,
-  });
-  const [isMiniWindowOpen, setIsMiniWindowOpen] = useState(false);
-  const [isMiniWindowFolded, setIsMiniWindowFolded] =
-    useState(isMobileViewport);
-  const cameraManagerRef = useRef<CameraManager | null>(null);
 
-  const [startPositionActive, setStartPositionActive] = useState(
-    launchPadStatesRef.current.startPositionSetIsActive
+  const isFocusedOnEarth = useSimulatorStore((st) => st.isFocusedOnEarth);
+  const isPositionSelectionActive = useSimulatorStore(
+    (st) => st.startPositionActive || st.targetPositionActive
   );
-  const [targetPositionActive, setTargetPositionActive] = useState(
-    launchPadStatesRef.current.targetPositionSetIsActive
-  );
-  const [calculationProgress, setCalculationProgress] = useState<null | number>(
-    null
-  );
-
-  const [isLaunchDisabled, setIsLaunchDisabled] = useState(true);
-  const [isCalculateTrajectoryDisabled, setIsCalculateTrajectoryDisabled] =
-    useState(true);
-
-  const [startPositionGeo, setStartPositionGeo] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [targetPositionGeo, setTargetPositionGeo] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-  const [activePositionGeo, setActivePositionGeo] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
-
-  const [isFocusedOnEarth, setIsFocusedOnEarth] = useState(true);
-  const [instructionsPage, setInstructionsPage] =
-    useState<InstructionsPage | null>(getInstructionsPageFromHash);
-  const isInstructionsOpen = instructionsPage !== null;
-
-  // Keep the modal in sync with the URL hash (back/forward, manual edits)
-  useEffect(() => {
-    const syncFromHash = () =>
-      setInstructionsPage(getInstructionsPageFromHash());
-    window.addEventListener('popstate', syncFromHash);
-    window.addEventListener('hashchange', syncFromHash);
-    return () => {
-      window.removeEventListener('popstate', syncFromHash);
-      window.removeEventListener('hashchange', syncFromHash);
-    };
-  }, []);
-
-  // Launch queue state
-  const [launchQueue, setLaunchQueue] = useState<
-    Array<{
-      id: number;
-      startPosition: THREE.Vector3;
-      targetPosition: THREE.Vector3;
-      startGeo: { latitude: number; longitude: number };
-      targetGeo: { latitude: number; longitude: number };
-      trajectoryParams: {
-        startInclineAfterDistance: number;
-        thrustInclineMaxDuration: number;
-        thrustInclineVelocity: number;
-        fuelMass: number;
-        exhaustVelocity: number;
-        massFlowRate: number;
-      };
-      candidate: BestCandidate | null;
-    }>
-  >([]);
-  const [queueIdCounter, setQueueIdCounter] = useState(0);
-  const [isQueueCollapsed, setIsQueueCollapsed] = useState(true);
-  const [selectedQueueItemId, setSelectedQueueItemId] = useState<number | null>(
-    null
-  );
-  const [isConfirmingClear, setIsConfirmingClear] = useState(false);
 
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
@@ -280,18 +81,7 @@ const OrbitalVelocity = () => {
   const mouseFollowerId = useId();
   const miniWindowId = useId();
 
-  const queueMarkersRef = useRef<(THREE.Mesh | THREE.Group)[]>([]);
-
-  useEffect(() => {
-    if (cameraManagerRef.current) {
-      cameraManagerRef.current.miniWindowEnabled = !isMiniWindowFolded;
-    }
-  }, [isMiniWindowFolded]);
-
-  const handleFocusOnEarthClick = () => {
-    setIsFocusedOnEarth(true);
-    launchPadListenersRef.current.focusOnEarth();
-  };
+  useEffect(() => subscribeInstructionsToHash(), []);
 
   useEffect(() => {
     const sceneContainer = document.getElementById(sceneContainerId);
@@ -299,7 +89,7 @@ const OrbitalVelocity = () => {
     const rocketGuiContainer = document.getElementById(rocketGuiContainerId);
     const mouseFollower = document.getElementById(mouseFollowerId);
     const miniWindow = document.getElementById(miniWindowId);
-    const { current: launchPadListeners } = launchPadListenersRef;
+    const store = useSimulatorStore;
 
     if (!sceneContainer) return;
 
@@ -370,7 +160,7 @@ const OrbitalVelocity = () => {
       miniWindowRenderer,
       mouseTracker
     );
-    cameraManagerRef.current = cameraManager;
+    cameraManager.miniWindowEnabled = !store.getState().isMiniWindowFolded;
     updateTriggers.push(cameraManager);
 
     const earthGui = new EarthGui(mainPane);
@@ -387,38 +177,11 @@ const OrbitalVelocity = () => {
       earthView.setCamera(camera);
     }
 
-    launchPadListenersRef.current.focusOnEarth = () => {
+    const focusOnEarth = () => {
       cameraManager.setEarthCamera(earth);
-
-      setIsMiniWindowOpen(false);
-      setIsFocusedOnEarth(true);
+      store.getState().focusEarthView();
     };
-
-    earthGui.onFocusCameraClick = () => {
-      cameraManager.setEarthCamera(earth);
-      setIsMiniWindowOpen(false);
-
-      setIsFocusedOnEarth(true);
-    };
-
-    // const rocketInitialPosition = Earth.geoCoordinatesToPosition(0, 90);
-    // const rocketTargetPosition = Earth.geoCoordinatesToPosition(180, 0);
-    // const targetInclineVector = rocketInitialPosition
-    //   .clone()
-    //   .sub(rocketTargetPosition)
-    //   .normalize();
-
-    // const _rocket = new Rocket(
-    //   earth,
-    //   rocketInitialPosition,
-    //   targetInclineVector
-    // );
-
-    // cameraManager.setRocketCamera(earthView, _rocketView);
-
-    // setTimeout(() => {
-    //   _rocket.position.copy(rocketTargetPosition);
-    // }, 1000); // Wait for the camera to focus
+    earthGui.onFocusCameraClick = focusOnEarth;
 
     const launcherGui = new LauncherGui(mainPane);
     const launcherView = new LauncherView(earth, scene);
@@ -463,14 +226,14 @@ const OrbitalVelocity = () => {
     const worldGui = new WorldGui(mainPane, clock);
     updateTriggers.push(worldGui);
 
+    // WorldGui owns time/audio; the store mirrors it for the React UI
     starField.setVisible(worldGui.showStars);
     worldGui.onShowStarsChange = (show) => starField.setVisible(show);
-    worldGui.onMutedChange = (muted) => setIsMuted(muted);
-    launchPadListeners.setMuted = (muted) => worldGui.setMuted(muted);
-    worldGui.onTimeMultiplierChange = (value) => setTimeMultiplier(value);
-    launchPadListeners.setTimeMultiplier = (value) =>
-      worldGui.setTimeMultiplier(value);
-    worldGui.onTimeRunningChange = (isRunning) => setIsTimeRunning(isRunning);
+    worldGui.onMutedChange = (muted) => store.getState().setIsMuted(muted);
+    worldGui.onTimeMultiplierChange = (value) =>
+      store.getState().setTimeMultiplier(value);
+    worldGui.onTimeRunningChange = (isRunning) =>
+      store.getState().setIsTimeRunning(isRunning);
     worldGui.onTimePassedUpdate = (text) => {
       if (text === timePassedTextRef.current) return;
       timePassedTextRef.current = text;
@@ -478,45 +241,17 @@ const OrbitalVelocity = () => {
         timePassedElRef.current.textContent = `⏱ ${text}`;
       }
     };
-    launchPadListeners.toggleTime = () => worldGui.toggleTime();
-
-    ///
-
-    // const _rocketView = new RocketView(_rocket, scene, earthView);
-    // _rocketView.setSize(launcherGui.rocketSizeMultiplier);
-    // _rocketView.init();
-    // _rocketView.updatePrevFromRocket();
-
-    // const _rocketGui = new RocketGui(
-    //   rocketGuiPane,
-    //   rocketGuiContainer!,
-    //   _rocket,
-    //   _rocketView
-    // );
-    // updateTriggers.push(_rocketGui);
-
-    // const _frameTimeManager = new FrameTimeManager(
-    //   _rocket,
-    //   _rocketView,
-    //   worldGui
-    // );
-    // updateTriggers.push(_frameTimeManager);
-
-    // cameraManager.setRocketCamera(earthView, _rocketView);
-    ///
 
     const mouseTrackedGui = new MouseTrackerGui(worldGui.folder, mouseTracker);
     updateTriggers.push(mouseTrackedGui);
 
-    launchPadListeners.onCalculateTrajectory = () => {
+    const calculateTrajectory = () => {
       if (!launcher.rocketStartPosition || !launcher.rocketTargetPosition) {
         console.error('Start or target position is not set.');
         return;
       }
 
-      setCalcWasReset(false);
-
-      setIsLaunchDisabled(true);
+      store.getState().startCalculation();
 
       announceCalculatingTrajectory();
 
@@ -531,7 +266,7 @@ const OrbitalVelocity = () => {
         progress: number,
         bestTrajectory: THREE.Vector3[]
       ) => {
-        setCalculationProgress(progress);
+        store.getState().setCalculationProgress(progress);
         showBestTrajectory(bestTrajectory);
         generation++;
 
@@ -570,31 +305,23 @@ const OrbitalVelocity = () => {
       const targetGeoPos = Earth.positionToGeoCoordinates(targetPos);
 
       launcher.calcTrajectory(onProgress).then(() => {
-        // Add to queue after calculation
-        setQueueIdCounter((prevCounter) => {
-          setLaunchQueue((prev) => [
-            ...prev,
-            {
-              id: prevCounter,
-              startPosition: startPos,
-              targetPosition: targetPos,
-              startGeo: startGeoPos,
-              targetGeo: targetGeoPos,
-              trajectoryParams: {
-                startInclineAfterDistance: launcher.startInclineAfterDistance,
-                thrustInclineMaxDuration: launcher.thrustInclineMaxDuration,
-                thrustInclineVelocity: launcher.thrustInclineVelocity,
-                fuelMass: launcher.fuelMass,
-                exhaustVelocity: launcher.exhaustVelocity,
-                massFlowRate: launcher.massFlowRate,
-              },
-              candidate: lastCandidate,
-            },
-          ]);
-          return prevCounter + 1;
+        const st = store.getState();
+        st.enqueueLaunch({
+          startPosition: startPos,
+          targetPosition: targetPos,
+          startGeo: startGeoPos,
+          targetGeo: targetGeoPos,
+          trajectoryParams: {
+            startInclineAfterDistance: launcher.startInclineAfterDistance,
+            thrustInclineMaxDuration: launcher.thrustInclineMaxDuration,
+            thrustInclineVelocity: launcher.thrustInclineVelocity,
+            fuelMass: launcher.fuelMass,
+            exhaustVelocity: launcher.exhaustVelocity,
+            massFlowRate: launcher.massFlowRate,
+          },
+          candidate: lastCandidate,
         });
-        setIsLaunchDisabled(false);
-        setCalculationProgress(null);
+        st.finishCalculation();
         showBestTrajectory(null);
       });
     };
@@ -630,111 +357,140 @@ const OrbitalVelocity = () => {
       missileSelector.value = selectedId;
     };
 
-    launchPadListeners.onLaunchRocket = () => {
-      // Launch from queue
-      setLaunchQueue((prevQueue) => {
-        if (prevQueue.length === 0) {
-          console.error('No launches in queue.');
-          return prevQueue;
+    const launchRocket = () => {
+      const nextLaunch = store.getState().launchQueue[0];
+      if (!nextLaunch) {
+        console.error('No launches in queue.');
+        return;
+      }
+
+      // Set launcher params from queue item
+      launcher.rocketStartPosition = nextLaunch.startPosition;
+      launcher.rocketTargetPosition = nextLaunch.targetPosition;
+      launcher.startInclineAfterDistance =
+        nextLaunch.trajectoryParams.startInclineAfterDistance;
+      launcher.thrustInclineMaxDuration =
+        nextLaunch.trajectoryParams.thrustInclineMaxDuration;
+      launcher.thrustInclineVelocity =
+        nextLaunch.trajectoryParams.thrustInclineVelocity;
+      launcher.fuelMass = nextLaunch.trajectoryParams.fuelMass;
+      launcher.exhaustVelocity = nextLaunch.trajectoryParams.exhaustVelocity;
+      launcher.massFlowRate = nextLaunch.trajectoryParams.massFlowRate;
+
+      const rocket = launcher.createRocket();
+
+      if (!rocket) {
+        // Keep the item queued so the user can retry
+        console.error('Rocket could not be created. Check launcher settings.');
+        return;
+      }
+      store.getState().dequeueLaunch();
+
+      const rocketView = new RocketView(rocket, scene, earthView);
+      rocketView.setSize(launcherGui.rocketSizeMultiplier);
+      rocketView.init();
+      rocketView.updatePrevFromRocket();
+
+      const frameTimeManager = new FrameTimeManager(
+        rocket,
+        rocketView,
+        worldGui
+      );
+
+      earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4);
+      earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4);
+      launcherView.remove();
+
+      store.getState().setRocketCount(launcher.rocketCount);
+
+      // Same number as the "Missile N" label in the GUI
+      announceLaunch(rocket.id);
+
+      const setActiveRocketGui = () => {
+        if (activeRocketGui) {
+          activeRocketGui.remove();
+          updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
         }
 
-        const [nextLaunch, ...remainingQueue] = prevQueue;
-
-        // Set launcher params from queue item
-        launcher.rocketStartPosition = nextLaunch.startPosition;
-        launcher.rocketTargetPosition = nextLaunch.targetPosition;
-        launcher.startInclineAfterDistance =
-          nextLaunch.trajectoryParams.startInclineAfterDistance;
-        launcher.thrustInclineMaxDuration =
-          nextLaunch.trajectoryParams.thrustInclineMaxDuration;
-        launcher.thrustInclineVelocity =
-          nextLaunch.trajectoryParams.thrustInclineVelocity;
-        launcher.fuelMass = nextLaunch.trajectoryParams.fuelMass;
-        launcher.exhaustVelocity = nextLaunch.trajectoryParams.exhaustVelocity;
-        launcher.massFlowRate = nextLaunch.trajectoryParams.massFlowRate;
-
-        const rocket = launcher.createRocket();
-
-        if (!rocket) {
-          console.error(
-            'Rocket could not be created. Check launcher settings.'
-          );
-          return prevQueue;
-        }
-        const rocketView = new RocketView(rocket, scene, earthView);
-        rocketView.setSize(launcherGui.rocketSizeMultiplier);
-        rocketView.init();
-        rocketView.updatePrevFromRocket();
-
-        const frameTimeManager = new FrameTimeManager(
+        const rocketGui = new RocketGui(
+          rocketGuiPane,
+          rocketGuiContainer!,
           rocket,
           rocketView,
-          worldGui
+          scene
         );
+        activeRocketGui = rocketGui;
 
-        earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4);
-        earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4);
-        launcherView.remove();
-
-        setRocketCount(launcher.rocketCount);
-
-        // Same number as the "Missile N" label in the GUI
-        announceLaunch(rocket.id);
-
-        const setActiveRocketGui = () => {
-          if (activeRocketGui) {
-            activeRocketGui.remove();
-            updateTriggers.splice(updateTriggers.indexOf(activeRocketGui), 1);
-          }
-
-          const rocketGui = new RocketGui(
-            rocketGuiPane,
-            rocketGuiContainer!,
-            rocket,
-            rocketView,
-            scene
-          );
-          activeRocketGui = rocketGui;
-
-          rocketGui.onFocusCameraClick = () => {
-            cameraManager.setRocketCamera(rocketGui.trackingView);
-            setIsMiniWindowOpen(true);
-            setIsFocusedOnEarth(false);
-          };
-
-          // The main view mirrors the Missile Controls viewport, so while
-          // chasing it follows whichever missile is selected there.
-          if (cameraManager.isChasing) {
-            // Compute the new view's pose now: the main view renders before
-            // the GUI updates, and would otherwise show one empty frame.
-            rocketGui.update(0);
-            cameraManager.setRocketCamera(rocketGui.trackingView);
-          }
-
-          updateTriggers.push(rocketGui);
-          activeRocketId = rocket.id;
+        rocketGui.onFocusCameraClick = () => {
+          cameraManager.setRocketCamera(rocketGui.trackingView);
+          store.getState().focusRocketView();
         };
 
-        missileActivators.set(rocket.id, setActiveRocketGui);
+        // The main view mirrors the Missile Controls viewport, so while
+        // chasing it follows whichever missile is selected there.
+        if (cameraManager.isChasing) {
+          // Compute the new view's pose now: the main view renders before
+          // the GUI updates, and would otherwise show one empty frame.
+          rocketGui.update(0);
+          cameraManager.setRocketCamera(rocketGui.trackingView);
+        }
 
-        // Physics/view must update before the GUI so the tracking camera
-        // renders the current frame's missile position.
-        updateTriggers.push(frameTimeManager);
+        updateTriggers.push(rocketGui);
+        activeRocketId = rocket.id;
+      };
 
-        setActiveRocketGui();
-        updateMissileSelector(rocket.id);
-        // activeRocketGui?.scrollToEnd();
+      missileActivators.set(rocket.id, setActiveRocketGui);
 
-        // Return remaining queue (removing the launched item)
-        return remainingQueue;
-      });
+      // Physics/view must update before the GUI so the tracking camera
+      // renders the current frame's missile position.
+      updateTriggers.push(frameTimeManager);
+
+      setActiveRocketGui();
+      updateMissileSelector(rocket.id);
     };
 
-    // const garbageCollector = () => {
-    //   updateTriggers.forEach((trigger) => {
+    store.getState().registerCommands({
+      calculateTrajectory,
+      launchRocket,
+      focusOnEarth,
+      setTimeMultiplier: (value) => worldGui.setTimeMultiplier(value),
+      toggleTime: () => worldGui.toggleTime(),
+      setMuted: (muted) => worldGui.setMuted(muted),
+    });
 
-    //   });
-    // };
+    // React to store changes that the scene has to mirror
+    let queueMarkers = syncQueueMarkers(
+      scene,
+      store.getState().launchQueue,
+      store.getState().selectedQueueItemId,
+      []
+    );
+    const unsubscribeStore = store.subscribe((state, prev) => {
+      if (
+        state.launchQueue !== prev.launchQueue ||
+        state.selectedQueueItemId !== prev.selectedQueueItemId
+      ) {
+        queueMarkers = syncQueueMarkers(
+          scene,
+          state.launchQueue,
+          state.selectedQueueItemId,
+          queueMarkers
+        );
+      }
+
+      if (state.isMiniWindowFolded !== prev.isMiniWindowFolded) {
+        cameraManager.miniWindowEnabled = !state.isMiniWindowFolded;
+      }
+
+      // Selection ended (picked, cancelled or toggled off): drop the preview
+      const wasSelecting =
+        prev.startPositionActive || prev.targetPositionActive;
+      const isSelecting =
+        state.startPositionActive || state.targetPositionActive;
+      if (wasSelecting && !isSelecting) {
+        launcherView.activePositionWasSet();
+      }
+    });
 
     const pickAt = (clientX: number, clientY: number) => {
       const ndc = new THREE.Vector2(
@@ -750,38 +506,25 @@ const OrbitalVelocity = () => {
         return;
       }
       const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
+      const { startPositionActive, targetPositionActive } = store.getState();
 
-      if (launchPadStatesRef.current.startPositionSetIsActive) {
+      if (startPositionActive) {
         launcherView.setStartPosition(earthIntersection);
         launcher.setStartPosition(earthIntersection);
-
-        setStartPositionGeo(geoCords);
-
-        launchPadStatesRef.current.startPositionSetIsActive = false;
-        setStartPositionActive(false);
-
-        setCalcWasReset(true);
-
-        launcherView.activePositionWasSet();
+        store.getState().setStartPicked(geoCords);
       }
 
-      if (launchPadStatesRef.current.targetPositionSetIsActive) {
+      if (targetPositionActive) {
         launcherView.setTargetPosition(earthIntersection);
         launcher.setTargetPosition(earthIntersection);
-
-        setTargetPositionGeo(geoCords);
-
-        launchPadStatesRef.current.targetPositionSetIsActive = false;
-        setTargetPositionActive(false);
-
-        setCalcWasReset(true);
-
-        launcherView.activePositionWasSet();
+        store.getState().setTargetPicked(geoCords);
       }
 
-      setIsCalculateTrajectoryDisabled(
-        !(launcher.rocketStartPosition && launcher.rocketTargetPosition)
-      );
+      store
+        .getState()
+        .setIsCalculateTrajectoryDisabled(
+          !(launcher.rocketStartPosition && launcher.rocketTargetPosition)
+        );
     };
 
     // Pointer position for the selection preview, taken only from pointers
@@ -791,10 +534,8 @@ const OrbitalVelocity = () => {
     const previewPointer = { x: 0, y: 0, valid: false };
 
     const onMove = () => {
-      if (
-        !launchPadStatesRef.current.startPositionSetIsActive &&
-        !launchPadStatesRef.current.targetPositionSetIsActive
-      ) {
+      const { startPositionActive, targetPositionActive } = store.getState();
+      if (!startPositionActive && !targetPositionActive) {
         return;
       }
 
@@ -822,15 +563,13 @@ const OrbitalVelocity = () => {
 
       const geoCords = Earth.positionToGeoCoordinates(earthIntersection);
 
-      if (launchPadStatesRef.current.startPositionSetIsActive) {
+      if (startPositionActive) {
         launcherView.setActivePosition(earthIntersection, 'start');
-        setActivePositionGeo(geoCords);
       }
-
-      if (launchPadStatesRef.current.targetPositionSetIsActive) {
+      if (targetPositionActive) {
         launcherView.setActivePosition(earthIntersection, 'target');
-        setActivePositionGeo(geoCords);
       }
+      store.getState().setActivePositionGeo(geoCords);
     };
 
     // Pick only on a tap/click that starts and ends on the 3D canvas without
@@ -879,23 +618,12 @@ const OrbitalVelocity = () => {
     window.addEventListener('pointerdown', onPreviewPointer, true);
     window.addEventListener('pointermove', onPreviewPointer, true);
 
-    const resetActivePosition = () => {
-      launchPadStatesRef.current.startPositionSetIsActive = false;
-      launchPadStatesRef.current.targetPositionSetIsActive = false;
-      setStartPositionActive(false);
-      setTargetPositionActive(false);
-      launcherView.activePositionWasSet();
-    };
-
-    launchPadListenersRef.current.onCancelSelectionClick = () => {
-      resetActivePosition();
-    };
-
-    window.addEventListener('keydown', (event) => {
+    const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        resetActivePosition();
+        store.getState().resetActivePosition();
       }
-    });
+    };
+    window.addEventListener('keydown', onKeyDown);
 
     // Wall-clock time for camera / UI smoothing: `clock` is stopped while
     // time is paused, which would freeze zoom and rotation easing.
@@ -905,12 +633,6 @@ const OrbitalVelocity = () => {
       const deltaTime = clock.getDelta();
       // Capped so a background tab doesn't cause one huge jump
       const realDeltaTime = Math.min(realClock.getDelta(), 0.1);
-
-      // rockets.forEach((rocket) => {
-      //   for (let i = 0; i < worldGui.timeMultiplier; i++) {
-      //     rocket.update();
-      //   }
-      // });
 
       mouseTracker.update(deltaTime);
       onMove();
@@ -923,6 +645,24 @@ const OrbitalVelocity = () => {
     fullScreenRenderer.setAnimationLoop(animateLoop);
 
     return () => {
+      unsubscribeStore();
+      store.getState().registerCommands({
+        calculateTrajectory: () => {},
+        launchRocket: () => {},
+        focusOnEarth: () => {},
+        setTimeMultiplier: () => {},
+        toggleTime: () => {},
+        setMuted: () => {},
+      });
+      queueMarkers.forEach((marker) => scene.remove(marker));
+
+      canvas.removeEventListener('pointerdown', onCanvasPointerDown);
+      window.removeEventListener('pointerup', onCanvasPointerUp);
+      window.removeEventListener('pointercancel', onCanvasPointerCancel);
+      window.removeEventListener('pointerdown', onPreviewPointer, true);
+      window.removeEventListener('pointermove', onPreviewPointer, true);
+      window.removeEventListener('keydown', onKeyDown);
+
       sceneContainer.removeChild(fullScreenRenderer.domElement);
       fullScreenRenderer.setAnimationLoop(null);
       starField.dispose();
@@ -931,261 +671,6 @@ const OrbitalVelocity = () => {
       miniWindowRenderer.dispose();
     };
   }, []);
-
-  // Update queue markers when queue changes
-  useEffect(() => {
-    // Clear existing markers
-    queueMarkersRef.current.forEach((marker) => {
-      scene.remove(marker);
-    });
-    queueMarkersRef.current = [];
-
-    // Add markers for each queued launch
-    launchQueue.forEach((item, index) => {
-      const startMarker = createQueueMarker(
-        item.startPosition,
-        0x00ffff,
-        index + 1,
-        'start'
-      );
-      const targetMarker = createQueueMarker(
-        item.targetPosition,
-        0xffff00,
-        index + 1,
-        'target'
-      );
-
-      scene.add(startMarker);
-      scene.add(targetMarker);
-      queueMarkersRef.current.push(startMarker, targetMarker);
-
-      // Highlight rings around start and target of the selected item
-      if (item.id === selectedQueueItemId) {
-        const startRing = createHighlightRing(item.startPosition, 0x00ffff);
-        const targetRing = createHighlightRing(item.targetPosition, 0xffff00);
-        scene.add(startRing);
-        scene.add(targetRing);
-        queueMarkersRef.current.push(startRing, targetRing);
-      }
-    });
-  }, [launchQueue, selectedQueueItemId]);
-
-  // Drop the selection when its item leaves the queue
-  useEffect(() => {
-    if (
-      selectedQueueItemId !== null &&
-      !launchQueue.some((item) => item.id === selectedQueueItemId)
-    ) {
-      setSelectedQueueItemId(null);
-    }
-  }, [launchQueue, selectedQueueItemId]);
-
-  const createHighlightRing = (position: THREE.Vector3, color: number) => {
-    const geometry = new THREE.TorusGeometry(150, 14, 16, 100);
-    const material = new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity: 0.9,
-    });
-    const ring = new THREE.Mesh(geometry, material);
-    ring.position.copy(position);
-    const normal = position.clone().normalize();
-    ring.lookAt(position.clone().add(normal));
-    return ring;
-  };
-
-  const createQueueMarker = (
-    position: THREE.Vector3,
-    color: number,
-    number: number,
-    type: 'start' | 'target'
-  ) => {
-    let marker: THREE.Mesh | THREE.Group;
-
-    if (type === 'start') {
-      // Create a sphere (point) for start position
-      const radius = 50;
-      const geometry = new THREE.SphereGeometry(radius, 16, 16);
-      const material = new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: 0.7,
-      });
-      marker = new THREE.Mesh(geometry, material);
-    } else {
-      // Create a cross (two intersecting planes) for target position
-      const size = 100;
-      const thickness = 10;
-
-      const group = new THREE.Group();
-
-      // Horizontal plane
-      const planeGeometry1 = new THREE.PlaneGeometry(size, thickness);
-      const material = new THREE.MeshBasicMaterial({
-        color: color,
-        transparent: true,
-        opacity: 0.7,
-        side: THREE.DoubleSide,
-      });
-      const plane1 = new THREE.Mesh(planeGeometry1, material);
-
-      // Vertical plane
-      const planeGeometry2 = new THREE.PlaneGeometry(thickness, size);
-      const plane2 = new THREE.Mesh(planeGeometry2, material.clone());
-
-      group.add(plane1);
-      group.add(plane2);
-
-      marker = group;
-    }
-
-    marker.position.copy(position);
-
-    const normal = position.clone().normalize();
-    marker.lookAt(position.clone().add(normal));
-
-    return marker;
-  };
-
-  const handleStartPositionClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setStartPositionActive((prev) => !prev);
-    launchPadStatesRef.current.startPositionSetIsActive =
-      !launchPadStatesRef.current.startPositionSetIsActive;
-  };
-
-  const handleTargetPositionClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTargetPositionActive((prev) => !prev);
-    launchPadStatesRef.current.targetPositionSetIsActive =
-      !launchPadStatesRef.current.targetPositionSetIsActive;
-  };
-
-  const handleCalculateTrajectoryClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const isLoading = calculationProgress !== null;
-
-    if (isLoading) {
-      return;
-    }
-
-    launchPadListenersRef.current.onCalculateTrajectory();
-  };
-
-  const handleLaunchRocketClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    launchPadListenersRef.current.onLaunchRocket();
-  };
-
-  const handleClearQueueClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!isConfirmingClear) {
-      setIsConfirmingClear(true);
-      return;
-    }
-    setIsConfirmingClear(false);
-    setLaunchQueue([]);
-  };
-
-  // Auto-cancel the pending "Confirm" state after a few seconds
-  useEffect(() => {
-    if (!isConfirmingClear) return;
-    const timeout = setTimeout(() => setIsConfirmingClear(false), 3000);
-    return () => clearTimeout(timeout);
-  }, [isConfirmingClear]);
-
-  const handleRemoveFromQueue = (id: number) => {
-    setLaunchQueue((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleInfoButtonClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    openInstructionsPage(INSTRUCTIONS_MENU, 'push');
-  };
-
-  const handleBackToMenu = () => {
-    // If we came from the menu, step back in history; otherwise (deep link) swap to it
-    if (window.history.state?.fromMenu) {
-      window.history.back();
-    } else {
-      openInstructionsPage(INSTRUCTIONS_MENU, 'replace');
-    }
-  };
-
-  const openInstructionsPage = (
-    page: InstructionsPage,
-    mode: 'push' | 'replace',
-    state: { fromMenu?: boolean } | null = null
-  ) => {
-    const url = `${window.location.pathname}${window.location.search}#${page}`;
-    if (mode === 'push') {
-      window.history.pushState(state, '', url);
-    } else {
-      window.history.replaceState(null, '', url);
-    }
-    setInstructionsPage(page);
-  };
-
-  const handleCloseInstructions = () => {
-    window.history.replaceState(
-      null,
-      '',
-      `${window.location.pathname}${window.location.search}`
-    );
-    setInstructionsPage(null);
-  };
-
-  const toggleMute = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    launchPadListenersRef.current.setMuted(!isMuted);
-  };
-  const muteTitle = isMuted ? 'Unmute all sounds' : 'Mute all sounds';
-  const muteIcon = isMuted ? '🔇' : '🔊';
-
-  const isPositionSelectionActive = startPositionActive || targetPositionActive;
-
-  // Parameters of the selected queue item; hidden while calculating
-  const panelCandidate = (() => {
-    if (calculationProgress !== null) return null;
-    const index = launchQueue.findIndex(
-      (item) => item.id === selectedQueueItemId
-    );
-    const candidate = index >= 0 ? launchQueue[index].candidate : null;
-    if (!candidate) return null;
-    return {
-      title: `Launch #${index + 1}`,
-      subtitle: `${candidate.generation} gens`,
-      data: candidate,
-    };
-  })();
-
-  // Side panels sit to the right of the launch pad; when they'd overflow the
-  // viewport, stack them above it instead. Measured from the children's own
-  // (max-content) widths, which don't depend on the mode, so it can't flap.
-  const launchPadRef = useRef<HTMLDivElement | null>(null);
-  const sidePanelsRef = useRef<HTMLDivElement | null>(null);
-  const [areSidePanelsStacked, setAreSidePanelsStacked] = useState(false);
-  useLayoutEffect(() => {
-    const check = () => {
-      const pad = launchPadRef.current;
-      const panels = sidePanelsRef.current;
-      if (!pad || !panels) return;
-      const SIDE_OFFSET = 12; // .sidePanels left: calc(100% + 12px)
-      const EDGE_MARGIN = 8;
-      const gap = parseFloat(getComputedStyle(panels).columnGap) || 0;
-      const children = Array.from(panels.children) as HTMLElement[];
-      const required =
-        children.reduce((sum, el) => sum + el.offsetWidth, 0) +
-        gap * Math.max(0, children.length - 1);
-      const fits =
-        pad.getBoundingClientRect().right + SIDE_OFFSET + required <=
-        window.innerWidth - EDGE_MARGIN;
-      setAreSidePanelsStacked((prev) => (prev === !fits ? prev : !fits));
-    };
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  });
 
   return (
     <>
@@ -1202,10 +687,6 @@ const OrbitalVelocity = () => {
           <div id={mainGuiContainerId} className={s.mainGui}></div>
         </div>
 
-        {/* <div className={s.timeManager}>
-          <div>FPS*Sec</div>
-        </div> */}
-
         <div
           className={s.timePassed}
           title="Simulated time passed"
@@ -1215,628 +696,14 @@ const OrbitalVelocity = () => {
           }}
         />
 
-        {(() => {
-          const timeControls = (
-            <div className={s.timeMultiplier}>
-              <button
-                className={s.timeMultiplierButton}
-                title={isTimeRunning ? 'Pause time' : 'Resume time'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  launchPadListenersRef.current.toggleTime();
-                }}
-              >
-                {isTimeRunning ? '⏸️' : '▶️'}
-              </button>
-              <button
-                className={s.timeMultiplierButton}
-                title="Click to change time multiplier"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const next =
-                    TIME_MULTIPLIER_PRESETS.find((v) => v > timeMultiplier) ??
-                    TIME_MULTIPLIER_PRESETS[0];
-                  launchPadListenersRef.current.setTimeMultiplier(next);
-                }}
-              >
-                ⏩ {timeMultiplier}x
-              </button>
-            </div>
-          );
-
-          if (!isFocusedOnEarth) {
-            return (
-              <div className={s.clearLaunchPad}>
-                {timeControls}
-                <div className={s.returnRow}>
-                  <button
-                    className={s.button}
-                    onClick={handleFocusOnEarthClick}
-                  >
-                    Return to Earth
-                  </button>
-                  <button
-                    className={s.inlineMuteButton}
-                    onClick={toggleMute}
-                    title={muteTitle}
-                    aria-pressed={isMuted}
-                  >
-                    {muteIcon}
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <div className={s.launchPad} ref={launchPadRef}>
-              <button
-                className={s.infoButton}
-                onClick={handleInfoButtonClick}
-                title="How to launch a rocket"
-              >
-                ℹ️
-              </button>
-              <button
-                className={clsx(s.infoButton, s.muteButton)}
-                onClick={toggleMute}
-                title={muteTitle}
-                aria-pressed={isMuted}
-              >
-                {muteIcon}
-              </button>
-
-              <div className={s.infoPanel}>
-                {startPositionActive && (
-                  <div className={s.infoText}>
-                    Click on Earth to set Start Position
-                  </div>
-                )}
-                {targetPositionActive && (
-                  <div className={s.infoText}>
-                    Click on Earth to set Target Position
-                  </div>
-                )}
-              </div>
-
-              {timeControls}
-
-              <div className={s.controls}>
-                <div className={s.positionBlock}>
-                  <button
-                    className={s.button}
-                    onClick={handleStartPositionClick}
-                  >
-                    Set Start
-                  </button>
-                  {startPositionGeo?.longitude != null && (
-                    <div className={s.coordinates}>
-                      Lon: {startPositionGeo.longitude.toFixed(1)} <br />
-                      Lat: {startPositionGeo.latitude.toFixed(1)}
-                    </div>
-                  )}
-                </div>
-
-                <div className={s.trajectoryBlock}>
-                  <button
-                    className={clsx(s.calculateButton, {
-                      [s.calcWasReset]: calcWasReset,
-                    })}
-                    onClick={handleCalculateTrajectoryClick}
-                    disabled={isCalculateTrajectoryDisabled}
-                  >
-                    {calculationProgress !== null ? (
-                      <div className={s.progressWrapper}>
-                        <div
-                          className={s.progressBar}
-                          style={{
-                            width: `${Math.round(calculationProgress)}%`,
-                          }}
-                        ></div>
-                        <span className={s.progressText}>
-                          {Math.round(calculationProgress)}%
-                        </span>
-                      </div>
-                    ) : (
-                      'Calculate'
-                    )}
-                  </button>
-                  <button
-                    className={s.launchButton}
-                    disabled={launchQueue.length === 0}
-                    onClick={handleLaunchRocketClick}
-                  >
-                    Launch 🚀{' '}
-                    {launchQueue.length > 0 && `(${launchQueue.length})`}
-                  </button>
-                </div>
-
-                <div className={s.positionBlock}>
-                  <button
-                    className={s.button}
-                    onClick={handleTargetPositionClick}
-                  >
-                    Set Target
-                  </button>
-                  {targetPositionGeo?.longitude != null && (
-                    <div className={s.coordinates}>
-                      Lon: {targetPositionGeo.longitude.toFixed(1)} <br />
-                      Lat: {targetPositionGeo.latitude.toFixed(1)}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Side panels pinned to the right of the launch pad:
-                  launch queue first, then the live best candidate */}
-              <div
-                ref={sidePanelsRef}
-                className={clsx(s.sidePanels, {
-                  [s.stacked]: areSidePanelsStacked,
-                })}
-              >
-                {launchQueue.length > 0 && (
-                  <div
-                    className={clsx(s.queueWrapper, {
-                      [s.collapsed]: isQueueCollapsed,
-                    })}
-                  >
-                    <div
-                      className={s.queuePanel}
-                      title={isQueueCollapsed ? 'Expand queue' : undefined}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isQueueCollapsed) setIsQueueCollapsed(false);
-                      }}
-                    >
-                      <div className={s.queueHeader}>
-                        <h3>Launch Queue ({launchQueue.length})</h3>
-                        <button
-                          className={clsx(s.clearButton, {
-                            [s.confirming]: isConfirmingClear,
-                          })}
-                          onClick={handleClearQueueClick}
-                        >
-                          {isConfirmingClear ? 'Confirm' : 'Clear All'}
-                        </button>
-                      </div>
-                      {!isQueueCollapsed && (
-                        <div className={s.queueList}>
-                          {launchQueue.map((item, index) => (
-                            <div
-                              key={item.id}
-                              className={clsx(s.queueItem, {
-                                [s.selected]: item.id === selectedQueueItemId,
-                              })}
-                              title="Show start and target on the map"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedQueueItemId((prev) =>
-                                  prev === item.id ? null : item.id
-                                );
-                              }}
-                            >
-                              <div className={s.queueItemInfo}>
-                                <span className={s.queueItemNumber}>
-                                  #{index + 1}
-                                </span>
-                                <div className={s.queueItemCoords}>
-                                  <div className={s.coordPair}>
-                                    <span className={s.coordLabel}>Start</span>
-                                    <span>
-                                      {item.startGeo.latitude.toFixed(1)},
-                                      {item.startGeo.longitude.toFixed(1)}
-                                    </span>
-                                  </div>
-                                  <div className={s.coordPair}>
-                                    <span className={s.coordLabel}>Target</span>
-                                    <span>
-                                      {item.targetGeo.latitude.toFixed(1)},
-                                      {item.targetGeo.longitude.toFixed(1)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                              <button
-                                className={s.removeButton}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveFromQueue(item.id);
-                                }}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className={s.collapseToggle}
-                      onClick={() => setIsQueueCollapsed((prev) => !prev)}
-                      aria-expanded={!isQueueCollapsed}
-                      title={
-                        isQueueCollapsed ? 'Expand queue' : 'Collapse queue'
-                      }
-                    >
-                      <span className={s.collapseIcon}>▾</span>
-                    </button>
-                  </div>
-                )}
-
-                {panelCandidate !== null && (
-                  <div className={s.candidatePanel}>
-                    <div className={s.candidateHeader}>
-                      <h3>{panelCandidate.title}</h3>
-                      <span className={s.candidateGeneration}>
-                        {panelCandidate.subtitle}
-                      </span>
-                      <button
-                        type="button"
-                        className={s.candidateClose}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedQueueItemId(null);
-                        }}
-                        title="Close launch data"
-                        aria-label="Close launch data"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <dl className={s.candidateList}>
-                      {getCandidateRows(panelCandidate.data).map((row) =>
-                        row.label === null ? (
-                          <hr key={row.key} className={s.candidateDivider} />
-                        ) : (
-                          <div
-                            key={row.key}
-                            className={clsx(s.candidateRow, {
-                              [s.highlight]: row.highlight,
-                            })}
-                          >
-                            <dt>{row.label}</dt>
-                            <dd>{row.value}</dd>
-                          </div>
-                        )
-                      )}
-                    </dl>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        {isFocusedOnEarth ? <LaunchPad /> : <ReturnToEarthBar />}
 
         <div className={s.versionBadge}>v{__VERSION__}</div>
       </div>
 
-      {isPositionSelectionActive && (
-        <div className={s.clearLaunchPad}>
-          <button
-            className={s.button}
-            onClick={(e) => {
-              e.stopPropagation();
-              launchPadListenersRef?.current?.onCancelSelectionClick?.();
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-
-      <div
-        id={mouseFollowerId}
-        className={clsx(s.mouseFollower, {
-          [s.hide]: !isPositionSelectionActive,
-        })}
-      >
-        <div className={s.coordBox}>
-          {(startPositionActive || targetPositionActive) && (
-            <>
-              <span className={s.coordItem}>
-                ↔ {activePositionGeo?.longitude.toFixed(1)}
-              </span>
-              <span className={s.coordItem}>
-                ↕ {activePositionGeo?.latitude.toFixed(1)}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div
-        className={`${s.miniWindowContainer} ${
-          isMiniWindowFolded ? s.miniWindowFolded : ''
-        }`}
-        style={{
-          visibility: isMiniWindowOpen ? 'visible' : 'hidden',
-        }}
-      >
-        <button
-          className={s.miniWindowToggle}
-          onClick={() => setIsMiniWindowFolded((folded) => !folded)}
-          aria-expanded={!isMiniWindowFolded}
-          title={isMiniWindowFolded ? 'Expand minimap' : 'Fold minimap'}
-        >
-          {isMiniWindowFolded ? '▴ Minimap' : '▾'}
-        </button>
-        <div
-          id={miniWindowId}
-          style={{
-            position: 'absolute',
-            display: isMiniWindowFolded ? 'none' : undefined,
-          }}
-        ></div>
-      </div>
-
-      {isInstructionsOpen && (
-        <div className={s.modalOverlay} onClick={handleCloseInstructions}>
-          <div className={s.modalWrapper} onClick={(e) => e.stopPropagation()}>
-            <button
-              className={s.closeButton}
-              onClick={handleCloseInstructions}
-              aria-label="Close"
-            >
-              ✕
-            </button>
-            {instructionsPage !== INSTRUCTIONS_MENU && (
-              <button className={s.backButton} onClick={handleBackToMenu}>
-                ← Back
-              </button>
-            )}
-            <div className={s.modalContent}>
-              {instructionsPage === INSTRUCTIONS_MENU && (
-                <>
-                  <h2 className={s.modalTitle}>Help</h2>
-                  <nav className={s.pageMenu}>
-                    {INSTRUCTIONS_PAGES.map((page) => (
-                      <button
-                        key={page.id}
-                        className={s.pageMenuItem}
-                        onClick={() =>
-                          openInstructionsPage(page.id, 'push', {
-                            fromMenu: true,
-                          })
-                        }
-                      >
-                        <span className={s.pageMenuText}>
-                          <span className={s.pageMenuLabel}>{page.label}</span>
-                          <span className={s.pageMenuDescription}>
-                            {page.description}
-                          </span>
-                        </span>
-                      </button>
-                    ))}
-                  </nav>
-                </>
-              )}
-
-              {instructionsPage === INSTRUCTIONS_MENU && (
-                <a
-                  className={s.sourceLink}
-                  href="https://github.com/rally08/icbm-missile-simulator"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 98 96"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  Source code
-                </a>
-              )}
-
-              {instructionsPage === 'how-it-works' && (
-                <>
-                  <h2 className={s.modalTitle}>How does it work?</h2>
-                  <div className={s.instructions}>
-                    <div className={s.step}>
-                      <div className={s.stepContent}>
-                        <h3>Rocket Equation &amp; Thrust</h3>
-                        <p>
-                          Rocket motion during fuel burn is described by the{' '}
-                          <a
-                            className={s.modalLink}
-                            href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/ideal-rocket-equation/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Ideal Rocket Equation
-                          </a>
-                          . At every time step the simulation uses the{' '}
-                          <a
-                            className={s.modalLink}
-                            href="https://www.grc.nasa.gov/www/k-12/airplane/rockth.html"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Rocket Thrust Equation
-                          </a>{' '}
-                          <strong>F = ṁ · vₑ</strong> to compute the
-                          instantaneous force from the exhaust velocity{' '}
-                          <strong>vₑ</strong> and the mass flow rate{' '}
-                          <strong>ṁ</strong>.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepContent}>
-                        <h3>Thrust vs. Gravity</h3>
-                        <p>
-                          The rocket's movement is shaped by two forces: the
-                          thrust from burning fuel and Earth's gravity. As fuel
-                          burns the rocket gets lighter, so it accelerates
-                          faster until burnout, then coasts on gravity alone.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepContent}>
-                        <h3>Gravity Turn</h3>
-                        <p>
-                          To steer the rocket toward its target, the simulator
-                          performs a gravity turn: once a set altitude is
-                          reached, the angle of attack changes by{' '}
-                          <strong>X rad/s</strong> for{' '}
-                          <strong>N seconds</strong>. In real rockets this is
-                          done with mechanisms like gimbaled nozzles.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepContent}>
-                        <h3>Six Launch Parameters</h3>
-                        <p>The whole trajectory is governed by:</p>
-                        <ol className={s.paramList}>
-                          <li>Altitude at which the gravity turn begins</li>
-                          <li>Duration of the gravity turn (s)</li>
-                          <li>Rate of turn during the gravity turn (rad/s)</li>
-                          <li>Payload and fuel mass</li>
-                          <li>
-                            Mass flow rate <strong>ṁ</strong> (kg/s): how much
-                            fuel burns per unit of time
-                          </li>
-                          <li>
-                            Exhaust velocity <strong>vₑ</strong>: the speed of
-                            the exhaust gases
-                          </li>
-                        </ol>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepContent}>
-                        <h3>Solving the Inverse Problem</h3>
-                        <p>
-                          The challenge is finding the combination of these six
-                          parameters that takes the missile from the launch
-                          point to the target. When you press{' '}
-                          <strong>"Calculate"</strong>, a heuristic{' '}
-                          <a
-                            className={s.modalLink}
-                            href="https://en.wikipedia.org/wiki/Differential_evolution"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <strong>Differential Evolution</strong>
-                          </a>{' '}
-                          algorithm runs the simulation over and over, searching
-                          for the parameter set that minimizes the distance
-                          between the rocket's final position and the target.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.tip}>
-                      <strong>💡 Note:</strong> To keep things simple,
-                      atmospheric drag, heat and other external perturbations
-                      are not included.
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {instructionsPage === 'how-to-launch' && (
-                <>
-                  <h2 className={s.modalTitle}>How to Launch a Rocket</h2>
-                  <div className={s.instructions}>
-                    <div className={s.step}>
-                      <div className={s.stepNumber}>1</div>
-                      <div className={s.stepContent}>
-                        <h3>Set Start Position</h3>
-                        <p>
-                          Click the <strong>"Set Start"</strong> button, then
-                          click anywhere on Earth to select your launch
-                          location.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepNumber}>2</div>
-                      <div className={s.stepContent}>
-                        <h3>Set Target Position</h3>
-                        <p>
-                          Click the <strong>"Set Target"</strong> button, then
-                          click on Earth to select your target location.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepNumber}>3</div>
-                      <div className={s.stepContent}>
-                        <h3>Calculate Trajectory</h3>
-                        <p>
-                          Click the <strong>"Calculate"</strong> button to
-                          compute the optimal flight path. The trajectory will
-                          be automatically added to your launch queue when
-                          complete.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepNumber}>4</div>
-                      <div className={s.stepContent}>
-                        <h3>Queue Multiple Launches</h3>
-                        <p>
-                          You can repeat steps 1-3 to add multiple launches to
-                          your queue. All queued launches will appear in the{' '}
-                          <strong>Launch Queue</strong> panel at the
-                          bottom-left, with cyan (start) and yellow (target)
-                          markers on Earth.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.step}>
-                      <div className={s.stepNumber}>5</div>
-                      <div className={s.stepContent}>
-                        <h3>Launch!</h3>
-                        <p>
-                          Click the <strong>"Launch 🚀"</strong> button to fire
-                          the next rocket in your queue. Each click launches one
-                          rocket and removes it from the queue. You can launch
-                          them one by one, even while time is running!
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={s.tip}>
-                      <strong>⏸️ Tip:</strong> Stop time using the{' '}
-                      <strong>"Stop Time"</strong> button in Main Controls to
-                      set up multiple launches, then resume and fire them
-                      sequentially!
-                    </div>
-
-                    <div className={s.tip}>
-                      <strong>⚡ Tip:</strong> Increase the{' '}
-                      <strong>Time Multiplier</strong> in the Main Controls
-                      panel to speed up the simulation.
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <PositionSelectionOverlay mouseFollowerId={mouseFollowerId} />
+      <MiniWindow miniWindowId={miniWindowId} />
+      <InstructionsModal />
     </>
   );
 };
