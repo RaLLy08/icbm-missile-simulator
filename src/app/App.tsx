@@ -100,7 +100,17 @@ const App = () => {
       <div
         className={clsx(s.container, { [s.hide]: isPositionSelectionActive })}
       >
-        <div id={rocketGuiContainerId} className={s.rocketGui}></div>
+        <div className={s.topLeftPanel}>
+          <div id={rocketGuiContainerId} className={s.rocketGui}></div>
+          <div
+            className={clsx(s.infoChip, s.altitudeChip)}
+            title="Camera altitude above the Earth's surface"
+            ref={(el) => {
+              altitudeElRef.current = el;
+              if (el) el.textContent = altitudeTextRef.current;
+            }}
+          />
+        </div>
         <div className={s.topRightPanel}>
           <div
             className={s.stats}
@@ -109,24 +119,14 @@ const App = () => {
           <div id={mainGuiContainerId} className={s.mainGui}></div>
         </div>
 
-        <div className={s.topInfo}>
-          <div
-            className={s.infoChip}
-            title="Simulated time passed"
-            ref={(el) => {
-              timePassedElRef.current = el;
-              if (el) el.textContent = `⏱ ${timePassedTextRef.current}`;
-            }}
-          />
-          <div
-            className={s.infoChip}
-            title="Camera altitude above the Earth's surface"
-            ref={(el) => {
-              altitudeElRef.current = el;
-              if (el) el.textContent = altitudeTextRef.current;
-            }}
-          />
-        </div>
+        <div
+          className={clsx(s.infoChip, s.timePassed)}
+          title="Simulated time passed"
+          ref={(el) => {
+            timePassedElRef.current = el;
+            if (el) el.textContent = `⏱ ${timePassedTextRef.current}`;
+          }}
+        />
 
         {isFocusedOnEarth ? <LaunchPad /> : <ReturnToEarthBar />}
 
