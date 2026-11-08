@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import clsx from 'clsx';
-import s from '../OrbitalVelocity.module.scss';
+import s from '../App.module.scss';
 import { getCommands, useSimulatorStore } from '../store/useSimulatorStore';
 import { INSTRUCTIONS_MENU } from '../instructions/pages';
 import { openInstructionsPage } from '../instructions/navigation';

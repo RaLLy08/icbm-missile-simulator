@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import s from '../OrbitalVelocity.module.scss';
+import s from '../App.module.scss';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 
 type Props = {

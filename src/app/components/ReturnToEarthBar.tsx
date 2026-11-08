@@ -1,4 +1,4 @@
-import s from '../OrbitalVelocity.module.scss';
+import s from '../App.module.scss';
 import { getCommands } from '../store/useSimulatorStore';
 import MuteButton from './MuteButton';
 import TimeControls from './TimeControls';

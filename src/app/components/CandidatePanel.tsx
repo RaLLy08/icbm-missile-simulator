@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import clsx from 'clsx';
-import s from '../OrbitalVelocity.module.scss';
+import s from '../App.module.scss';
 import { formatSeconds } from '../utils';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import type { BestCandidate } from '../store/types';

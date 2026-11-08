@@ -1,4 +1,4 @@
-import s from '../OrbitalVelocity.module.scss';
+import s from '../App.module.scss';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { INSTRUCTIONS_MENU, INSTRUCTIONS_PAGES } from '../instructions/pages';
 import {

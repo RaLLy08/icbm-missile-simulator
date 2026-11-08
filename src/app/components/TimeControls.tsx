@@ -1,4 +1,4 @@
-import s from '../OrbitalVelocity.module.scss';
+import s from '../App.module.scss';
 import { getCommands, useSimulatorStore } from '../store/useSimulatorStore';
 
 const TIME_MULTIPLIER_PRESETS = [1, 2, 5, 10, 50];
