@@ -5,7 +5,7 @@ import { isAudioMuted, setAudioMuted } from './helpers/SpatialAudio';
 import { isSpeechEnabled, setSpeechEnabled } from './helpers/Speech';
 
 export default class WorldGui {
-  folder: FolderApi;
+  pane: Pane;
   timeMultiplier = 1;
   timeDeltaTime = 0.01666;
   timePassedSeconds = 0;
@@ -26,22 +26,18 @@ export default class WorldGui {
     pane: Pane,
     private clock: THREE.Clock
   ) {
-    this.folder = pane.addFolder({
-      title: 'World',
-      expanded: false,
-    });
-
+    this.pane = pane;
     this.initGui();
   }
 
   private initGui() {
-    const guiDeltaTime = this.folder.addBinding(this, 'timeDeltaTime', {
+    const guiDeltaTime = this.pane.addBinding(this, 'timeDeltaTime', {
       label: 'Seconds Passed Between Frames (s)',
       readonly: true,
       format: (v) => (v != null ? v.toFixed(3) : 'N/A'),
     });
 
-    const guiTimePassedSeconds = this.folder.addBinding(
+    const guiTimePassedSeconds = this.pane.addBinding(
       this,
       'timePassedSeconds',
       {
@@ -51,7 +47,7 @@ export default class WorldGui {
       }
     );
 
-    this.guiTimeMultiplier = this.folder.addBinding(this, 'timeMultiplier', {
+    this.guiTimeMultiplier = this.pane.addBinding(this, 'timeMultiplier', {
       label: 'Time Multiplier',
       format: (v) => {
         return v + ' X';
@@ -61,7 +57,7 @@ export default class WorldGui {
       step: 1,
     });
 
-    this.guiStopTimeButton = this.folder.addButton({
+    this.guiStopTimeButton = this.pane.addButton({
       title: 'Stop Time',
     });
     this.guiStopTimeButton.on('click', () => this.toggleTime());
@@ -70,13 +66,13 @@ export default class WorldGui {
       this.onTimeMultiplierChange?.(Number(ev.value));
     });
 
-    this.folder
+    this.pane
       .addBinding(this, 'showStars', { label: 'Show Stars' })
       .on('change', (ev) => {
         this.onShowStarsChange?.(ev.value);
       });
 
-    this.guiMuted = this.folder.addBinding(this, 'muted', {
+    this.guiMuted = this.pane.addBinding(this, 'muted', {
       label: 'Mute All Sounds',
     });
     this.guiMuted.on('change', (ev) => {
@@ -84,7 +80,7 @@ export default class WorldGui {
       this.onMutedChange?.(ev.value);
     });
 
-    this.folder
+    this.pane
       .addBinding(this, 'speechEnabled', { label: 'Voice Announcements' })
       .on('change', (ev) => {
         setSpeechEnabled(ev.value);

@@ -85,6 +85,18 @@ export const createSimulation = (
     miniWindowRenderer,
     mouseTracker
   );
+
+  // WorldGui owns time/audio; the store mirrors it for the React UI.
+  // Created before the other folders so its controls sit at the top
+  // of Main Controls (just below "Clear World", inserted at index 0).
+  const worldGui = new WorldGui(mainPane, clock);
+  starField.setVisible(worldGui.showStars);
+  worldGui.onShowStarsChange = (show) => starField.setVisible(show);
+  worldGui.onMutedChange = (muted) => store().setIsMuted(muted);
+  worldGui.onTimeMultiplierChange = (value) => store().setTimeMultiplier(value);
+  worldGui.onTimeRunningChange = (running) => store().setIsTimeRunning(running);
+  if (onTimePassedUpdate) worldGui.onTimePassedUpdate = onTimePassedUpdate;
+
   const earthGui = new EarthGui(mainPane);
   const earthView = new EarthView(earth, scene, earthGui);
   updateTriggers.push(starField, earth, cameraManager, earthView);
@@ -104,17 +116,9 @@ export const createSimulation = (
   const launcherView = new LauncherView(earth, scene);
   const launcher = new Launcher(launcherGui, earth);
 
-  // WorldGui owns time/audio; the store mirrors it for the React UI
-  const worldGui = new WorldGui(mainPane, clock);
   updateTriggers.push(worldGui);
-  starField.setVisible(worldGui.showStars);
-  worldGui.onShowStarsChange = (show) => starField.setVisible(show);
-  worldGui.onMutedChange = (muted) => store().setIsMuted(muted);
-  worldGui.onTimeMultiplierChange = (value) => store().setTimeMultiplier(value);
-  worldGui.onTimeRunningChange = (running) => store().setIsTimeRunning(running);
-  if (onTimePassedUpdate) worldGui.onTimePassedUpdate = onTimePassedUpdate;
 
-  updateTriggers.push(new MouseTrackerGui(worldGui.folder, mouseTracker));
+  updateTriggers.push(new MouseTrackerGui(mainPane, mouseTracker));
 
   const ctx: SimulationContext = {
     scene,
