@@ -230,6 +230,36 @@ $mobile_breakpoint: 640px;
     scrollbar-width: thin;
     scrollbar-color: rgb(186, 177, 177) transparent;
   }
+
+  // The panes scroll as a whole; pin the title bar so it can still be
+  // folded from the bottom of a long pane. Tweakpane's header color is
+  // translucent, so layer it over the opaque pane background to keep the
+  // scrolled content from showing through.
+  .rocketGui,
+  .mainGui {
+    :global(.tp-rotv_b) {
+      $layer: linear-gradient(var(--cnt-bg), var(--cnt-bg));
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: $layer, var(--bs-bg);
+
+      &:hover {
+        background: linear-gradient(var(--cnt-bg-h), var(--cnt-bg-h)),
+          var(--bs-bg);
+      }
+
+      &:focus {
+        background: linear-gradient(var(--cnt-bg-f), var(--cnt-bg-f)),
+          var(--bs-bg);
+      }
+
+      &:active {
+        background: linear-gradient(var(--cnt-bg-a), var(--cnt-bg-a)),
+          var(--bs-bg);
+      }
+    }
+  }
 }
 
 .clearLaunchPad {
