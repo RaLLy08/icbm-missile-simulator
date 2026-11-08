@@ -49,4 +49,6 @@ export type SimulatorCommands = {
   setTimeMultiplier: (value: number) => void;
   toggleTime: () => void;
   setMuted: (muted: boolean) => void;
+  /** Removes every launched rocket with its trail and markers. */
+  clearWorld: () => void;
 };

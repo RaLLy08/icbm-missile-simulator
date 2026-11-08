@@ -343,6 +343,7 @@ export default class EarthView {
     marker.receiveShadow = true;
 
     this.scene.add(marker);
+    return marker;
   };
 
   addCrossMarker = (

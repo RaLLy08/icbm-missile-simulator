@@ -18,6 +18,7 @@ const defaultCommands: SimulatorCommands = {
   setTimeMultiplier: noop,
   toggleTime: noop,
   setMuted: noop,
+  clearWorld: noop,
 };
 
 export type SimulatorState = {

@@ -23,6 +23,7 @@ import {
 import { createTrajectoryPreview } from './trajectoryPreview';
 import { createTrajectoryCalculator } from './trajectoryCalculation';
 import { createRocketLauncher } from './rocketLaunching';
+import { addConfirmButton } from './confirmButton';
 import { setupPositionPicking } from './positionPicking';
 import { syncSceneWithStore } from './storeSync';
 import type { SimulationContext, Updatable } from './types';
@@ -135,12 +136,21 @@ export const createSimulation = (
   };
   earthGui.onFocusCameraClick = focusOnEarth;
 
+  const rocketLauncher = createRocketLauncher(ctx);
+  addConfirmButton(mainPane, {
+    title: 'Clear World',
+    confirmTitle: 'Click again to clear all rockets',
+    index: 0,
+    onConfirm: () => store().commands.clearWorld(),
+  });
+
   store().registerCommands({
     calculateTrajectory: createTrajectoryCalculator(
       ctx,
       createTrajectoryPreview(scene)
     ),
-    launchRocket: createRocketLauncher(ctx),
+    launchRocket: rocketLauncher.launch,
+    clearWorld: rocketLauncher.clear,
     focusOnEarth,
     setTimeMultiplier: (value) => worldGui.setTimeMultiplier(value),
     toggleTime: () => worldGui.toggleTime(),

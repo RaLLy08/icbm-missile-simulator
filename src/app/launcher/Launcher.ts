@@ -199,4 +199,11 @@ export default class Launcher {
 
     return rocket;
   };
+
+  /** Restarts rocket numbering after all launched rockets are removed. */
+  resetRockets = () => {
+    this.counter = 0;
+    this.rocketCount = 0;
+    this.launcherGui.rocketCount = 0;
+  };
 }

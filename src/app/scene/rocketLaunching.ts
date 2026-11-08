@@ -1,3 +1,4 @@
+import type * as THREE from 'three';
 import type { ListBladeApi } from 'tweakpane';
 import RocketView from '../rocket/RocketView';
 import RocketGui from '../rocket/Rocket.gui';
@@ -22,9 +23,17 @@ const applyQueueItemToLauncher = (
   launcher.massFlowRate = p.massFlowRate;
 };
 
+/** Everything one launch adds to the scene, so it can be removed again. */
+type LaunchedRocket = {
+  rocketView: RocketView;
+  frameTimeManager: FrameTimeManager;
+  markers: THREE.Mesh[];
+};
+
 /**
- * Launches the next queued item. Owns the "Missile Controls" pane: one
- * RocketGui at a time, switched with the missile selector.
+ * Launches the next queued item and can clear every launched rocket. Owns
+ * the "Missile Controls" pane: one RocketGui at a time, switched with the
+ * missile selector.
  */
 export const createRocketLauncher = (ctx: SimulationContext) => {
   const {
@@ -45,6 +54,7 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
   let activeRocketId: number | null = null;
   const missileActivators = new Map<number, () => void>();
   let missileSelector: ListBladeApi<number> | null = null;
+  const launchedRockets: LaunchedRocket[] = [];
 
   const updateMissileSelector = (selectedId: number) => {
     const options = [...missileActivators.keys()].map((id) => ({
@@ -108,7 +118,7 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     activeRocketId = rocket.id;
   };
 
-  return () => {
+  const launch = () => {
     const nextLaunch = store().launchQueue[0];
     if (!nextLaunch) {
       console.error('No launches in queue.');
@@ -129,8 +139,10 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     rocketView.init();
     rocketView.updatePrevFromRocket();
 
-    earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4);
-    earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4);
+    const markers = [
+      earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4),
+      earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4),
+    ];
     launcherView.remove();
 
     store().setRocketCount(launcher.rocketCount);
@@ -140,10 +152,46 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
 
     // Physics/view must update before the GUI so the tracking camera
     // renders the current frame's missile position.
-    updateTriggers.push(new FrameTimeManager(rocket, rocketView, worldGui));
+    const frameTimeManager = new FrameTimeManager(rocket, rocketView, worldGui);
+    updateTriggers.push(frameTimeManager);
+    launchedRockets.push({ rocketView, frameTimeManager, markers });
 
     missileActivators.set(rocket.id, () => showRocketGui(rocket, rocketView));
     showRocketGui(rocket, rocketView);
     updateMissileSelector(rocket.id);
   };
+
+  /** Removes every launched rocket, its trail, markers and GUI. */
+  const clear = () => {
+    // The chase camera renders the active missile's tracking view, which is
+    // disposed below
+    if (cameraManager.isChasing) store().commands.focusOnEarth();
+
+    if (activeRocketGui) {
+      activeRocketGui.remove();
+      removeTrigger(updateTriggers, activeRocketGui);
+      activeRocketGui = null;
+    }
+    activeRocketId = null;
+
+    missileSelector?.dispose();
+    missileSelector = null;
+    missileActivators.clear();
+
+    launchedRockets.forEach(({ rocketView, frameTimeManager, markers }) => {
+      removeTrigger(updateTriggers, frameTimeManager);
+      rocketView.remove();
+      markers.forEach((marker) => {
+        scene.remove(marker);
+        marker.geometry.dispose();
+        (marker.material as THREE.Material).dispose();
+      });
+    });
+    launchedRockets.length = 0;
+
+    launcher.resetRockets();
+    store().setRocketCount(0);
+  };
+
+  return { launch, clear };
 };
