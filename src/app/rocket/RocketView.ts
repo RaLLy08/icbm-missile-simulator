@@ -40,6 +40,8 @@ import {
 } from 'app/helpers/SpatialAudio';
 import { announceTargetReached } from 'app/helpers/Speech';
 
+const TARGET_REACHED_ANNOUNCE_DELAY_MS = 1000;
+
 const NUKE_EXPLOSION_VARIANTS: string[] = [
   nukeVariant00,
   nukeVariant01,
@@ -803,7 +805,11 @@ export default class RocketView {
       this.explosionEffect.start(this.rocket.position.clone(), normal);
       this.hasTriggeredExplosion = true;
       // Same number as the "Missile N" label in the GUI
-      announceTargetReached(this.rocket.id);
+      const missileId = this.rocket.id;
+      setTimeout(
+        () => announceTargetReached(missileId),
+        TARGET_REACHED_ANNOUNCE_DELAY_MS
+      );
     }
 
     // Update explosion effect animation
