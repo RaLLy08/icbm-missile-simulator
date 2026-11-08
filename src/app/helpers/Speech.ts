@@ -30,7 +30,7 @@ const SPEECH_VOLUME = 0.8;
 
 /** Playback speeds up by this much per announcement waiting in the queue. */
 const RATE_STEP_PER_QUEUED = 0.15;
-const MAX_PLAYBACK_RATE = 2;
+const MAX_PLAYBACK_RATE = 5;
 
 const SPEECH_ENABLED_STORAGE_KEY = 'speechEnabled';
 
