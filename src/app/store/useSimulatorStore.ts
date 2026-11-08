@@ -1,4 +1,6 @@
+import * as THREE from 'three';
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { isAudioMuted } from '../helpers/SpatialAudio';
 import {
     InstructionsPage,
@@ -95,7 +97,39 @@ const keepSelection = (
     ? selectedId
     : null;
 
-export const useSimulatorStore = create<SimulatorState>()((set, get) => ({
+/**
+ * Only state that survives a reload meaningfully is persisted. Time/audio are
+ * owned by WorldGui (mute has its own storage key), and the rest is
+ * per-session UI state or mirrors engine objects that aren't restored.
+ */
+const partialize = (s: SimulatorState) => ({
+  launchQueue: s.launchQueue,
+  nextQueueId: s.nextQueueId,
+  isQueueCollapsed: s.isQueueCollapsed,
+  isMiniWindowFolded: s.isMiniWindowFolded,
+});
+
+type PersistedState = ReturnType<typeof partialize>;
+
+type Vec3Like = { x: number; y: number; z: number };
+const toVector3 = (v: Vec3Like) => new THREE.Vector3(v.x, v.y, v.z);
+
+/** JSON turns Vector3s into plain objects; rebuild them on load. */
+const reviveQueue = (queue: LaunchQueueItem[] | undefined) =>
+  (queue ?? []).map((item) => ({
+    ...item,
+    startPosition: toVector3(item.startPosition),
+    targetPosition: toVector3(item.targetPosition),
+  }));
+
+const createStore = (
+  set: (
+    partial:
+      | Partial<SimulatorState>
+      | ((s: SimulatorState) => Partial<SimulatorState>)
+  ) => void,
+  get: () => SimulatorState
+): SimulatorState => ({
   // Time / audio
   timeMultiplier: 1,
   isTimeRunning: true,
@@ -210,7 +244,30 @@ export const useSimulatorStore = create<SimulatorState>()((set, get) => ({
   registerCommands: (commands) =>
     set((s) => ({ commands: { ...s.commands, ...commands } })),
   resetCommands: () => set({ commands: defaultCommands }),
-}));
+});
+
+export const useSimulatorStore = create<SimulatorState>()(
+  persist((set, get) => createStore(set, get), {
+    name: 'icbm-simulator-state',
+    version: 1,
+    storage: createJSONStorage(() => localStorage),
+    partialize,
+    merge: (persisted, current) => {
+      const saved = (persisted ?? {}) as Partial<PersistedState>;
+      const launchQueue = reviveQueue(saved.launchQueue);
+      return {
+        ...current,
+        ...saved,
+        launchQueue,
+        // Never reuse an id that is still in the queue
+        nextQueueId: Math.max(
+          saved.nextQueueId ?? 0,
+          ...launchQueue.map((item) => item.id + 1)
+        ),
+      };
+    },
+  })
+);
 
 /** Shorthand for imperative (non-React) access to the engine commands. */
 export const getCommands = () => useSimulatorStore.getState().commands;
