@@ -36,12 +36,25 @@
 					path = '/';
 				}
 
+				// Tag the redirect for GA4 on the new site (unless the link already has UTMs).
+				// utm_content keeps the original referrer host (e.g. www.google.com).
+				var search = window.location.search;
+				if (search.indexOf('utm_') === -1) {
+					var ref = 'direct';
+					try {
+						if (document.referrer) ref = new URL(document.referrer).hostname;
+					} catch (e) {}
+					search +=
+						(search ? '&' : '?') +
+						'utm_source=rally08.github.io' +
+						'&utm_medium=redirect' +
+						'&utm_campaign=site_move' +
+						'&utm_content=' +
+						encodeURIComponent(ref);
+				}
+
 				window.location.replace(
-					NEW_ORIGIN +
-						NEW_BASE +
-						path +
-						window.location.search +
-						window.location.hash,
+					NEW_ORIGIN + NEW_BASE + path + search + window.location.hash,
 				);
 			})();
 		</script>
