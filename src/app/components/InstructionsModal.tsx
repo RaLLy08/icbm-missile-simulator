@@ -2,9 +2,9 @@ import s from '../App.module.scss';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { INSTRUCTIONS_MENU, INSTRUCTIONS_PAGES } from '../instructions/pages';
 import {
-  backToInstructionsMenu,
-  closeInstructions,
-  openInstructionsPage,
+    backToInstructionsMenu,
+    closeInstructions,
+    openInstructionsPage,
 } from '../instructions/navigation';
 
 const InstructionsModal = () => {
@@ -57,7 +57,7 @@ const InstructionsModal = () => {
           {instructionsPage === INSTRUCTIONS_MENU && (
             <a
               className={s.sourceLink}
-              href="https://github.com/rally08/icbm-missile-simulator"
+              href="https://github.com/RaLLy08/icbm-missile-simulator"
               target="_blank"
               rel="noopener noreferrer"
             >

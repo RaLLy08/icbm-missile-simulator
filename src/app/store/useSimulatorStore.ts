@@ -249,7 +249,7 @@ const createStore = (
 
 export const useSimulatorStore = create<SimulatorState>()(
   persist((set, get) => createStore(set, get), {
-    name: 'icbm-simulator-state',
+    name: 'ballistic-missile-simulator-state',
     version: 1,
     storage: createJSONStorage(() => localStorage),
     partialize,
