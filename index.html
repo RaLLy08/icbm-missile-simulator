@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Ballistic Missile Simulator has moved</title>
+		<meta
+			name="description"
+			content="The ICBM Missile Simulator has moved to a new address: Ballistic Missile Simulator."
+		/>
+
+		<!-- Tell search engines the new URL is the authoritative one -->
+		<link
+			rel="canonical"
+			href="https://kichibayov.github.io/ballistic-missile-simulator/"
+		/>
+
+		<!-- Instant meta refresh: Google treats a 0-second refresh as a permanent (301-like) redirect -->
+		<meta
+			http-equiv="refresh"
+			content="0; url=https://kichibayov.github.io/ballistic-missile-simulator/"
+		/>
+
+		<!-- JS redirect keeps the sub-path, query string and hash, and doesn't add a history entry -->
+		<script>
+			(function () {
+				var OLD_BASE = '/icbm-missile-simulator';
+				var NEW_ORIGIN = 'https://kichibayov.github.io';
+				var NEW_BASE = '/ballistic-missile-simulator';
+
+				var path = window.location.pathname;
+				if (path.indexOf(OLD_BASE) === 0) {
+					path = path.slice(OLD_BASE.length);
+				}
+				if (path === '' || path === '/index.html' || path === '/404.html') {
+					path = '/';
+				}
+
+				window.location.replace(
+					NEW_ORIGIN +
+						NEW_BASE +
+						path +
+						window.location.search +
+						window.location.hash,
+				);
+			})();
+		</script>
+
+		<style>
+			body {
+				font-family:
+					system-ui,
+					-apple-system,
+					'Segoe UI',
+					Roboto,
+					sans-serif;
+				background: #0b0f17;
+				color: #e6e9ef;
+				display: flex;
+				min-height: 100vh;
+				margin: 0;
+				align-items: center;
+				justify-content: center;
+				text-align: center;
+				padding: 16px;
+			}
+			a {
+				color: #6cb6ff;
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<h1>This simulator has moved</h1>
+			<p>
+				The ICBM Missile Simulator now lives at
+				<a href="https://kichibayov.github.io/ballistic-missile-simulator/">
+					kichibayov.github.io/ballistic-missile-simulator </a
+				>.
+			</p>
+			<p>If you are not redirected automatically, follow the link above.</p>
+		</main>
+	</body>
+</html>
