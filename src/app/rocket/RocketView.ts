@@ -839,8 +839,12 @@ export default class RocketView {
   }
 
   private updateThrustDirectionFire() {
-    if (!this.thrustDirectionFireMesh || this.rocket.thrust.length() === 0) {
-      // Hide or reset when no thrust
+    if (
+      !this.thrustDirectionFireMesh ||
+      this.rocket.thrust.length() === 0 ||
+      !this.rocket.isGravityTurnActive
+    ) {
+      // Hide when no thrust or outside the gravity turn
       if (this.thrustDirectionFireMesh) {
         this.thrustDirectionFireMesh.visible = false;
       }

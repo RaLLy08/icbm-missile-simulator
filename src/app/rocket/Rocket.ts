@@ -98,6 +98,16 @@ class Rocket {
   thrustInclineAngle = 0;
 
   /**
+   * True while the gravity turn is in progress (started and not yet finished).
+   */
+  get isGravityTurnActive(): boolean {
+    return (
+      this.currentThrustInclineDuration > 0 &&
+      this.currentThrustInclineDuration <= this.thrustInclineMaxDuration
+    );
+  }
+
+  /**
    * The maximum acceleration the rocket can achieve (at burnout mass = payload).
    * @returns Maximum acceleration in km/s².
    */
