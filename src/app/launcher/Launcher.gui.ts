@@ -107,11 +107,7 @@ export default class LauncherGui {
     this.folder.addBinding(this, 'currentThrustInclineDuration', {
       label: 'Gravity Turn Duration',
       readonly: true,
-      format: (v) => {
-        const formatted = formatSeconds(v);
-
-        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
-      },
+      format: (v) => formatSeconds(v),
     });
 
     this.folder.addBinding(this, 'thrustInclineVelocity', {
@@ -128,11 +124,7 @@ export default class LauncherGui {
     this.folder.addBinding(this, 'fuelCombustionTime', {
       label: 'Fuel Combustion Time',
       readonly: true,
-      format: (v) => {
-        const formatted = formatSeconds(v);
-
-        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
-      },
+      format: (v) => formatSeconds(v),
     });
 
     this.folder.addBinding(this, 'payloadMass', {
@@ -184,11 +176,7 @@ export default class LauncherGui {
     this.folder.addBinding(this, 'flightTime', {
       label: 'Flight Time',
       readonly: true,
-      format: (v) => {
-        const formatted = formatSeconds(v);
-
-        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
-      },
+      format: (v) => formatSeconds(v),
     });
 
     this.folder.addBinding(this, 'rocketCount', {

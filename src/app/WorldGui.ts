@@ -115,9 +115,7 @@ export default class WorldGui {
   }
 
   static formatTimePassed(seconds: number) {
-    const formatted = formatSeconds(seconds);
-
-    return `${formatted.value.toFixed(1)} ${formatted.unit}`;
+    return formatSeconds(seconds);
   }
 
   update(tick = 1) {

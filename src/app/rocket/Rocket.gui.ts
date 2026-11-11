@@ -90,11 +90,7 @@ export default class RocketGui {
     this.folder.addBinding(this.rocket, 'fuelCombustionTime', {
       label: 'Fuel Combustion Time',
       readonly: true,
-      format: (v) => {
-        const formatted = formatSeconds(v);
-
-        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
-      },
+      format: (v) => formatSeconds(v),
     });
 
     this.folder.addBinding(this.rocket, 'currentTotalMass', {
@@ -136,11 +132,7 @@ export default class RocketGui {
     this.folder.addBinding(this.rocket, 'flightTime', {
       label: 'Flight Time',
       readonly: true,
-      format: (v) => {
-        const formatted = formatSeconds(v);
-
-        return `${formatted.value.toFixed(1)} ${formatted.unit}`;
-      },
+      format: (v) => formatSeconds(v),
     });
 
     this.folder

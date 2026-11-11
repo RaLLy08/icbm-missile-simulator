@@ -1,20 +1,51 @@
-export const formatSeconds = (
-  seconds: number
-): {
-  value: number;
-  unit: 'seconds' | 'min' | 'hr' | 'day';
-} => {
-  if (seconds >= 86400) {
-    // 60 * 60 * 24
-    return { value: parseFloat((seconds / 86400).toFixed(2)), unit: 'day' };
-  } else if (seconds >= 3600) {
-    // 60 * 60
-    return { value: parseFloat((seconds / 3600).toFixed(2)), unit: 'hr' };
-  } else if (seconds >= 60) {
-    return { value: parseFloat((seconds / 60).toFixed(2)), unit: 'min' };
-  } else {
-    return { value: seconds, unit: 'seconds' };
-  }
+export type DurationUnit = 'd' | 'h' | 'min' | 'sec';
+
+export type DurationPart = { value: number; unit: DurationUnit };
+
+export type Duration = {
+  negative: boolean;
+  /** Non-zero parts, largest unit first. Always has at least one entry. */
+  parts: DurationPart[];
+};
+
+/**
+ * Splits a duration in seconds into day/hour/minute/second parts,
+ * rounded to whole seconds. Zero parts are omitted (1h 0min 5sec -> 1h 5sec);
+ * a zero duration returns a single 0 sec part.
+ */
+export const splitSeconds = (seconds: number): Duration => {
+  const negative = seconds < 0;
+  const total = Math.round(Math.abs(seconds));
+
+  const parts: DurationPart[] = [
+    { value: Math.floor(total / 86400), unit: 'd' },
+    { value: Math.floor((total % 86400) / 3600), unit: 'h' },
+    { value: Math.floor((total % 3600) / 60), unit: 'min' },
+    { value: total % 60, unit: 'sec' },
+  ].filter((p): p is DurationPart => p.value !== 0);
+
+  // Zero duration: still return something to display ("00sec").
+  if (parts.length === 0) parts.push({ value: 0, unit: 'sec' });
+
+  return { negative, parts };
+};
+
+/** Pads a number to two digits: 5 -> "05". */
+export const pad2 = (value: number): string =>
+  value < 10 ? `0${value}` : String(value);
+
+/** Joins a Duration into a zero-padded string, e.g. "01h 02min 05sec". */
+export const joinDuration = (
+  { negative, parts }: Duration,
+  separator = ' '
+): string =>
+  (negative ? '-' : '') +
+  parts.map(({ value, unit }) => `${pad2(value)}${unit}`).join(separator);
+
+/** Formats seconds as e.g. "01h 02min 10sec". */
+export const formatSeconds = (seconds: number): string => {
+  if (!Number.isFinite(seconds)) return '—';
+  return joinDuration(splitSeconds(seconds));
 };
 
 export const toExponentGrowth = (

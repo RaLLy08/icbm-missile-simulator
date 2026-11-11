@@ -3,7 +3,7 @@ import type { ListBladeApi } from 'tweakpane';
 import RocketView from '../rocket/RocketView';
 import RocketGui from '../rocket/Rocket.gui';
 import FrameTimeManager from '../helpers/FrameTimeManager';
-import { announceLaunch } from '../helpers/Speech';
+import { announceEstimatedFlightTime, announceLaunch } from '../helpers/Speech';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import type { LaunchQueueItem } from '../store/types';
 import { removeTrigger, type SimulationContext } from './types';
@@ -149,6 +149,8 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
 
     // Same number as the "Missile N" label in the GUI
     announceLaunch(rocket.id);
+    // From the trajectory calculation this launch was queued with
+    announceEstimatedFlightTime(nextLaunch.candidate?.flightTime);
 
     // Physics/view must update before the GUI so the tracking camera
     // renders the current frame's missile position.

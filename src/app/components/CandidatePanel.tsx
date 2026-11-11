@@ -11,10 +11,7 @@ const formatMissDistance = (km: number) => {
   return `${Math.round(km)} km`;
 };
 
-const formatDuration = (seconds: number) => {
-  const { value, unit } = formatSeconds(seconds);
-  return `${value.toFixed(1)} ${unit}`;
-};
+const formatDuration = (seconds: number) => formatSeconds(seconds);
 
 const getCandidateRows = (c: BestCandidate) => [
   {
