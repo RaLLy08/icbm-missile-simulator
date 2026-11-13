@@ -5,14 +5,30 @@ export interface CalculationRange {
   max: number;
 }
 
+export interface StageCalculationBounds {
+  stage: number;
+  exhaustVelocity: CalculationRange; // km/s
+  massFlowRate: CalculationRange; // kg/s
+  fuelMass: CalculationRange; // kg
+}
+
 export interface CalculationBounds {
   startInclineAfterDistance: CalculationRange; // km
   thrustInclineMaxDuration: CalculationRange; // seconds
   thrustInclineVelocityDeg: CalculationRange; // degrees per second
-  fuelMass: CalculationRange; // kg
-  exhaustVelocity: CalculationRange; // km/s
-  massFlowRate: CalculationRange; // kg/s
+  /** Burnt in ascending `stage` order */
+  stages: StageCalculationBounds[];
 }
+
+const cloneStageBounds = (
+  s: StageCalculationBounds,
+  stage: number
+): StageCalculationBounds => ({
+  stage,
+  exhaustVelocity: { ...s.exhaustVelocity },
+  massFlowRate: { ...s.massFlowRate },
+  fuelMass: { ...s.fuelMass },
+});
 
 export default class LauncherGui {
   private folder: FolderApi;
@@ -34,10 +50,24 @@ export default class LauncherGui {
     startInclineAfterDistance: { min: 1, max: 4 },
     thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
     thrustInclineVelocityDeg: { min: 0, max: 20 },
-    fuelMass: { min: 300, max: 70000 },
-    exhaustVelocity: { min: 1, max: 3 },
-    massFlowRate: { min: 1, max: 100 },
+    stages: [
+      {
+        stage: 0,
+        exhaustVelocity: { min: 2, max: 4 },
+        massFlowRate: { min: 100, max: 400 },
+        fuelMass: { min: 1000, max: 30000 },
+      },
+      {
+        stage: 1,
+        exhaustVelocity: { min: 2, max: 4 },
+        massFlowRate: { min: 100, max: 200 },
+        fuelMass: { min: 1000, max: 4000 },
+      },
+    ],
   };
+
+  private stagesFolder: FolderApi | null = null;
+  private stageFolders: FolderApi[] = [];
 
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
@@ -119,27 +149,63 @@ export default class LauncherGui {
       '°/s',
       { min: 0, max: 90, step: 0.1 }
     );
-    this.addRangeBindings(
-      calculationFolder,
-      bounds.fuelMass,
-      'Fuel Mass',
-      'kg',
-      { min: 0, step: 100 }
-    );
-    this.addRangeBindings(
-      calculationFolder,
-      bounds.exhaustVelocity,
-      'Exhaust Velocity (vₑ)',
-      'km/s',
-      { min: 0, step: 0.1 }
-    );
-    this.addRangeBindings(
-      calculationFolder,
-      bounds.massFlowRate,
-      'Mass Flow Rate (ṁ)',
-      'kg/s',
-      { min: 0, step: 1 }
-    );
+
+    const stagesFolder = calculationFolder.addFolder({
+      title: 'Stages',
+      expanded: true,
+    });
+    this.stagesFolder = stagesFolder;
+
+    stagesFolder.addButton({ title: 'Add Stage' }).on('click', () => {
+      const stages = this.calculationBounds.stages;
+      stages.push(cloneStageBounds(stages[stages.length - 1], stages.length));
+      this.renderStages();
+    });
+
+    stagesFolder.addButton({ title: 'Remove Last Stage' }).on('click', () => {
+      if (this.calculationBounds.stages.length <= 1) return;
+      this.calculationBounds.stages.pop();
+      this.renderStages();
+    });
+
+    this.renderStages();
+  }
+
+  /** Rebuilds one folder of search ranges per stage. */
+  private renderStages() {
+    const stagesFolder = this.stagesFolder;
+    if (!stagesFolder) return;
+
+    this.stageFolders.forEach((folder) => folder.dispose());
+
+    this.stageFolders = this.calculationBounds.stages.map((stage, i) => {
+      // Folders are appended after the add/remove buttons
+      const folder = stagesFolder.addFolder({
+        title: `Stage ${i + 1}`,
+        expanded: true,
+      });
+
+      this.addRangeBindings(
+        folder,
+        stage.exhaustVelocity,
+        'Exhaust Velocity (vₑ)',
+        'km/s',
+        { min: 0, step: 0.1 }
+      );
+      this.addRangeBindings(
+        folder,
+        stage.massFlowRate,
+        'Mass Flow Rate (ṁ)',
+        'kg/s',
+        { min: 0.1, step: 1 }
+      );
+      this.addRangeBindings(folder, stage.fuelMass, 'Fuel Mass', 'kg', {
+        min: 0,
+        step: 100,
+      });
+
+      return folder;
+    });
   }
 
   /** Adds min/max inputs for a search range, keeping min <= max. */

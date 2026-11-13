@@ -55,8 +55,19 @@ class Rocket {
    */
   hasLanded = false;
 
+  /**
+   * Time needed to burn all fuel.
+   * Unit: seconds
+   */
   fuelCombustionTime = 0;
   currentTotalMass = 0;
+
+  /**
+   * Fuel burnt since launch. Tracked incrementally, so the engine
+   * parameters may change during the flight (see MultiStageRocket).
+   * Unit: kg
+   */
+  burntFuel = 0;
 
   /**
    * Creates a new Rocket instance.
@@ -80,15 +91,21 @@ class Rocket {
     public readonly thrustInclineVelocity: number = THREE.MathUtils.degToRad(
       0.5
     ),
-    public readonly fuelMass = 18400,
-    public readonly exhaustVelocity = 3, // km/s
-    public readonly massFlowRate = 50, // kg/s
+    public fuelMass = 18400,
+    public exhaustVelocity = 3, // km/s
+    public massFlowRate = 50, // kg/s
     public readonly payloadMass = 800 // kg
   ) {
     this.initialPosition = initialPosition;
     this.position.copy(this.initialPosition);
 
     this.fuelCombustionTime = this.fuelMass / this.massFlowRate;
+    this.currentTotalMass = this.payloadMass + this.fuelMass;
+  }
+
+  /** Unit: kg */
+  get remainingFuel() {
+    return Math.max(this.fuelMass - this.burntFuel, 0);
   }
 
   currentThrustInclineDuration = 0;
@@ -111,11 +128,11 @@ class Rocket {
    * True once all fuel is burnt and the engines have stopped.
    */
   get isEngineCutoff(): boolean {
-    return this.flightTime >= this.fuelCombustionTime;
+    return this.remainingFuel <= 0;
   }
 
   /**
-   * The maximum acceleration the rocket can achieve (at burnout mass = payload).
+   * The maximum acceleration the current engine can achieve (at burnout mass = payload).
    * @returns Maximum acceleration in km/s².
    */
   get maxAcceleration() {
@@ -127,23 +144,23 @@ class Rocket {
    * @param targetFlatThrustDirection The target direction for the thrust, in 3D space.
    */
   setThrust(tick: number, targetFlatThrustDirection: THREE.Vector3) {
-    const m0 = this.fuelMass + this.payloadMass; // Initial mass (kg)
-    const mf = this.payloadMass; // Final mass (kg) after fuel burn
     const ve = this.exhaustVelocity; // Exhaust velocity (km/s)
     const dmdt = this.massFlowRate; // Mass flow rate (kg/s)
     const F = dmdt * ve; // Thrust (kg*(km/s²))
-    const mT = m0 - dmdt * this.flightTime; // Current mass of the rocket (kg);
+    const remainingFuel = this.remainingFuel;
+    const mT = this.payloadMass + remainingFuel; // Current mass of the rocket (kg)
 
-    const thrust = F / mT;
+    this.currentTotalMass = mT;
 
-    if (mT >= mf) {
-      this.currentTotalMass = mT;
-    }
-
-    if (mT <= mf) {
+    if (remainingFuel <= 0) {
       this.thrust.set(0, 0, 0);
       return;
     }
+
+    // Burn fuel for this step; the thrust uses the mass at its start
+    this.burntFuel += Math.min(dmdt * tick, remainingFuel);
+
+    const thrust = F / mT;
 
     // --- 1. Initial thrust direction is opposite of gravity ---
     // Reuse _tempVec1 for gravityDirection

@@ -1,4 +1,4 @@
-import Rocket from '../rocket/Rocket';
+import MultiStageRocket from '../rocket/MultiStageRocket';
 import RocketView from '../rocket/RocketView';
 import WorldGui from '../WorldGui';
 
@@ -12,7 +12,7 @@ export default class FrameTimeManager {
   stepProgress = 0;
 
   constructor(
-    private rocket: Rocket,
+    private rocket: MultiStageRocket,
     private rocketView: RocketView,
     private worldGui: WorldGui
   ) {}

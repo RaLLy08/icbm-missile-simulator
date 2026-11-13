@@ -13,6 +13,35 @@ const formatMissDistance = (km: number) => {
 
 const formatDuration = (seconds: number) => formatSeconds(seconds);
 
+const getStageRows = (c: BestCandidate) =>
+  (
+    [] as { key: string; label: string; value: string; highlight?: boolean }[]
+  ).concat(
+    ...c.stages.map((stage, i) => [
+      { key: `stage${i}`, label: `Stage ${i + 1}`, value: '', highlight: true },
+      {
+        key: `stage${i}Fuel`,
+        label: 'Fuel Mass',
+        value: `${stage.fuelMass.toFixed(1)} kg`,
+      },
+      {
+        key: `stage${i}Flow`,
+        label: 'Mass Flow Rate (ṁ)',
+        value: `${stage.massFlowRate.toFixed(1)} kg/s`,
+      },
+      {
+        key: `stage${i}Exhaust`,
+        label: 'Exhaust Velocity (vₑ)',
+        value: `${stage.exhaustVelocity.toFixed(2)} km/s`,
+      },
+      {
+        key: `stage${i}Burn`,
+        label: 'Burn Time',
+        value: formatDuration(stage.fuelMass / stage.massFlowRate),
+      },
+    ])
+  );
+
 const getCandidateRows = (c: BestCandidate) => [
   {
     key: 'miss',
@@ -37,26 +66,22 @@ const getCandidateRows = (c: BestCandidate) => [
     label: 'Gravity Turn Rate',
     value: `${THREE.MathUtils.radToDeg(c.thrustInclineVelocity).toFixed(2)}°/s`,
   },
-  { key: 'fuel', label: 'Fuel Mass', value: `${c.fuelMass.toFixed(1)} kg` },
   {
     key: 'payload',
     label: 'Payload Mass',
     value: `${c.payloadMass.toFixed(1)} kg`,
   },
   {
-    key: 'flow',
-    label: 'Mass Flow Rate (ṁ)',
-    value: `${c.massFlowRate.toFixed(1)} kg/s`,
+    key: 'fuel',
+    label: 'Total Fuel Mass',
+    value: `${c.fuelMass.toFixed(1)} kg`,
   },
-  {
-    key: 'exhaust',
-    label: 'Exhaust Velocity (vₑ)',
-    value: `${c.exhaustVelocity.toFixed(2)} km/s`,
-  },
+  { key: 'dStages', label: null, value: null },
+  ...getStageRows(c),
   { key: 'd2', label: null, value: null },
   {
     key: 'burn',
-    label: 'Burn Time',
+    label: 'Total Burn Time',
     value: formatDuration(c.fuelCombustionTime),
   },
   {

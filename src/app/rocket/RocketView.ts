@@ -437,6 +437,15 @@ export class TrailView {
 //   next = new THREE.Vector3();
 // }
 
+export type RocketDimensions = {
+  /** Main cylinder */
+  body: { height: number; radius: number };
+  /** Nose cone */
+  head: { height: number; radius: number };
+  /** Exhaust flame (truncated cone) */
+  fire: { height: number; topRadius: number; bottomRadius: number };
+};
+
 export default class RocketView {
   group: THREE.Group;
   private arrows: THREE.ArrowHelper[] = [];
@@ -454,9 +463,29 @@ export default class RocketView {
   prevVelocity = new THREE.Vector3();
   prevThrust = new THREE.Vector3();
 
-  size = 0.04; // km
-  private arrowLength = 2 * this.size;
-  private burningFireSize = 8 * this.size;
+  /** Rocket geometry in km (at size multiplier = 1). */
+  static readonly BASE_DIMENSIONS: RocketDimensions = {
+    body: { height: 1, radius: 0.1 },
+    head: { height: 0.3, radius: 0.1 },
+    fire: { height: 1, topRadius: 0.06, bottomRadius: 0.14 },
+  };
+
+  dimensions: RocketDimensions = RocketView.scaleDimensions(
+    RocketView.BASE_DIMENSIONS,
+    1
+  );
+
+  /** Reference length of the rocket (body height), used for camera distances. */
+  get size() {
+    return this.dimensions.body.height;
+  }
+
+  /** Full length of the rocket, from the body bottom to the head tip. */
+  get length() {
+    return this.dimensions.body.height + this.dimensions.head.height;
+  }
+
+  private arrowLength = 2 * this.dimensions.body.height;
 
   private lerpAlpha = 1;
 
@@ -474,10 +503,32 @@ export default class RocketView {
     this.explosionEffect = new ExplosionEffect(this.scene, 5);
   }
 
-  setSize(size: number) {
-    this.size = size;
-    this.arrowLength = 2 * this.size;
-    this.burningFireSize = 1 * this.size;
+  /** Scale all base dimensions by `multiplier`. Call before `init()`. */
+  setSize(multiplier: number) {
+    this.setDimensions(
+      RocketView.scaleDimensions(RocketView.BASE_DIMENSIONS, multiplier)
+    );
+  }
+
+  /** Set explicit body / head / fire dimensions (km). Call before `init()`. */
+  setDimensions(dimensions: RocketDimensions) {
+    this.dimensions = dimensions;
+    this.arrowLength = 2 * dimensions.body.height;
+  }
+
+  private static scaleDimensions(
+    d: RocketDimensions,
+    k: number
+  ): RocketDimensions {
+    return {
+      body: { height: d.body.height * k, radius: d.body.radius * k },
+      head: { height: d.head.height * k, radius: d.head.radius * k },
+      fire: {
+        height: d.fire.height * k,
+        topRadius: d.fire.topRadius * k,
+        bottomRadius: d.fire.bottomRadius * k,
+      },
+    };
   }
 
   init() {
@@ -493,8 +544,9 @@ export default class RocketView {
 
     // ------------------------------------------------------------------------
     // === Rocket Body ===
-    const bodyRadius = 0.1 * this.size;
-    const bodyHeight = this.size;
+    const { body, head, fire } = this.dimensions;
+    const bodyRadius = body.radius;
+    const bodyHeight = body.height;
 
     const bodyGeometry = new THREE.CylinderGeometry(
       bodyRadius,
@@ -509,8 +561,8 @@ export default class RocketView {
 
     // ------------------------------------------------------------------------
     // === Rocket Nose Cone ===
-    const coneHeight = 0.3 * bodyHeight;
-    const coneRadius = bodyRadius; // same radius as the body
+    const coneHeight = head.height;
+    const coneRadius = head.radius;
     const coneGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 16);
     const coneMaterial = new THREE.MeshStandardMaterial({ color: coneColor });
     const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
@@ -554,9 +606,9 @@ export default class RocketView {
       opacity: 0.6,
     });
     const burningFireGeometry = new THREE.CylinderGeometry(
-      0.06 * this.burningFireSize,
-      0.14 * this.burningFireSize,
-      this.burningFireSize,
+      fire.topRadius,
+      fire.bottomRadius,
+      fire.height,
       16
     );
     const burningFireMesh = new THREE.Mesh(
@@ -564,7 +616,8 @@ export default class RocketView {
       burningFireMaterial
     );
 
-    burningFireMesh.position.y = -0.5 * this.size;
+    // Top of the flame touches the bottom of the body (y = 0)
+    burningFireMesh.position.y = -fire.height / 2;
 
     this.burningFireMesh = burningFireMesh;
     this.group.add(this.burningFireMesh);
@@ -575,7 +628,7 @@ export default class RocketView {
       transparent: true,
       opacity: 0.7,
     });
-    const thrustFireSize = 0.4 * this.size; // Smaller fixed size
+    const thrustFireSize = 0.4 * bodyHeight; // Smaller fixed size
     const thrustFireGeometry = new THREE.CylinderGeometry(
       0.04 * thrustFireSize,
       0.1 * thrustFireSize,
@@ -587,7 +640,7 @@ export default class RocketView {
       thrustFireMaterial
     );
 
-    thrustDirectionFireMesh.position.y = -0.5 * this.size;
+    thrustDirectionFireMesh.position.y = -0.5 * bodyHeight;
 
     this.thrustDirectionFireMesh = thrustDirectionFireMesh;
     this.group.add(this.thrustDirectionFireMesh);
@@ -861,7 +914,7 @@ export default class RocketView {
     const thrust = this.getThrust();
 
     // Fixed small size for thrust direction indicator
-    const thrustFireSize = 0.4 * this.size;
+    const thrustFireSize = 0.4 * this.dimensions.body.height;
 
     // If there's velocity, calculate the angle between velocity and thrust
     if (velocity.length() > 0) {

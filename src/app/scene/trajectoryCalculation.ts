@@ -1,5 +1,6 @@
 import type * as THREE from 'three';
 import Earth from '../earth/Earth';
+import type MultiStageRocket from '../rocket/MultiStageRocket';
 import { announceCalculatingTrajectory } from '../helpers/Speech';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import type { BestCandidate } from '../store/types';
@@ -12,17 +13,10 @@ const toCandidate = (
   generation: number,
   targetPos: THREE.Vector3
 ): BestCandidate | null => {
-  const rocket = bestGenome?.rocket;
-  if (!rocket) return null;
-
-  const [
-    startInclineAfterDistance,
-    thrustInclineMaxDuration,
-    thrustInclineVelocity,
-    fuelMass,
-    exhaustVelocity,
-    massFlowRate,
-  ] = bestGenome;
+  const multiStageRocket: MultiStageRocket | undefined =
+    bestGenome?.multiStageRocket;
+  if (!multiStageRocket) return null;
+  const { rocket } = multiStageRocket;
 
   return {
     generation,
@@ -30,12 +24,11 @@ const toCandidate = (
     // Real impact distance, unlike fitness which may also include
     // flight time when "minimize flight time" is enabled
     missDistance: rocket.position.distanceTo(targetPos),
-    startInclineAfterDistance,
-    thrustInclineMaxDuration,
-    thrustInclineVelocity,
-    fuelMass,
-    exhaustVelocity,
-    massFlowRate,
+    startInclineAfterDistance: rocket.startInclineAfterDistance,
+    thrustInclineMaxDuration: rocket.thrustInclineMaxDuration,
+    thrustInclineVelocity: rocket.thrustInclineVelocity,
+    stages: multiStageRocket.stages.map((s) => ({ ...s })),
+    fuelMass: rocket.fuelMass,
     payloadMass: rocket.payloadMass,
     fuelCombustionTime: rocket.fuelCombustionTime,
     maxAltitude: rocket.maxAltitude,
@@ -84,9 +77,7 @@ export const createTrajectoryCalculator =
           startInclineAfterDistance: launcher.startInclineAfterDistance,
           thrustInclineMaxDuration: launcher.thrustInclineMaxDuration,
           thrustInclineVelocity: launcher.thrustInclineVelocity,
-          fuelMass: launcher.fuelMass,
-          exhaustVelocity: launcher.exhaustVelocity,
-          massFlowRate: launcher.massFlowRate,
+          stages: launcher.stages.map((s) => ({ ...s })),
         },
         candidate: lastCandidate,
       });

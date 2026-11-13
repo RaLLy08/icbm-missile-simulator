@@ -1,15 +1,69 @@
 import type Earth from './earth/Earth';
 import DE from './ga/DE';
 import Rocket from './rocket/Rocket';
+import MultiStageRocket, { type RocketStage } from './rocket/MultiStageRocket';
 import * as THREE from 'three';
 
 const randFloat = (min: number, max: number) => {
   return Math.random() * (max - min) + min;
 };
 
-type ParamConstrain = {
+export type ParamConstrain = {
   min: number;
   max: number;
+};
+
+/** Search range of one engine stage. Stages burn in ascending `stage` order. */
+export type StageConstraint = {
+  stage: number;
+  exhaustVelocity: ParamConstrain;
+  massFlowRate: ParamConstrain;
+  fuelMass: ParamConstrain;
+};
+
+export type RocketConstraints = {
+  startInclineAfterDistance: ParamConstrain;
+  thrustInclineMaxDuration: ParamConstrain;
+  thrustInclineVelocity: ParamConstrain;
+  stages: StageConstraint[];
+};
+
+/** Genes before the per-stage genes. */
+const GUIDANCE_GENES = 3;
+/** Genes per stage: exhaustVelocity, massFlowRate, fuelMass. */
+const STAGE_GENES = 3;
+
+export type DecodedGenome = {
+  startInclineAfterDistance: number;
+  thrustInclineMaxDuration: number;
+  thrustInclineVelocity: number;
+  stages: RocketStage[];
+};
+
+/**
+ * Genome layout:
+ * [startInclineAfterDistance, thrustInclineMaxDuration, thrustInclineVelocity,
+ *  ...per stage: exhaustVelocity, massFlowRate, fuelMass]
+ */
+export const decodeGenome = (genome: ArrayLike<number>): DecodedGenome => {
+  const stageCount = Math.floor((genome.length - GUIDANCE_GENES) / STAGE_GENES);
+  const stages: RocketStage[] = [];
+
+  for (let i = 0; i < stageCount; i++) {
+    const offset = GUIDANCE_GENES + i * STAGE_GENES;
+    stages.push({
+      exhaustVelocity: genome[offset],
+      massFlowRate: genome[offset + 1],
+      fuelMass: genome[offset + 2],
+    });
+  }
+
+  return {
+    startInclineAfterDistance: genome[0],
+    thrustInclineMaxDuration: genome[1],
+    thrustInclineVelocity: genome[2],
+    stages,
+  };
 };
 
 type DEParams = {
@@ -40,14 +94,7 @@ export class FlightTrajectory {
     private earth: Earth,
     private start: THREE.Vector3,
     private target: THREE.Vector3,
-    private rocketConstrains: {
-      startInclineAfterDistance: ParamConstrain;
-      thrustInclineMaxDuration: ParamConstrain;
-      thrustInclineVelocity: ParamConstrain;
-      fuelMass: ParamConstrain;
-      exhaustVelocity: ParamConstrain;
-      massFlowRate: ParamConstrain;
-    },
+    private rocketConstrains: RocketConstraints,
     private flightConstraints: {
       maxDistanceThreshold?: number; // minimize
       maxFlightTimeSeconds: number;
@@ -65,10 +112,15 @@ export class FlightTrajectory {
       );
     }
 
+    if (this.rocketConstrains.stages.length === 0) {
+      throw new Error('At least one rocket stage constraint is required.');
+    }
+
     this.elapsedTime = 0;
     const startTime = performance.now();
 
     const populationSize = this.increaseCalculationAccuracy ? 200 : 80;
+    const genomeConstraints = this.genomeConstraints();
 
     const bestGenome = await this.runDe(
       {
@@ -77,16 +129,9 @@ export class FlightTrajectory {
         mutationRate: 0.96,
         bestSurvivePercent: 0.8,
         elite: 0.1,
-        genomeLength: 6,
+        genomeLength: genomeConstraints.length,
         fitnessFunction: this.fitnessFunction,
-        genomeConstraints: [
-          this.rocketConstrains.startInclineAfterDistance,
-          this.rocketConstrains.thrustInclineMaxDuration,
-          this.rocketConstrains.thrustInclineVelocity,
-          this.rocketConstrains.fuelMass,
-          this.rocketConstrains.exhaustVelocity,
-          this.rocketConstrains.massFlowRate,
-        ],
+        genomeConstraints,
         randMutationFunction: () => randFloat(-2, 2),
         CR: 0.9,
         scalingFactor: 0.4,
@@ -98,6 +143,26 @@ export class FlightTrajectory {
 
     return bestGenome;
   }
+
+  /** Flattens the constraints in the genome layout of `decodeGenome`. */
+  private genomeConstraints = (): ParamConstrain[] => {
+    const { startInclineAfterDistance, thrustInclineMaxDuration, stages } =
+      this.rocketConstrains;
+
+    const stageConstraints: ParamConstrain[] = [];
+    [...stages]
+      .sort((a, b) => a.stage - b.stage)
+      .forEach((s) => {
+        stageConstraints.push(s.exhaustVelocity, s.massFlowRate, s.fuelMass);
+      });
+
+    return [
+      startInclineAfterDistance,
+      thrustInclineMaxDuration,
+      this.rocketConstrains.thrustInclineVelocity,
+      ...stageConstraints,
+    ];
+  };
 
   private runDe = async (
     deParams: DEParams,
@@ -153,27 +218,24 @@ export class FlightTrajectory {
     });
   };
 
-  private createRocket = (genome: any) => {
-    const [
+  private createMultistageRocket = (genome: any) => {
+    const {
       startInclineAfterDistance,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
-      fuelMass,
-      exhaustVelocity,
-      massFlowRate,
-    ] = genome;
+      stages,
+    } = decodeGenome(genome);
 
-    return new Rocket(
+    const rocket = new Rocket(
       this.earth,
       this.start,
       this.target,
       startInclineAfterDistance,
       thrustInclineMaxDuration,
-      thrustInclineVelocity,
-      fuelMass,
-      exhaustVelocity,
-      massFlowRate
+      thrustInclineVelocity
     );
+
+    return new MultiStageRocket(rocket, stages);
   };
 
   /**
@@ -181,20 +243,25 @@ export class FlightTrajectory {
    * the rocket position after every step, for visualizing the flight path.
    */
   traceTrajectory = (genome: any) => {
-    const rocket = this.createRocket(genome);
+    const multiStageRocket = this.createMultistageRocket(genome);
+    const { rocket } = multiStageRocket;
     const points: THREE.Vector3[] = [rocket.position.clone()];
 
-    this.simulateFlight(rocket, 1, () => points.push(rocket.position.clone()));
+    this.simulateFlight(multiStageRocket, 1, () =>
+      points.push(rocket.position.clone())
+    );
 
     return points;
   };
 
   private fitnessFunction = (genome: any) => {
-    const rocket = this.createRocket(genome);
+    const multiStageRocket = this.createMultistageRocket(genome);
+    const { rocket } = multiStageRocket;
 
-    this.simulateFlight(rocket);
+    this.simulateFlight(multiStageRocket);
 
     genome.rocket = rocket;
+    genome.multiStageRocket = multiStageRocket;
 
     // Use cached vector for distance calculation to avoid allocation
     let fitness = this._tempDistanceVec
@@ -209,15 +276,16 @@ export class FlightTrajectory {
   };
 
   private simulateFlight = (
-    rocket: Rocket,
+    multiStageRocket: MultiStageRocket,
     stepInSeconds = 1,
     onStep?: () => void
   ) => {
     const { maxFlightTimeSeconds, maxDistanceThreshold, maxAltitude } =
       this.flightConstraints;
+    const { rocket } = multiStageRocket;
 
     for (let i = 0; i < maxFlightTimeSeconds / stepInSeconds; i++) {
-      rocket.update(stepInSeconds);
+      multiStageRocket.update(stepInSeconds);
       onStep?.();
 
       const traveledDistance = rocket.travelledDistance.length();

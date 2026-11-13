@@ -1,4 +1,5 @@
 import type * as THREE from 'three';
+import type { RocketStage } from '../rocket/MultiStageRocket';
 
 export type GeoPosition = {
   latitude: number;
@@ -12,9 +13,9 @@ export type BestCandidate = {
   startInclineAfterDistance: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
+  stages: RocketStage[];
+  /** Total fuel mass of all stages */
   fuelMass: number;
-  exhaustVelocity: number;
-  massFlowRate: number;
   payloadMass: number;
   fuelCombustionTime: number;
   maxAltitude: number;
@@ -26,9 +27,7 @@ export type TrajectoryParams = {
   startInclineAfterDistance: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
-  fuelMass: number;
-  exhaustVelocity: number;
-  massFlowRate: number;
+  stages: RocketStage[];
 };
 
 export type LaunchQueueItem = {

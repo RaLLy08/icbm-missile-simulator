@@ -317,8 +317,8 @@ export default class RocketTrackingView {
     const { group, size, earthView } = this.rocketView;
     const earthCenter = earthView.mesh.position;
 
-    // Just ahead of the nose cone tip (body = size, cone = 0.3 * size)
-    this.camera.position.set(0, size * 1.35, 0);
+    // Just ahead of the nose cone tip
+    this.camera.position.set(0, this.rocketView.length + size * 0.05, 0);
     group.localToWorld(this.camera.position);
 
     const forward = new THREE.Vector3(0, 1, 0)

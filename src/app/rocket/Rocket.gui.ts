@@ -1,5 +1,6 @@
 import { FolderApi, Pane } from 'tweakpane';
 import Rocket from './Rocket';
+import MultiStageRocket from './MultiStageRocket';
 import RocketView from './RocketView';
 import * as THREE from 'three';
 import { formatSeconds } from 'app/utils';
@@ -21,6 +22,8 @@ export default class RocketGui {
 
   onFocusCameraClick: () => void = () => {};
 
+  private readonly rocket: Rocket;
+
   // The tracking camera's smoothing runs on wall-clock time, also while
   // time is paused (its delta is only used for the camera).
   readonly usesRealTime = true;
@@ -28,10 +31,12 @@ export default class RocketGui {
   constructor(
     private readonly pane: Pane,
     private readonly paneContainer: HTMLElement,
-    private readonly rocket: Rocket,
+    private readonly multiStageRocket: MultiStageRocket,
     private readonly rocketView: RocketView,
     scene: THREE.Scene
   ) {
+    this.rocket = multiStageRocket.rocket;
+
     this.folder = this.pane.addFolder({
       title: `Missile ${this.rocket.id}`,
       expanded: true,
@@ -86,6 +91,17 @@ export default class RocketGui {
       label: 'Percent of Fuel',
       readonly: true,
       format: (v) => v.toFixed(2) + '%',
+    });
+
+    this.folder.addBinding(this.multiStageRocket, 'currentStageIndex', {
+      label: 'Stage',
+      readonly: true,
+      format: (v) => {
+        const count = this.multiStageRocket.stages.length;
+        return v >= count
+          ? `burnt out (${count} stages)`
+          : `${v + 1} / ${count}`;
+      },
     });
 
     this.folder.addBinding(this.rocket, 'fuelCombustionTime', {
@@ -193,10 +209,9 @@ export default class RocketGui {
     this.gravityForce = this.rocket.gravityForce.length();
     this.travelledDistance = this.rocket.travelledDistance.length();
     this.percentOfFuel =
-      100 -
-      (Math.min(this.rocket.flightTime, this.rocket.fuelCombustionTime) /
-        this.rocket.fuelCombustionTime) *
-        100;
+      this.rocket.fuelMass > 0
+        ? (this.rocket.remainingFuel / this.rocket.fuelMass) * 100
+        : 0;
 
     this.velocityToGravityAngle =
       this.rocket.velocity.length() > 0

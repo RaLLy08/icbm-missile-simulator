@@ -18,9 +18,7 @@ const applyQueueItemToLauncher = (
   launcher.startInclineAfterDistance = p.startInclineAfterDistance;
   launcher.thrustInclineMaxDuration = p.thrustInclineMaxDuration;
   launcher.thrustInclineVelocity = p.thrustInclineVelocity;
-  launcher.fuelMass = p.fuelMass;
-  launcher.exhaustVelocity = p.exhaustVelocity;
-  launcher.massFlowRate = p.massFlowRate;
+  launcher.stages = p.stages.map((s) => ({ ...s }));
 };
 
 /** Everything one launch adds to the scene, so it can be removed again. */
@@ -83,9 +81,10 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
   };
 
   const showRocketGui = (
-    rocket: NonNullable<ReturnType<typeof launcher.createRocket>>,
+    multiStageRocket: NonNullable<ReturnType<typeof launcher.createRocket>>,
     rocketView: RocketView
   ) => {
+    const { rocket } = multiStageRocket;
     if (activeRocketGui) {
       activeRocketGui.remove();
       removeTrigger(updateTriggers, activeRocketGui);
@@ -94,7 +93,7 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     const rocketGui = new RocketGui(
       rocketGuiPane,
       rocketGuiContainer,
-      rocket,
+      multiStageRocket,
       rocketView,
       scene
     );
@@ -126,12 +125,13 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     }
 
     applyQueueItemToLauncher(launcher, nextLaunch);
-    const rocket = launcher.createRocket();
-    if (!rocket) {
+    const multiStageRocket = launcher.createRocket();
+    if (!multiStageRocket) {
       // Keep the item queued so the user can retry
       console.error('Rocket could not be created. Check launcher settings.');
       return;
     }
+    const { rocket } = multiStageRocket;
     store().dequeueLaunch();
 
     const rocketView = new RocketView(rocket, scene, earthView);
@@ -154,12 +154,18 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
 
     // Physics/view must update before the GUI so the tracking camera
     // renders the current frame's missile position.
-    const frameTimeManager = new FrameTimeManager(rocket, rocketView, worldGui);
+    const frameTimeManager = new FrameTimeManager(
+      multiStageRocket,
+      rocketView,
+      worldGui
+    );
     updateTriggers.push(frameTimeManager);
     launchedRockets.push({ rocketView, frameTimeManager, markers });
 
-    missileActivators.set(rocket.id, () => showRocketGui(rocket, rocketView));
-    showRocketGui(rocket, rocketView);
+    missileActivators.set(rocket.id, () =>
+      showRocketGui(multiStageRocket, rocketView)
+    );
+    showRocketGui(multiStageRocket, rocketView);
     updateMissileSelector(rocket.id);
   };
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import Earth from './earth/Earth';
-import { FlightTrajectory } from './FlightTrajectory';
+import { FlightTrajectory, decodeGenome } from './FlightTrajectory';
 
 describe('FlightTrajectory', () => {
   const earth = new Earth();
@@ -19,9 +19,20 @@ describe('FlightTrajectory', () => {
           min: THREE.MathUtils.degToRad(0),
           max: THREE.MathUtils.degToRad(20),
         },
-        fuelMass: { min: 300, max: 70000 },
-        exhaustVelocity: { min: 1, max: 3 },
-        massFlowRate: { min: 1, max: 100 },
+        stages: [
+          {
+            stage: 0,
+            exhaustVelocity: { min: 2, max: 4 },
+            massFlowRate: { min: 100, max: 400 },
+            fuelMass: { min: 1000, max: 30000 },
+          },
+          {
+            stage: 1,
+            exhaustVelocity: { min: 2, max: 4 },
+            massFlowRate: { min: 100, max: 200 },
+            fuelMass: { min: 1000, max: 4000 },
+          },
+        ],
       },
       {
         maxDistanceThreshold: start.distanceTo(target) * 6,
@@ -39,5 +50,18 @@ describe('FlightTrajectory', () => {
 
     expect(rocket.hasLanded).toBe(true);
     expect(missDistance).toBeLessThan(50);
+    expect(bestGenome.multiStageRocket.stages).toHaveLength(2);
   }, 120_000);
+
+  it('decodes per-stage genes in stage order', () => {
+    const decoded = decodeGenome([1, 2, 3, 3.5, 300, 20000, 2.5, 150, 2000]);
+
+    expect(decoded.startInclineAfterDistance).toBe(1);
+    expect(decoded.thrustInclineMaxDuration).toBe(2);
+    expect(decoded.thrustInclineVelocity).toBe(3);
+    expect(decoded.stages).toEqual([
+      { exhaustVelocity: 3.5, massFlowRate: 300, fuelMass: 20000 },
+      { exhaustVelocity: 2.5, massFlowRate: 150, fuelMass: 2000 },
+    ]);
+  });
 });

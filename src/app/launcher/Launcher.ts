@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import { FlightTrajectory } from '../FlightTrajectory';
 import Earth from '../earth/Earth';
 import LauncherGui from './Launcher.gui';
-import Rocket from 'app/rocket/Rocket';
+import Rocket from '../rocket/Rocket';
+import MultiStageRocket, { type RocketStage } from '../rocket/MultiStageRocket';
 
 export default class Launcher {
   counter = 0;
@@ -12,9 +13,9 @@ export default class Launcher {
   startInclineAfterDistance = 8; // km
   thrustInclineMaxDuration = 160; // seconds
   thrustInclineVelocity = THREE.MathUtils.degToRad(0.5); // radians per second
-  fuelMass = 30000; // kg
-  exhaustVelocity = 4; // km/s
-  massFlowRate = 50; // kg/s
+  stages: RocketStage[] = [
+    { exhaustVelocity: 4, massFlowRate: 50, fuelMass: 30000 },
+  ];
   payloadMass = 800; // kg
 
   rocketCount = 0;
@@ -61,9 +62,12 @@ export default class Launcher {
           min: THREE.MathUtils.degToRad(bounds.thrustInclineVelocityDeg.min),
           max: THREE.MathUtils.degToRad(bounds.thrustInclineVelocityDeg.max),
         },
-        fuelMass: { ...bounds.fuelMass },
-        exhaustVelocity: { ...bounds.exhaustVelocity },
-        massFlowRate: { ...bounds.massFlowRate },
+        stages: bounds.stages.map((s) => ({
+          stage: s.stage,
+          exhaustVelocity: { ...s.exhaustVelocity },
+          massFlowRate: { ...s.massFlowRate },
+          fuelMass: { ...s.fuelMass },
+        })),
       },
       {
         maxDistanceThreshold: euclideanDistance * 6,
@@ -83,23 +87,15 @@ export default class Launcher {
   };
 
   private setRocketParams = (genome: any) => {
-    const [
-      startInclineAfterDistance,
-      thrustInclineMaxDuration,
-      thrustInclineVelocity,
-      fuelMass,
-      exhaustVelocity,
-      massFlowRate,
-    ] = genome;
+    const multiStageRocket: MultiStageRocket = genome.multiStageRocket;
+    const { rocket } = multiStageRocket;
 
-    this.startInclineAfterDistance = startInclineAfterDistance;
-    this.thrustInclineMaxDuration = thrustInclineMaxDuration;
-    this.thrustInclineVelocity = thrustInclineVelocity;
-    this.fuelMass = fuelMass;
-    this.exhaustVelocity = exhaustVelocity;
-    this.massFlowRate = massFlowRate;
+    this.startInclineAfterDistance = rocket.startInclineAfterDistance;
+    this.thrustInclineMaxDuration = rocket.thrustInclineMaxDuration;
+    this.thrustInclineVelocity = rocket.thrustInclineVelocity;
+    this.stages = multiStageRocket.stages.map((s) => ({ ...s }));
 
-    this.payloadMass = genome.rocket.payloadMass;
+    this.payloadMass = rocket.payloadMass;
   };
 
   createRocket = () => {
@@ -122,15 +118,15 @@ export default class Launcher {
       this.startInclineAfterDistance,
       this.thrustInclineMaxDuration,
       this.thrustInclineVelocity,
-      this.fuelMass,
-      this.exhaustVelocity,
-      this.massFlowRate,
+      undefined, // fuel and engine are set per stage by MultiStageRocket
+      undefined,
+      undefined,
       this.payloadMass
     );
 
     rocket.id = this.counter++;
 
-    return rocket;
+    return new MultiStageRocket(rocket, this.stages);
   };
 
   /** Restarts rocket numbering after all launched rockets are removed. */
