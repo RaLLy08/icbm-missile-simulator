@@ -440,6 +440,8 @@ export class TrailView {
 export default class RocketView {
   group: THREE.Group;
   private arrows: THREE.ArrowHelper[] = [];
+  /** Force arrows are hidden by default; enabled from Missile Controls. */
+  private arrowsEnabled = false;
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private trailView: TrailView | null = null;
   private burningFireMesh: THREE.Mesh | null = null;
@@ -452,7 +454,7 @@ export default class RocketView {
   prevVelocity = new THREE.Vector3();
   prevThrust = new THREE.Vector3();
 
-  size = 1;
+  size = 0.04; // km
   private arrowLength = 2 * this.size;
   private burningFireSize = 1 * this.size;
 
@@ -699,6 +701,7 @@ export default class RocketView {
     arrow.setLength(length, length * 0.1, length * 0.1);
     arrow.setDirection(direction);
     arrow.setColor(color);
+    arrow.visible = this.arrowsEnabled;
     this.scene.add(arrow);
     this.arrows.push(arrow);
 
@@ -929,9 +932,16 @@ export default class RocketView {
     this.prevThrust.copy(this.rocket.thrust.clone());
   }
 
+  /** Toggle force arrows on/off (user setting). */
+  setArrowsEnabled(enabled: boolean) {
+    this.arrowsEnabled = enabled;
+    this.setArrowsVisible(enabled);
+  }
+
+  /** Temporarily show/hide arrows; never shows them while disabled. */
   setArrowsVisible(visible: boolean) {
     this.arrows.forEach((arrow) => {
-      arrow.visible = visible;
+      arrow.visible = visible && this.arrowsEnabled;
     });
   }
 

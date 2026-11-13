@@ -14,6 +14,7 @@ export default class RocketGui {
   displacement = 0;
   gravityForce = 0;
   percentOfFuel = 0;
+  showForcesArrows = false;
   forcesArrowViewScale = 1;
   travelledDistance = 0;
   velocityToGravityAngle = 0;
@@ -134,6 +135,14 @@ export default class RocketGui {
       readonly: true,
       format: (v) => formatSeconds(v),
     });
+
+    this.folder
+      .addBinding(this, 'showForcesArrows', {
+        label: 'Show Forces Arrows',
+      })
+      .on('change', () => {
+        this.rocketView.setArrowsEnabled(this.showForcesArrows);
+      });
 
     this.folder
       .addBinding(this, 'forcesArrowViewScale', {

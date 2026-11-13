@@ -108,6 +108,13 @@ class Rocket {
   }
 
   /**
+   * True once all fuel is burnt and the engines have stopped.
+   */
+  get isEngineCutoff(): boolean {
+    return this.flightTime >= this.fuelCombustionTime;
+  }
+
+  /**
    * The maximum acceleration the rocket can achieve (at burnout mass = payload).
    * @returns Maximum acceleration in km/s².
    */
