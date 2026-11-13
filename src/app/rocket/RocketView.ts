@@ -42,6 +42,8 @@ import {
 import { announceTargetReached } from 'app/helpers/Speech';
 
 const TARGET_REACHED_ANNOUNCE_DELAY_MS = 1000;
+/** "Target reached" is only announced if the impact is within this distance (km). */
+const TARGET_HIT_MAX_MISS_KM = 5;
 
 const NUKE_EXPLOSION_VARIANTS: string[] = [
   nukeVariant00,
@@ -532,7 +534,9 @@ export default class RocketView {
   constructor(
     readonly rocket: Rocket,
     private readonly scene: THREE.Scene,
-    readonly earthView: EarthView
+    readonly earthView: EarthView,
+    /** Intended impact point; the "target reached" announcement needs it. */
+    private readonly targetPosition: THREE.Vector3 | null = null
   ) {
     this.group = new THREE.Group();
     this.trailView = new TrailView(this.scene);
@@ -999,12 +1003,18 @@ export default class RocketView {
       const normal = this.rocket.position.clone().normalize();
       this.explosionEffect.start(this.rocket.position.clone(), normal);
       this.hasTriggeredExplosion = true;
-      // Same number as the "Missile N" label in the GUI
-      const missileId = this.rocket.id;
-      setTimeout(
-        () => announceTargetReached(missileId),
-        TARGET_REACHED_ANNOUNCE_DELAY_MS
-      );
+
+      const missDistance = this.targetPosition
+        ? this.rocket.position.distanceTo(this.targetPosition)
+        : Infinity;
+      if (missDistance <= TARGET_HIT_MAX_MISS_KM) {
+        // Same number as the "Missile N" label in the GUI
+        const missileId = this.rocket.id;
+        setTimeout(
+          () => announceTargetReached(missileId),
+          TARGET_REACHED_ANNOUNCE_DELAY_MS
+        );
+      }
     }
 
     // Update explosion effect animation

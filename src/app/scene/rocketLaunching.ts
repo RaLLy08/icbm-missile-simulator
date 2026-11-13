@@ -134,7 +134,12 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     const { rocket } = multiStageRocket;
     store().dequeueLaunch();
 
-    const rocketView = new RocketView(rocket, scene, earthView);
+    const rocketView = new RocketView(
+      rocket,
+      scene,
+      earthView,
+      nextLaunch.targetPosition.clone()
+    );
     rocketView.setSize(
       launcherGui.rocketSizeMultiplier,
       multiStageRocket.stages.length
