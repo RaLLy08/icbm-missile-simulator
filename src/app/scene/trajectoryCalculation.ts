@@ -39,7 +39,7 @@ const toCandidate = (
 
 /** Runs the trajectory search and appends the result to the launch queue. */
 export const createTrajectoryCalculator =
-  ({ launcher }: SimulationContext, preview: TrajectoryPreview) =>
+  ({ launcher, launcherGui }: SimulationContext, preview: TrajectoryPreview) =>
   () => {
     if (!launcher.rocketStartPosition || !launcher.rocketTargetPosition) {
       console.error('Start or target position is not set.');
@@ -52,6 +52,8 @@ export const createTrajectoryCalculator =
 
     const startPos = launcher.rocketStartPosition.clone();
     const targetPos = launcher.rocketTargetPosition.clone();
+    // Snapshot now: the preset may change before this item is launched
+    const missileHeight = launcherGui.missileHeight;
 
     let generation = 0;
     let lastCandidate: BestCandidate | null = null;
@@ -80,6 +82,7 @@ export const createTrajectoryCalculator =
           stages: launcher.stages.map((s) => ({ ...s })),
         },
         candidate: lastCandidate,
+        missileHeight,
       });
       store().finishCalculation();
       preview.show(null);

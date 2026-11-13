@@ -55,6 +55,9 @@ export default class LauncherGui {
   /** Payload of the selected missile, kg */
   payloadMass = 800;
 
+  /** Real length of the selected missile, m. Null until a preset is picked. */
+  missileHeight: number | null = null;
+
   calculationBounds: CalculationBounds = {
     startInclineAfterDistance: { min: 1, max: 4 },
     thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
@@ -267,6 +270,7 @@ export default class LauncherGui {
     bounds.stages = missile.stages.map((s) => cloneStageBounds(s, s.stage));
 
     this.payloadMass = missile.payloadMass;
+    this.missileHeight = missile.height;
     this.selectedMissileLabel = missile.name;
   }
 

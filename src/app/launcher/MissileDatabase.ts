@@ -255,37 +255,6 @@ export const MISSILES: MissileSpec[] = [
     ],
   },
   {
-    id: 'm51-slbm',
-    name: 'M51.2 SLBM',
-    country: 'France',
-    category: 'SLBM' as MissileCategories,
-    height: 12.0,
-    payloadMass: 1400,
-    startInclineAfterDistance: { min: 0.1, max: 0.35 },
-    thrustInclineMaxDuration: { min: 30, max: 50 },
-    thrustInclineVelocityDeg: { min: 0.9, max: 1.55 },
-    stages: [
-      {
-        stage: 1,
-        exhaustVelocity: { min: 2.45, max: 2.68 },
-        massFlowRate: { min: 480, max: 520 },
-        fuelMass: { min: 31500, max: 32800 },
-      },
-      {
-        stage: 2,
-        exhaustVelocity: { min: 2.74, max: 2.85 },
-        massFlowRate: { min: 190, max: 215 },
-        fuelMass: { min: 11200, max: 11900 },
-      },
-      {
-        stage: 3,
-        exhaustVelocity: { min: 2.8, max: 2.9 },
-        massFlowRate: { min: 70, max: 85 },
-        fuelMass: { min: 3400, max: 3750 },
-      },
-    ],
-  },
-  {
     id: 'agni-5',
     name: 'Agni-V',
     country: 'India',

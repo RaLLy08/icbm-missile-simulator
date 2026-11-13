@@ -141,7 +141,8 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
       nextLaunch.targetPosition.clone()
     );
     rocketView.setSize(
-      launcherGui.rocketSizeMultiplier,
+      launcherGui.rocketSizeMultiplier *
+        RocketView.heightScale(nextLaunch.missileHeight),
       multiStageRocket.stages.length
     );
     rocketView.setMaxBurnRate(

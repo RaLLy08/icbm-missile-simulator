@@ -38,6 +38,11 @@ export type LaunchQueueItem = {
   targetGeo: GeoPosition;
   trajectoryParams: TrajectoryParams;
   candidate: BestCandidate | null;
+  /**
+   * Real length of the selected missile preset, m. Null/absent for Custom
+   * (and for queue items persisted before this field existed).
+   */
+  missileHeight?: number | null;
 };
 
 /** Imperative entry points into the three.js engine, registered on mount. */

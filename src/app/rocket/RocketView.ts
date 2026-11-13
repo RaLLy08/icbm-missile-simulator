@@ -485,8 +485,23 @@ export default class RocketView {
     return {
       stages,
       head: { height: 0.3, radius: topRadius },
-      fire: { height: 1, topRadius: 0.06, bottomRadius: 0.14 },
+      fire: { height: 1.5, topRadius: 0.06, bottomRadius: 0.14 },
     };
+  }
+
+  /**
+   * Real missile length (m) drawn at the default model size. The model is
+   * exaggerated far beyond real scale to be visible from orbit, so real
+   * heights are applied relative to this: a 34 m missile is drawn ~1.7x
+   * longer than a 20 m one.
+   */
+  static REFERENCE_MISSILE_HEIGHT = 20;
+
+  /** Size factor for a missile of `height` m; 1 when unknown (Custom). */
+  static heightScale(height: number | null | undefined) {
+    return height && height > 0
+      ? height / RocketView.REFERENCE_MISSILE_HEIGHT
+      : 1;
   }
 
   dimensions: RocketDimensions = RocketView.baseDimensions();
