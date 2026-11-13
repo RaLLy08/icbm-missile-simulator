@@ -3,7 +3,6 @@ import { FlightTrajectory } from '../FlightTrajectory';
 import Earth from '../earth/Earth';
 import LauncherGui from './Launcher.gui';
 import Rocket from 'app/rocket/Rocket';
-import { getMissileById, type MissileSpec } from './MissileDatabase';
 
 export default class Launcher {
   counter = 0;
@@ -23,32 +22,7 @@ export default class Launcher {
   constructor(
     private launcherGui: LauncherGui,
     private earth: Earth
-  ) {
-    this.applyCurrentMissilePreset();
-
-    launcherGui.onMissileSelected = (spec: MissileSpec) => {
-      this.applyMissileSpec(spec);
-    };
-  }
-
-  private applyCurrentMissilePreset() {
-    const spec = getMissileById(this.launcherGui.selectedMissileId);
-    if (spec) {
-      this.applyMissileSpec(spec);
-    }
-  }
-
-  private applyMissileSpec(spec: MissileSpec) {
-    this.exhaustVelocity = spec.exhaustVelocity;
-    this.massFlowRate = spec.massFlowRate;
-    this.fuelMass = spec.fuelMass;
-    this.payloadMass = spec.payloadMass;
-    this.startInclineAfterDistance = spec.startInclineAfterDistance;
-    this.thrustInclineMaxDuration = spec.thrustInclineMaxDuration;
-    this.thrustInclineVelocity = THREE.MathUtils.degToRad(
-      spec.thrustInclineVelocityDeg
-    );
-  }
+  ) {}
 
   setStartPosition = (coordinates: THREE.Vector3) => {
     this.rocketStartPosition = coordinates.clone();

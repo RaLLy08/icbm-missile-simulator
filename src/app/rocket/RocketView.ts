@@ -456,7 +456,7 @@ export default class RocketView {
 
   size = 0.04; // km
   private arrowLength = 2 * this.size;
-  private burningFireSize = 1 * this.size;
+  private burningFireSize = 8 * this.size;
 
   private lerpAlpha = 1;
 
@@ -774,6 +774,7 @@ export default class RocketView {
   update(): void {
     this.updatePosition();
     this.updateBurningFireScale();
+    this.updateThrustDirectionFire();
 
     this.updateArrows();
 
@@ -822,23 +823,23 @@ export default class RocketView {
   }
 
   private updateBurningFireScale() {
-    let thrustPercentage =
-      this.rocket.thrust.length() / (this.rocket.maxAcceleration * 0.3);
-
-    thrustPercentage = Math.min(thrustPercentage, 2);
-
-    const thrustableSize = this.burningFireSize * thrustPercentage;
-
-    // Update main burning fire (aligned with rocket body)
-    this.burningFireMesh!.scale.set(
-      thrustPercentage,
-      thrustPercentage,
-      thrustPercentage
-    );
-    this.burningFireMesh!.position.y = -thrustableSize / 2;
-
+    if (this.burningFireMesh) {
+      // Hide the exhaust flame once all fuel is burnt (or the rocket landed)
+      this.burningFireMesh.visible =
+        !this.rocket.isEngineCutoff && !this.rocket.hasLanded;
+    }
+    // let thrustPercentage =
+    //   this.rocket.thrust.length() / (this.rocket.maxAcceleration * 0.3);
+    // thrustPercentage = Math.min(thrustPercentage, 2);
+    // const thrustableSize = this.burningFireSize * thrustPercentage;
+    // // Update main burning fire (aligned with rocket body)
+    // this.burningFireMesh!.scale.set(
+    //   thrustPercentage,
+    //   thrustPercentage,
+    //   thrustPercentage
+    // );
+    // this.burningFireMesh!.position.y = -thrustableSize / 2;
     // Update thrust direction fire (small, rotates with thrust)
-    this.updateThrustDirectionFire();
   }
 
   private updateThrustDirectionFire() {

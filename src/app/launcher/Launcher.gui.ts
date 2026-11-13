@@ -1,5 +1,4 @@
 import { FolderApi, Pane } from 'tweakpane';
-import { getMissileById, type MissileSpec } from './MissileDatabase';
 
 export interface CalculationRange {
   min: number;
@@ -40,18 +39,11 @@ export default class LauncherGui {
     massFlowRate: { min: 1, max: 100 },
   };
 
-  onMissileSelected: (spec: MissileSpec) => void = () => {};
-
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
       title: 'Launcher',
       expanded: false,
     });
-
-    const missile = getMissileById(this.selectedMissileId);
-    if (missile) {
-      this.selectedMissileLabel = `${missile.country} - ${missile.name}`;
-    }
 
     this.folder
       .addBinding(this, 'minimizeFlightTime', {
