@@ -37,16 +37,36 @@ class TitleView implements View {
   private readonly unitElement: HTMLElement;
 
   constructor(doc: Document, config: TitleParams & { viewProps: ViewProps }) {
+    // Layout is set inline so the title and unit always sit on one row,
+    // regardless of whether the bundle CSS gets injected or overridden.
     this.element = doc.createElement('div');
     this.element.classList.add(cn());
+    Object.assign(this.element.style, {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: '6px',
+    });
     config.viewProps.bindClassModifiers(this.element);
 
-    this.titleElement = doc.createElement('div');
+    this.titleElement = doc.createElement('span');
     this.titleElement.classList.add(cn('t'));
+    Object.assign(this.titleElement.style, {
+      flex: '1 1 auto',
+      minWidth: '0',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    });
     this.element.appendChild(this.titleElement);
 
-    this.unitElement = doc.createElement('div');
+    this.unitElement = doc.createElement('span');
     this.unitElement.classList.add(cn('u'));
+    Object.assign(this.unitElement.style, {
+      flex: '0 0 auto',
+      whiteSpace: 'nowrap',
+    });
     this.element.appendChild(this.unitElement);
 
     this.setTitle(config.title);

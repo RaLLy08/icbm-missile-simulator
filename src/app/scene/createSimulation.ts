@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Pane } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
 import { TitlePluginBundle } from '../gui/TitlePlugin';
+import { NoticePluginBundle } from '../gui/NoticePlugin';
 import Earth from '../earth/Earth';
 import EarthView from '../earth/EarthView';
 import EarthGui from '../earth/Earth.gui';
@@ -19,8 +20,8 @@ import { isMobileViewport } from '../viewport';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import { createScene } from './createScene';
 import {
-  createFullScreenRenderer,
-  createMiniWindowRenderer,
+    createFullScreenRenderer,
+    createMiniWindowRenderer,
 } from './renderers';
 import { createTrajectoryPreview } from './trajectoryPreview';
 import { createTrajectoryCalculator } from './trajectoryCalculation';
@@ -76,12 +77,14 @@ export const createSimulation = (
   });
   mainPane.registerPlugin(EssentialsPlugin);
   mainPane.registerPlugin(TitlePluginBundle);
+  mainPane.registerPlugin(NoticePluginBundle);
   const rocketGuiPane = new Pane({
     title: 'Missile Controls',
     container: elements.rocketGuiContainer,
     expanded: !isMobile,
   });
   rocketGuiPane.registerPlugin(TitlePluginBundle);
+  rocketGuiPane.registerPlugin(NoticePluginBundle);
 
   const fullScreenRenderer = createFullScreenRenderer(elements.sceneContainer);
   const miniWindowRenderer = createMiniWindowRenderer(

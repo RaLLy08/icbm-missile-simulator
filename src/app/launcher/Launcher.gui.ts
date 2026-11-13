@@ -96,12 +96,20 @@ export default class LauncherGui {
       expanded: false,
     });
 
+    calculationFolder.addBlade({
+      view: 'notice',
+      title: 'Info',
+      variant: 'info',
+      description:
+        'These constraints define the range of values for the missile calculation parameters. Change them only if you know what you want to achieve.',
+    });
+
     const bounds = this.calculationBounds;
 
     this.addRangeBindings(
       calculationFolder,
       bounds.startInclineAfterDistance,
-      'Turn Start Altitude',
+      'Gravity Turn Start Altitude',
       'km',
       { min: 0, step: 0.1 }
     );
