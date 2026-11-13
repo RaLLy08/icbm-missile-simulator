@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Pane } from 'tweakpane';
 import * as EssentialsPlugin from '@tweakpane/plugin-essentials';
+import * as CamerakitPlugin from '@tweakpane/plugin-camerakit';
 import { TitlePluginBundle } from '../gui/TitlePlugin';
 import { NoticePluginBundle } from '../gui/NoticePlugin';
 import Earth from '../earth/Earth';
@@ -83,6 +84,7 @@ export const createSimulation = (
     container: elements.rocketGuiContainer,
     expanded: !isMobile,
   });
+  rocketGuiPane.registerPlugin(CamerakitPlugin);
   rocketGuiPane.registerPlugin(TitlePluginBundle);
   rocketGuiPane.registerPlugin(NoticePluginBundle);
 
@@ -114,6 +116,8 @@ export const createSimulation = (
   worldGui.onTimeRunningChange = (running) => store().setIsTimeRunning(running);
   if (onTimePassedUpdate) worldGui.onTimePassedUpdate = onTimePassedUpdate;
 
+  const launcherGui = new LauncherGui(mainPane);
+
   const earthGui = new EarthGui(mainPane);
   const earthView = new EarthView(earth, scene, earthGui);
   updateTriggers.push(starField, earth, cameraManager, earthView);
@@ -129,7 +133,6 @@ export const createSimulation = (
     earthView.setCamera(camera);
   }
 
-  const launcherGui = new LauncherGui(mainPane);
   const launcherView = new LauncherView(earth, scene);
   const launcher = new Launcher(launcherGui, earth);
 

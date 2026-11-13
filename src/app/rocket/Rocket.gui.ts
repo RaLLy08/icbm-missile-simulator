@@ -19,6 +19,7 @@ export default class RocketGui {
   forcesArrowViewScale = 1;
   travelledDistance = 0;
   velocityToGravityAngle = 0;
+  thrustInclineAngleDeg = 0;
 
   onFocusCameraClick: () => void = () => {};
 
@@ -104,6 +105,24 @@ export default class RocketGui {
       },
     });
 
+    this.folder.addBinding(this, 'velocityToGravityAngle', {
+      label: 'Angle of attack Velocity',
+      view: 'cameraring',
+      readonly: true,
+      wide: true,
+      format: (v) => v.toFixed(2) + '°',
+    });
+
+    // Camerakit's ring is an input-only view (no readonly/monitor mode), so it
+    // binds to a degree mirror that update() overwrites every frame.
+    this.folder.addBinding(this, 'thrustInclineAngleDeg', {
+      label: 'Angle of attack Incline Thrust',
+      view: 'cameraring',
+      series: 0,
+      wide: true,
+      format: (v: number) => v.toFixed(2) + '°',
+    });
+
     this.folder.addBinding(this.rocket, 'fuelCombustionTime', {
       label: 'Fuel Combustion Time',
       readonly: true,
@@ -152,6 +171,12 @@ export default class RocketGui {
       format: (v) => formatSeconds(v),
     });
 
+    this.folder.addBinding(this, 'travelledDistance', {
+      label: 'Travelled Distance',
+      readonly: true,
+      format: (v) => v.toFixed(1) + ' km',
+    });
+
     this.folder
       .addBinding(this, 'showForcesArrows', {
         label: 'Show Forces Arrows',
@@ -170,24 +195,6 @@ export default class RocketGui {
       .on('change', () => {
         this.rocketView.applyScaleToArrows(this.forcesArrowViewScale);
       });
-
-    this.folder.addBinding(this, 'travelledDistance', {
-      label: 'Travelled Distance',
-      readonly: true,
-      format: (v) => v.toFixed(1) + ' km',
-    });
-
-    this.folder.addBinding(this, 'velocityToGravityAngle', {
-      label: 'Angle of attack Velocity',
-      readonly: true,
-      format: (v) => v.toFixed(2) + '°',
-    });
-
-    this.folder.addBinding(this.rocket, 'thrustInclineAngle', {
-      label: 'Angle of attack Thrust',
-      readonly: true,
-      format: (v) => THREE.MathUtils.radToDeg(v).toFixed(2) + '°',
-    });
 
     // Insert the viewport into the DOM only after all blades are added:
     // tweakpane inserts blades by child index, so a foreign element added
@@ -219,6 +226,10 @@ export default class RocketGui {
             this.rocket.velocity.clone().angleTo(this.rocket.gravityForce)
           )
         : 0;
+
+    this.thrustInclineAngleDeg = THREE.MathUtils.radToDeg(
+      this.rocket.thrustInclineAngle
+    );
 
     this.folder.refresh();
   }
