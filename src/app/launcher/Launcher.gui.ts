@@ -1,9 +1,19 @@
 import { FolderApi, Pane } from 'tweakpane';
-import {
-    getMissileOptions,
-    getMissileById,
-    type MissileSpec,
-} from './MissileDatabase';
+import { getMissileById, type MissileSpec } from './MissileDatabase';
+
+export interface CalculationRange {
+  min: number;
+  max: number;
+}
+
+export interface CalculationBounds {
+  startInclineAfterDistance: CalculationRange; // km
+  thrustInclineMaxDuration: CalculationRange; // seconds
+  thrustInclineVelocityDeg: CalculationRange; // degrees per second
+  fuelMass: CalculationRange; // kg
+  exhaustVelocity: CalculationRange; // km/s
+  massFlowRate: CalculationRange; // kg/s
+}
 
 export default class LauncherGui {
   private folder: FolderApi;
@@ -21,6 +31,15 @@ export default class LauncherGui {
   rocketCount = 0;
   rocketSizeMultiplier = 1;
 
+  calculationBounds: CalculationBounds = {
+    startInclineAfterDistance: { min: 1, max: 4 },
+    thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
+    thrustInclineVelocityDeg: { min: 0, max: 20 },
+    fuelMass: { min: 300, max: 70000 },
+    exhaustVelocity: { min: 1, max: 3 },
+    massFlowRate: { min: 1, max: 100 },
+  };
+
   onMissileSelected: (spec: MissileSpec) => void = () => {};
 
   constructor(pane: Pane) {
@@ -33,21 +52,6 @@ export default class LauncherGui {
     if (missile) {
       this.selectedMissileLabel = `${missile.country} - ${missile.name}`;
     }
-
-    this.folder
-      .addBinding(this, 'selectedMissileId', {
-        label: 'Missile Preset',
-        view: 'list',
-        options: getMissileOptions(),
-      })
-      .on('change', (ev) => {
-        this.selectedMissileId = ev.value;
-        const spec = getMissileById(this.selectedMissileId);
-        if (spec) {
-          this.selectedMissileLabel = `${spec.country} - ${spec.name}`;
-          this.onMissileSelected(spec);
-        }
-      });
 
     this.folder
       .addBinding(this, 'minimizeFlightTime', {
@@ -80,21 +84,94 @@ export default class LauncherGui {
       });
 
     this.folder.addBinding(this, 'rocketCount', {
-      label: 'Rocket Count',
+      label: 'Launched Missile Count',
       readonly: true,
       format: (v) => {
-        return `${v.toFixed(0)} rockets`;
+        return `${v.toFixed(0)} missiles`;
       },
     });
 
-    this.folder.addBinding(this, 'rocketSizeMultiplier', {
-      label: 'Rocket Size Multiplier',
-      min: 1,
-      max: 100,
-      step: 0.1,
-      format: (v) => {
-        return `${v.toFixed(1)} X`;
-      },
+    const calculationFolder = this.folder.addFolder({
+      title: 'Missile Calculation Preset',
+      expanded: false,
+    });
+
+    const bounds = this.calculationBounds;
+
+    this.addRangeBindings(
+      calculationFolder,
+      bounds.startInclineAfterDistance,
+      'Turn Start Altitude',
+      'km',
+      { min: 0, step: 0.1 }
+    );
+    this.addRangeBindings(
+      calculationFolder,
+      bounds.thrustInclineMaxDuration,
+      'Gravity Turn Duration',
+      's',
+      { min: 0, step: 1 }
+    );
+    this.addRangeBindings(
+      calculationFolder,
+      bounds.thrustInclineVelocityDeg,
+      'Gravity Turn Velocity',
+      '°/s',
+      { min: 0, max: 90, step: 0.1 }
+    );
+    this.addRangeBindings(
+      calculationFolder,
+      bounds.fuelMass,
+      'Fuel Mass',
+      'kg',
+      { min: 0, step: 100 }
+    );
+    this.addRangeBindings(
+      calculationFolder,
+      bounds.exhaustVelocity,
+      'Exhaust Velocity (vₑ)',
+      'km/s',
+      { min: 0, step: 0.1 }
+    );
+    this.addRangeBindings(
+      calculationFolder,
+      bounds.massFlowRate,
+      'Mass Flow Rate (ṁ)',
+      'kg/s',
+      { min: 0, step: 1 }
+    );
+  }
+
+  /** Adds min/max inputs for a search range, keeping min <= max. */
+  private addRangeBindings(
+    folder: FolderApi,
+    range: CalculationRange,
+    label: string,
+    unit: string,
+    params: { min?: number; max?: number; step?: number }
+  ) {
+    folder.addBlade({ view: 'title', title: label, unit });
+
+    const minBinding = folder.addBinding(range, 'min', {
+      label: 'min',
+      ...params,
+    });
+    const maxBinding = folder.addBinding(range, 'max', {
+      label: 'max',
+      ...params,
+    });
+
+    minBinding.on('change', (ev) => {
+      if (ev.value > range.max) {
+        range.max = ev.value;
+        maxBinding.refresh();
+      }
+    });
+    maxBinding.on('change', (ev) => {
+      if (ev.value < range.min) {
+        range.min = ev.value;
+        minBinding.refresh();
+      }
     });
   }
 }

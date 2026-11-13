@@ -74,35 +74,22 @@ export default class Launcher {
       .sub(this.rocketTargetPosition)
       .length();
 
+    const bounds = this.launcherGui.calculationBounds;
+
     const flightTrajectory = new FlightTrajectory(
       this.earth,
       this.rocketStartPosition,
       this.rocketTargetPosition,
       {
-        startInclineAfterDistance: {
-          min: 1,
-          max: 4,
-        },
-        thrustInclineMaxDuration: {
-          min: 10,
-          max: 40 * 60,
-        },
+        startInclineAfterDistance: { ...bounds.startInclineAfterDistance },
+        thrustInclineMaxDuration: { ...bounds.thrustInclineMaxDuration },
         thrustInclineVelocity: {
-          min: 0,
-          max: THREE.MathUtils.degToRad(20),
+          min: THREE.MathUtils.degToRad(bounds.thrustInclineVelocityDeg.min),
+          max: THREE.MathUtils.degToRad(bounds.thrustInclineVelocityDeg.max),
         },
-        fuelMass: {
-          min: 300,
-          max: 70000,
-        },
-        exhaustVelocity: {
-          min: 1,
-          max: 3,
-        },
-        massFlowRate: {
-          min: 1,
-          max: 100,
-        },
+        fuelMass: { ...bounds.fuelMass },
+        exhaustVelocity: { ...bounds.exhaustVelocity },
+        massFlowRate: { ...bounds.massFlowRate },
       },
       {
         maxDistanceThreshold: euclideanDistance * 6,
