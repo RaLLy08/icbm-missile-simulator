@@ -26,6 +26,8 @@ export type RocketConstraints = {
   thrustInclineMaxDuration: ParamConstrain;
   thrustInclineVelocity: ParamConstrain;
   stages: StageConstraint[];
+  /** Fixed payload mass, kg (Rocket default when omitted) */
+  payloadMass?: number;
 };
 
 /** Genes before the per-stage genes. */
@@ -232,7 +234,11 @@ export class FlightTrajectory {
       this.target,
       startInclineAfterDistance,
       thrustInclineMaxDuration,
-      thrustInclineVelocity
+      thrustInclineVelocity,
+      undefined, // fuel and engine are set per stage by MultiStageRocket
+      undefined,
+      undefined,
+      this.rocketConstrains.payloadMass
     );
 
     return new MultiStageRocket(rocket, stages);

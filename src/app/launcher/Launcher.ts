@@ -68,6 +68,7 @@ export default class Launcher {
           massFlowRate: { ...s.massFlowRate },
           fuelMass: { ...s.fuelMass },
         })),
+        payloadMass: this.launcherGui.payloadMass,
       },
       {
         maxDistanceThreshold: euclideanDistance * 6,

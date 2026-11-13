@@ -1,4 +1,9 @@
 import { FolderApi, Pane } from 'tweakpane';
+import { MISSILES, getMissileById, type MissileSpec } from './MissileDatabase';
+
+type BindingApi = ReturnType<FolderApi['addBinding']>;
+
+const CUSTOM_MISSILE_ID = 'custom';
 
 export interface CalculationRange {
   min: number;
@@ -33,7 +38,8 @@ const cloneStageBounds = (
 export default class LauncherGui {
   private folder: FolderApi;
 
-  selectedMissileId = 'us_minuteman3';
+  /** `CUSTOM_MISSILE_ID` keeps the manually edited bounds */
+  selectedMissileId = CUSTOM_MISSILE_ID;
   selectedMissileLabel = '';
 
   minimizeFlightTime = true;
@@ -45,6 +51,9 @@ export default class LauncherGui {
 
   rocketCount = 0;
   rocketSizeMultiplier = 1;
+
+  /** Payload of the selected missile, kg */
+  payloadMass = 800;
 
   calculationBounds: CalculationBounds = {
     startInclineAfterDistance: { min: 1, max: 4 },
@@ -68,12 +77,37 @@ export default class LauncherGui {
 
   private stagesFolder: FolderApi | null = null;
   private stageFolders: FolderApi[] = [];
+  /** min/max bindings of the guidance ranges, refreshed on preset change */
+  private guidanceBindings: BindingApi[] = [];
 
   constructor(pane: Pane) {
     this.folder = pane.addFolder({
       title: 'Launcher',
       expanded: false,
     });
+
+    const initialMissile = getMissileById(this.selectedMissileId);
+    if (initialMissile) this.applyMissilePreset(initialMissile);
+
+    this.folder
+      .addBinding(this, 'selectedMissileId', {
+        label: 'Missile',
+        options: MISSILES.reduce<Record<string, string>>(
+          (acc, m) => {
+            acc[`${m.name} (${m.country})`] = m.id;
+            return acc;
+          },
+          { Custom: CUSTOM_MISSILE_ID }
+        ),
+      })
+      .on('change', (ev) => {
+        // Custom keeps the current bounds as they are
+        const missile = getMissileById(ev.value);
+        if (!missile) return;
+        this.applyMissilePreset(missile);
+        this.guidanceBindings.forEach((b) => b.refresh());
+        this.renderStages();
+      });
 
     this.folder
       .addBinding(this, 'minimizeFlightTime', {
@@ -128,27 +162,29 @@ export default class LauncherGui {
 
     const bounds = this.calculationBounds;
 
-    this.addRangeBindings(
-      calculationFolder,
-      bounds.startInclineAfterDistance,
-      'Gravity Turn Start Altitude',
-      'km',
-      { min: 0, step: 0.1 }
-    );
-    this.addRangeBindings(
-      calculationFolder,
-      bounds.thrustInclineMaxDuration,
-      'Gravity Turn Duration',
-      's',
-      { min: 0, step: 1 }
-    );
-    this.addRangeBindings(
-      calculationFolder,
-      bounds.thrustInclineVelocityDeg,
-      'Gravity Turn Velocity',
-      '°/s',
-      { min: 0, max: 90, step: 0.1 }
-    );
+    this.guidanceBindings = [
+      ...this.addRangeBindings(
+        calculationFolder,
+        bounds.startInclineAfterDistance,
+        'Gravity Turn Start Altitude',
+        'km',
+        { min: 0, step: 0.1 }
+      ),
+      ...this.addRangeBindings(
+        calculationFolder,
+        bounds.thrustInclineMaxDuration,
+        'Gravity Turn Duration',
+        's',
+        { min: 0, step: 1 }
+      ),
+      ...this.addRangeBindings(
+        calculationFolder,
+        bounds.thrustInclineVelocityDeg,
+        'Gravity Turn Velocity',
+        '°/s',
+        { min: 0, max: 90, step: 0.1 }
+      ),
+    ];
 
     const stagesFolder = calculationFolder.addFolder({
       title: 'Stages',
@@ -158,7 +194,8 @@ export default class LauncherGui {
 
     stagesFolder.addButton({ title: 'Add Stage' }).on('click', () => {
       const stages = this.calculationBounds.stages;
-      stages.push(cloneStageBounds(stages[stages.length - 1], stages.length));
+      const last = stages[stages.length - 1];
+      stages.push(cloneStageBounds(last, last.stage + 1));
       this.renderStages();
     });
 
@@ -208,6 +245,31 @@ export default class LauncherGui {
     });
   }
 
+  /**
+   * Copies a missile's ranges into `calculationBounds`. Guidance ranges are
+   * updated in place so their existing bindings stay attached.
+   */
+  private applyMissilePreset(missile: MissileSpec) {
+    const bounds = this.calculationBounds;
+
+    Object.assign(
+      bounds.startInclineAfterDistance,
+      missile.startInclineAfterDistance
+    );
+    Object.assign(
+      bounds.thrustInclineMaxDuration,
+      missile.thrustInclineMaxDuration
+    );
+    Object.assign(
+      bounds.thrustInclineVelocityDeg,
+      missile.thrustInclineVelocityDeg
+    );
+    bounds.stages = missile.stages.map((s) => cloneStageBounds(s, s.stage));
+
+    this.payloadMass = missile.payloadMass;
+    this.selectedMissileLabel = missile.name;
+  }
+
   /** Adds min/max inputs for a search range, keeping min <= max. */
   private addRangeBindings(
     folder: FolderApi,
@@ -215,7 +277,7 @@ export default class LauncherGui {
     label: string,
     unit: string,
     params: { min?: number; max?: number; step?: number }
-  ) {
+  ): BindingApi[] {
     folder.addBlade({ view: 'title', title: label, unit });
 
     const minBinding = folder.addBinding(range, 'min', {
@@ -239,5 +301,7 @@ export default class LauncherGui {
         minBinding.refresh();
       }
     });
+
+    return [minBinding, maxBinding];
   }
 }
