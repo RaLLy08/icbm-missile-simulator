@@ -1,5 +1,3 @@
-import { formatSeconds } from 'app/utils';
-import * as THREE from 'three';
 import { FolderApi, Pane } from 'tweakpane';
 import {
     getMissileOptions,
@@ -13,21 +11,9 @@ export default class LauncherGui {
   selectedMissileId = 'us_minuteman3';
   selectedMissileLabel = '';
 
-  startInclineAfterDistance = 0;
-  currentThrustInclineDuration = 0;
-  thrustInclineVelocity = 0;
-  fuelCombustionTime = 0;
-  maxAltitude = 0;
-  travelledDistance = 0;
-  flightTime = 0;
   minimizeFlightTime = true;
   increaseCalculationAccuracy = false;
   showCalculationPreview = false;
-
-  payloadMass = 0;
-  fuelMass = 0;
-  massFlowRate = 0;
-  exhaustVelocity = 0;
 
   startLongitude: number | string = 'N/A';
   startLatitude: number | string = 'N/A';
@@ -92,92 +78,6 @@ export default class LauncherGui {
       .on('change', (ev) => {
         this.showCalculationPreview = ev.value;
       });
-
-    this.folder.addBinding(this, 'startInclineAfterDistance', {
-      label: 'Start Incline After Altitude',
-      readonly: true,
-      format: (v) => {
-        if (typeof v === 'number') {
-          return `${v.toFixed(2)} km`;
-        }
-        return v;
-      },
-    });
-
-    this.folder.addBinding(this, 'currentThrustInclineDuration', {
-      label: 'Gravity Turn Duration',
-      readonly: true,
-      format: (v) => formatSeconds(v),
-    });
-
-    this.folder.addBinding(this, 'thrustInclineVelocity', {
-      label: 'Gravity Turn Velocity',
-      readonly: true,
-      format: (v) => {
-        if (typeof v === 'number') {
-          return `${THREE.MathUtils.radToDeg(v).toFixed(2)}° deg/s`;
-        }
-        return v;
-      },
-    });
-
-    this.folder.addBinding(this, 'fuelCombustionTime', {
-      label: 'Fuel Combustion Time',
-      readonly: true,
-      format: (v) => formatSeconds(v),
-    });
-
-    this.folder.addBinding(this, 'payloadMass', {
-      label: 'Payload Mass',
-      readonly: true,
-      format: (v) => v.toFixed(1) + ' kg',
-    });
-
-    this.folder.addBinding(this, 'fuelMass', {
-      label: 'Fuel Mass',
-      readonly: true,
-      format: (v) => v.toFixed(1) + ' kg',
-    });
-
-    this.folder.addBinding(this, 'massFlowRate', {
-      label: 'Mass Flow Rate (ṁ)',
-      readonly: true,
-      format: (v) => v.toFixed(1) + ' kg/s',
-    });
-
-    this.folder.addBinding(this, 'exhaustVelocity', {
-      label: 'Exhaust Velocity (vₑ)',
-      readonly: true,
-      format: (v) => v.toFixed(1) + ' km/s',
-    });
-
-    this.folder.addBinding(this, 'maxAltitude', {
-      label: 'Max Altitude',
-      readonly: true,
-      format: (v) => {
-        if (typeof v === 'number') {
-          return `${v.toFixed(2)} km`;
-        }
-        return v;
-      },
-    });
-
-    this.folder.addBinding(this, 'travelledDistance', {
-      label: 'Travelled Distance',
-      readonly: true,
-      format: (v) => {
-        if (typeof v === 'number') {
-          return `${v.toFixed(2)} km`;
-        }
-        return v;
-      },
-    });
-
-    this.folder.addBinding(this, 'flightTime', {
-      label: 'Flight Time',
-      readonly: true,
-      format: (v) => formatSeconds(v),
-    });
 
     this.folder.addBinding(this, 'rocketCount', {
       label: 'Rocket Count',

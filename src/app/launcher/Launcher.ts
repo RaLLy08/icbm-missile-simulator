@@ -48,17 +48,6 @@ export default class Launcher {
     this.thrustInclineVelocity = THREE.MathUtils.degToRad(
       spec.thrustInclineVelocityDeg
     );
-
-    this.launcherGui.startInclineAfterDistance = spec.startInclineAfterDistance;
-    this.launcherGui.currentThrustInclineDuration = 0;
-    this.launcherGui.thrustInclineVelocity = THREE.MathUtils.degToRad(
-      spec.thrustInclineVelocityDeg
-    );
-    this.launcherGui.fuelCombustionTime = spec.fuelMass / spec.massFlowRate;
-    this.launcherGui.fuelMass = spec.fuelMass;
-    this.launcherGui.massFlowRate = spec.massFlowRate;
-    this.launcherGui.exhaustVelocity = spec.exhaustVelocity;
-    this.launcherGui.payloadMass = spec.payloadMass;
   }
 
   setStartPosition = (coordinates: THREE.Vector3) => {
@@ -149,24 +138,7 @@ export default class Launcher {
     this.exhaustVelocity = exhaustVelocity;
     this.massFlowRate = massFlowRate;
 
-    const rocket = genome.rocket;
-
-    this.launcherGui.startInclineAfterDistance = this.startInclineAfterDistance;
-    this.launcherGui.currentThrustInclineDuration =
-      rocket.currentThrustInclineDuration;
-    this.launcherGui.thrustInclineVelocity = this.thrustInclineVelocity;
-    this.launcherGui.fuelMass = this.fuelMass;
-
-    this.launcherGui.fuelCombustionTime = rocket.fuelCombustionTime;
-    this.launcherGui.maxAltitude = rocket.maxAltitude;
-    this.launcherGui.travelledDistance = rocket.travelledDistance.length();
-    this.launcherGui.flightTime = rocket.flightTime;
-
-    this.payloadMass = rocket.payloadMass;
-    this.launcherGui.payloadMass = rocket.payloadMass;
-    this.launcherGui.fuelMass = rocket.fuelMass;
-    this.launcherGui.massFlowRate = rocket.massFlowRate;
-    this.launcherGui.exhaustVelocity = rocket.exhaustVelocity;
+    this.payloadMass = genome.rocket.payloadMass;
   };
 
   createRocket = () => {

@@ -547,10 +547,6 @@ export function getMissileById(id: string): MissileSpec | undefined {
   return MISSILES.find((m) => m.id === id);
 }
 
-export function getMissilesByCategory(category: string): MissileSpec[] {
-  return MISSILES.filter((m) => m.category === category);
-}
-
 export function getMissileOptions() {
   return MISSILES.map((m) => ({
     text: `${m.country} - ${m.name} (${m.category})`,
