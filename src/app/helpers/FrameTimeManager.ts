@@ -26,6 +26,7 @@ export default class FrameTimeManager {
     this.stepProgress += delta / updateEachS;
 
     this.rocketView.setLerpAlpha(this.stepProgress);
+    this.rocketView.setActiveStage(this.rocket.currentStageIndex);
     this.rocketView.update();
 
     if (this.stepProgress >= 1) {

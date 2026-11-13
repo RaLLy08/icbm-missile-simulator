@@ -81,7 +81,7 @@ export default class WorldGui {
     });
 
     this.pane
-      .addBinding(this, 'speechEnabled', { label: 'Voice Announcements' })
+      .addBinding(this, 'speechEnabled', { label: 'AI Voice Announcements' })
       .on('change', (ev) => {
         setSpeechEnabled(ev.value);
       });

@@ -437,9 +437,11 @@ export class TrailView {
 //   next = new THREE.Vector3();
 // }
 
+export type CylinderDimensions = { height: number; radius: number };
+
 export type RocketDimensions = {
-  /** Main cylinder */
-  body: { height: number; radius: number };
+  /** One cylinder per stage, ordered bottom (first stage) to top. */
+  stages: CylinderDimensions[];
   /** Nose cone */
   head: { height: number; radius: number };
   /** Exhaust flame (truncated cone) */
@@ -463,29 +465,62 @@ export default class RocketView {
   prevVelocity = new THREE.Vector3();
   prevThrust = new THREE.Vector3();
 
-  /** Rocket geometry in km (at size multiplier = 1). */
-  static readonly BASE_DIMENSIONS: RocketDimensions = {
-    body: { height: 1, radius: 0.1 },
-    head: { height: 0.3, radius: 0.1 },
-    fire: { height: 1, topRadius: 0.06, bottomRadius: 0.14 },
-  };
+  /**
+   * Default rocket geometry in km (at size multiplier = 1). The body is
+   * split between `stageCount` cylinders, each upper stage shorter and
+   * thinner than the one below; the total body height stays 1 km.
+   */
+  static baseDimensions(stageCount = 1): RocketDimensions {
+    const n = Math.max(1, Math.floor(stageCount));
+    // Height weights n, n-1, ..., 1 -> lower stages are taller
+    const weightSum = (n * (n + 1)) / 2;
+    const stages = Array.from({ length: n }, (_, i) => ({
+      height: (n - i) / weightSum,
+      radius: 0.1 * Math.pow(0.85, i),
+    }));
+    const topRadius = stages[n - 1].radius;
+    return {
+      stages,
+      head: { height: 0.3, radius: topRadius },
+      fire: { height: 1, topRadius: 0.06, bottomRadius: 0.14 },
+    };
+  }
 
-  dimensions: RocketDimensions = RocketView.scaleDimensions(
-    RocketView.BASE_DIMENSIONS,
-    1
-  );
+  dimensions: RocketDimensions = RocketView.baseDimensions();
+
+  /** Total height of all stage cylinders. */
+  get bodyHeight() {
+    return this.dimensions.stages.reduce((sum, s) => sum + s.height, 0);
+  }
 
   /** Reference length of the rocket (body height), used for camera distances. */
   get size() {
-    return this.dimensions.body.height;
+    return this.bodyHeight;
   }
 
   /** Full length of the rocket, from the body bottom to the head tip. */
   get length() {
-    return this.dimensions.body.height + this.dimensions.head.height;
+    return this.bodyHeight + this.dimensions.head.height;
   }
 
-  private arrowLength = 2 * this.dimensions.body.height;
+  private arrowLength = 2 * this.bodyHeight;
+
+  /** One group per stage (cylinder + its parts), bottom to top. */
+  private stageGroups: THREE.Group[] = [];
+  /** Holds the exhaust flames; moves up to the bottom of the active stage. */
+  private fireGroup = new THREE.Group();
+  private activeStageIndex = 0;
+
+  /**
+   * Burn rate at which the flame has its full `fire` size. Unit: kg/s.
+   * Null = use the rocket's current mass flow rate (flame always 100%).
+   */
+  private maxBurnRate: number | null = null;
+
+  /** Set the burn rate (kg/s) that maps to a 100% flame size. */
+  setMaxBurnRate(rate: number) {
+    this.maxBurnRate = rate > 0 ? rate : null;
+  }
 
   private lerpAlpha = 1;
 
@@ -503,17 +538,56 @@ export default class RocketView {
     this.explosionEffect = new ExplosionEffect(this.scene, 5);
   }
 
-  /** Scale all base dimensions by `multiplier`. Call before `init()`. */
-  setSize(multiplier: number) {
+  /**
+   * Use the default geometry for `stageCount` stages, scaled by
+   * `multiplier`. Call before `init()`.
+   */
+  setSize(multiplier: number, stageCount = 1) {
     this.setDimensions(
-      RocketView.scaleDimensions(RocketView.BASE_DIMENSIONS, multiplier)
+      RocketView.scaleDimensions(
+        RocketView.baseDimensions(stageCount),
+        multiplier
+      )
     );
   }
 
-  /** Set explicit body / head / fire dimensions (km). Call before `init()`. */
+  /** Set explicit stage / head / fire dimensions (km). Call before `init()`. */
   setDimensions(dimensions: RocketDimensions) {
+    if (dimensions.stages.length === 0) {
+      throw new Error('RocketView requires at least one stage cylinder.');
+    }
     this.dimensions = dimensions;
-    this.arrowLength = 2 * dimensions.body.height;
+    this.arrowLength = 2 * this.bodyHeight;
+  }
+
+  /**
+   * Show only stages from `index` upwards (spent stages are dropped) and
+   * move the flame to the bottom of the active stage.
+   */
+  setActiveStage(index: number) {
+    const last = this.dimensions.stages.length - 1;
+    const i = THREE.MathUtils.clamp(Math.floor(index), 0, last);
+    if (i === this.activeStageIndex && this.stageGroups.length > 0) return;
+    this.activeStageIndex = i;
+    this.applyActiveStage();
+  }
+
+  private applyActiveStage() {
+    const i = this.activeStageIndex;
+    this.stageGroups.forEach((g, k) => (g.visible = k >= i));
+
+    const stage = this.dimensions.stages[i];
+    this.fireGroup.position.y = this.stageBaseY(i);
+    // Fire dimensions are given for the first stage; fit them to the active one
+    const k = stage.radius / this.dimensions.stages[0].radius;
+    this.fireGroup.scale.setScalar(k);
+  }
+
+  /** Y of the bottom of stage `index` in the rocket's local space. */
+  private stageBaseY(index: number) {
+    let y = 0;
+    for (let k = 0; k < index; k++) y += this.dimensions.stages[k].height;
+    return y;
   }
 
   private static scaleDimensions(
@@ -521,7 +595,10 @@ export default class RocketView {
     k: number
   ): RocketDimensions {
     return {
-      body: { height: d.body.height * k, radius: d.body.radius * k },
+      stages: d.stages.map((s) => ({
+        height: s.height * k,
+        radius: s.radius * k,
+      })),
       head: { height: d.head.height * k, radius: d.head.radius * k },
       fire: {
         height: d.fire.height * k,
@@ -543,24 +620,39 @@ export default class RocketView {
     const legColor = 0x888888;
 
     // ------------------------------------------------------------------------
-    // === Rocket Body ===
-    const { body, head, fire } = this.dimensions;
-    const bodyRadius = body.radius;
-    const bodyHeight = body.height;
+    // === Stages (one cylinder each, stacked bottom to top) ===
+    const { stages, head, fire } = this.dimensions;
+    // Alternate shades so stage boundaries are visible
+    const stageColors = [bodyColor, 0xeeeeee];
 
-    const bodyGeometry = new THREE.CylinderGeometry(
-      bodyRadius,
-      bodyRadius,
-      bodyHeight,
-      16
-    );
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: bodyColor });
-    const bodyMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    bodyMesh.position.y = bodyHeight / 2; // bottom touches y = 0
-    this.group.add(bodyMesh);
+    this.stageGroups = [];
+    let stageBaseY = 0;
+    stages.forEach((stage, i) => {
+      const stageGroup = new THREE.Group();
+      stageGroup.name = `stage-${i + 1}`;
+      stageGroup.position.y = stageBaseY;
+
+      const geometry = new THREE.CylinderGeometry(
+        stage.radius,
+        stage.radius,
+        stage.height,
+        16
+      );
+      const material = new THREE.MeshStandardMaterial({
+        color: stageColors[i % stageColors.length],
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.y = stage.height / 2; // bottom touches the stage base
+      stageGroup.add(mesh);
+
+      this.group.add(stageGroup);
+      this.stageGroups.push(stageGroup);
+      stageBaseY += stage.height;
+    });
+    const bodyHeight = stageBaseY;
 
     // ------------------------------------------------------------------------
-    // === Rocket Nose Cone ===
+    // === Rocket Nose Cone (on top of the last stage) ===
     const coneHeight = head.height;
     const coneRadius = head.radius;
     const coneGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 16);
@@ -570,10 +662,12 @@ export default class RocketView {
     this.group.add(coneMesh);
 
     // ------------------------------------------------------------------------
-    // === Landing Legs (4) ===
+    // === Landing Legs (4), attached to the first stage ===
+    const firstStage = stages[0];
+    const bodyRadius = firstStage.radius;
     const legWidth = bodyRadius * 0.4; // thickness left-right
     const legDepth = bodyRadius * 0.1; // thickness front-back
-    const legHeight = bodyHeight * 0.3; // how tall the leg is
+    const legHeight = firstStage.height * 0.3; // how tall the leg is
 
     // Same geometry for all four legs
     const legGeometry = new THREE.BoxGeometry(
@@ -596,8 +690,12 @@ export default class RocketView {
       legMesh.rotateOnAxis(new THREE.Vector3(0, 1, 0), angle);
 
       legMesh.position.set(x, legHeight / 2, z); // bottom just touches y = 0
-      this.group.add(legMesh);
+      this.stageGroups[0].add(legMesh);
     }
+
+    this.fireGroup = new THREE.Group();
+    this.fireGroup.name = 'fire';
+    this.group.add(this.fireGroup);
 
     // Main burning fire (follows rocket/velocity direction)
     const burningFireMaterial = new THREE.MeshBasicMaterial({
@@ -620,7 +718,7 @@ export default class RocketView {
     burningFireMesh.position.y = -fire.height / 2;
 
     this.burningFireMesh = burningFireMesh;
-    this.group.add(this.burningFireMesh);
+    this.fireGroup.add(this.burningFireMesh);
 
     // Thrust direction fire (small, follows actual thrust direction)
     const thrustFireMaterial = new THREE.MeshBasicMaterial({
@@ -628,7 +726,7 @@ export default class RocketView {
       transparent: true,
       opacity: 0.7,
     });
-    const thrustFireSize = 0.4 * bodyHeight; // Smaller fixed size
+    const thrustFireSize = 0.4 * firstStage.height; // Smaller fixed size
     const thrustFireGeometry = new THREE.CylinderGeometry(
       0.04 * thrustFireSize,
       0.1 * thrustFireSize,
@@ -640,10 +738,12 @@ export default class RocketView {
       thrustFireMaterial
     );
 
-    thrustDirectionFireMesh.position.y = -0.5 * bodyHeight;
+    thrustDirectionFireMesh.position.y = -0.5 * thrustFireSize;
 
     this.thrustDirectionFireMesh = thrustDirectionFireMesh;
-    this.group.add(this.thrustDirectionFireMesh);
+    this.fireGroup.add(this.thrustDirectionFireMesh);
+
+    this.applyActiveStage();
 
     // ------------------------------------------------------------------------
     this.group.name = RocketView.name;
@@ -875,24 +975,28 @@ export default class RocketView {
     }
   }
 
+  /** Current burn rate as a fraction of `maxBurnRate` (0..1). */
+  private get burnRatio() {
+    const rate = this.rocket.massFlowRate;
+    const max = this.maxBurnRate ?? rate;
+    if (!(max > 0)) return 0;
+    return THREE.MathUtils.clamp(rate / max, 0, 1);
+  }
+
   private updateBurningFireScale() {
-    if (this.burningFireMesh) {
-      // Hide the exhaust flame once all fuel is burnt (or the rocket landed)
-      this.burningFireMesh.visible =
-        !this.rocket.isEngineCutoff && !this.rocket.hasLanded;
-    }
-    // let thrustPercentage =
-    //   this.rocket.thrust.length() / (this.rocket.maxAcceleration * 0.3);
-    // thrustPercentage = Math.min(thrustPercentage, 2);
-    // const thrustableSize = this.burningFireSize * thrustPercentage;
-    // // Update main burning fire (aligned with rocket body)
-    // this.burningFireMesh!.scale.set(
-    //   thrustPercentage,
-    //   thrustPercentage,
-    //   thrustPercentage
-    // );
-    // this.burningFireMesh!.position.y = -thrustableSize / 2;
-    // Update thrust direction fire (small, rotates with thrust)
+    if (!this.burningFireMesh) return;
+
+    // Hide the exhaust flame once all fuel is burnt (or the rocket landed)
+    const burning = !this.rocket.isEngineCutoff && !this.rocket.hasLanded;
+    const ratio = burning ? this.burnRatio : 0;
+    this.burningFireMesh.visible = ratio > 0;
+    if (ratio === 0) return;
+
+    // 100% size at the maximum burn rate, proportionally smaller below it.
+    // Keep the top of the flame attached to the bottom of the stage.
+    this.burningFireMesh.scale.setScalar(ratio);
+    this.burningFireMesh.position.y =
+      (-this.dimensions.fire.height * ratio) / 2;
   }
 
   private updateThrustDirectionFire() {
@@ -914,7 +1018,7 @@ export default class RocketView {
     const thrust = this.getThrust();
 
     // Fixed small size for thrust direction indicator
-    const thrustFireSize = 0.4 * this.dimensions.body.height;
+    const thrustFireSize = 0.4 * this.dimensions.stages[0].height;
 
     // If there's velocity, calculate the angle between velocity and thrust
     if (velocity.length() > 0) {

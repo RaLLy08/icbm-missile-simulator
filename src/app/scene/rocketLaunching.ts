@@ -135,7 +135,13 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     store().dequeueLaunch();
 
     const rocketView = new RocketView(rocket, scene, earthView);
-    rocketView.setSize(launcherGui.rocketSizeMultiplier);
+    rocketView.setSize(
+      launcherGui.rocketSizeMultiplier,
+      multiStageRocket.stages.length
+    );
+    rocketView.setMaxBurnRate(
+      Math.max(...multiStageRocket.stages.map((s) => s.massFlowRate))
+    );
     rocketView.init();
     rocketView.updatePrevFromRocket();
 
