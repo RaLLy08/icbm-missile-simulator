@@ -1,5 +1,6 @@
 import EarthView from 'app/earth/EarthView';
 import Rocket from './Rocket';
+import StageDebris from './StageDebris';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -568,8 +569,43 @@ export default class RocketView {
     const last = this.dimensions.stages.length - 1;
     const i = THREE.MathUtils.clamp(Math.floor(index), 0, last);
     if (i === this.activeStageIndex && this.stageGroups.length > 0) return;
+
+    // Stages that just burnt out separate and fall away
+    for (let k = this.activeStageIndex; k < i; k++) {
+      this.separateStage(k);
+    }
+
     this.activeStageIndex = i;
     this.applyActiveStage();
+  }
+
+  /** Backward push of a separating stage relative to the rocket. Unit: km/s */
+  static STAGE_SEPARATION_SPEED = 0.01;
+
+  private debris: StageDebris[] = [];
+
+  private separateStage(index: number) {
+    const stageGroup = this.stageGroups[index];
+    if (!stageGroup || !stageGroup.visible) return;
+
+    const forward = new THREE.Vector3(0, 1, 0).applyQuaternion(
+      this.group.quaternion
+    );
+    this.debris.push(
+      new StageDebris(
+        this.scene,
+        stageGroup,
+        this.getVelocity(),
+        forward,
+        RocketView.STAGE_SEPARATION_SPEED
+      )
+    );
+  }
+
+  private updateDebris(dt: number) {
+    if (this.debris.length === 0) return;
+    this.debris.forEach((d) => d.update(dt));
+    this.debris = this.debris.filter((d) => !d.finished);
   }
 
   private applyActiveStage() {
@@ -924,7 +960,9 @@ export default class RocketView {
 
   endPositionSkyMarker: null | THREE.Line = null;
 
-  update(): void {
+  /** @param simDelta Simulation seconds since the last call (animates debris). */
+  update(simDelta = 0): void {
+    this.updateDebris(simDelta);
     this.updatePosition();
     this.updateBurningFireScale();
     this.updateThrustDirectionFire();
@@ -1109,6 +1147,9 @@ export default class RocketView {
 
   remove() {
     this.scene.remove(this.group);
+
+    this.debris.forEach((d) => d.remove());
+    this.debris = [];
 
     if (this.endPositionSkyMarker) {
       this.scene.remove(this.endPositionSkyMarker);

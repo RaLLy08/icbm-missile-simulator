@@ -11,6 +11,7 @@ const config: Config = {
   },
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.jsx?$': 'babel-jest',
   },
 };
 

@@ -27,7 +27,8 @@ export default class FrameTimeManager {
 
     this.rocketView.setLerpAlpha(this.stepProgress);
     this.rocketView.setActiveStage(this.rocket.currentStageIndex);
-    this.rocketView.update();
+    // Game-clock delta is already 0 while paused
+    this.rocketView.update(delta * this.worldGui.timeMultiplier);
 
     if (this.stepProgress >= 1) {
       this.rocketView.updatePrevFromRocket();
