@@ -1,9 +1,9 @@
 name: Deploy SPA to GitHub Pages
 
-on:
-  push:
-    branches:
-      - main # or change to your default branch
+# on:
+#   push:
+#     branches:
+#       - main # or change to your default branch
 
 permissions:
   contents: read
