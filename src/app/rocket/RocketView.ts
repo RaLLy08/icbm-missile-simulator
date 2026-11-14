@@ -43,7 +43,7 @@ import { announceTargetReached } from 'app/helpers/Speech';
 
 const TARGET_REACHED_ANNOUNCE_DELAY_MS = 1000;
 /** "Target reached" is only announced if the impact is within this distance (km). */
-const TARGET_HIT_MAX_MISS_KM = 5;
+const TARGET_HIT_MAX_MISS_KM = 20;
 
 const NUKE_EXPLOSION_VARIANTS: string[] = [
   nukeVariant00,
