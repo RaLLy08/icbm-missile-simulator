@@ -267,6 +267,99 @@ const InstructionsModal = () => {
               </div>
             </>
           )}
+
+          {instructionsPage === 'support' && (
+            <>
+              <h2 className={s.modalTitle}>How to support me?</h2>
+              <div className={s.instructions}>
+                <div className={s.step}>
+                  <div className={s.stepContent}>
+                    <h3>💖 Donate</h3>
+                    <p>
+                      I built this project with love, from idea to release,
+                      completely free and{' '}
+                      <a
+                        className={s.modalLink}
+                        href="https://github.com/RaLLy08/icbm-missile-simulator"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        open source
+                      </a>
+                      . I spent many hours on it, writing the code by hand in
+                      the early stages and working with AI for the rest. I would
+                      be very grateful for every cent you donate, it supports my
+                      efforts and helps fund further improvements.
+                    </p>
+                    <p>
+                      <strong>TRON (TRC20):</strong>{' '}
+                      <code
+                        style={{ userSelect: 'all', wordBreak: 'break-all' }}
+                      >
+                        TVpvcz4GZyW7SMi4oBcBtY5A5ZT4RqGhTC
+                      </code>
+                    </p>
+                  </div>
+                </div>
+
+                <div className={s.step}>
+                  <div className={s.stepContent}>
+                    <h3>⭐ Star the repository</h3>
+                    <p>
+                      Giving the project a star on{' '}
+                      <a
+                        className={s.modalLink}
+                        href="https://github.com/RaLLy08/icbm-missile-simulator"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        GitHub
+                      </a>{' '}
+                      helps more people discover it.
+                    </p>
+                  </div>
+                </div>
+
+                <div className={s.step}>
+                  <div className={s.stepContent}>
+                    <h3>🐞 Report bugs &amp; suggest ideas</h3>
+                    <p>
+                      Found something broken or have an idea for a feature?{' '}
+                      <a
+                        className={s.modalLink}
+                        href="https://github.com/RaLLy08/icbm-missile-simulator/issues"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open an issue
+                      </a>
+                      .
+                    </p>
+                  </div>
+                </div>
+
+                <div className={s.step}>
+                  <div className={s.stepContent}>
+                    <h3>🛠️ Contribute</h3>
+                    <p>
+                      Pull requests are welcome, whether it's a physics
+                      improvement, a new missile in the database or a UI fix.
+                    </p>
+                  </div>
+                </div>
+
+                <div className={s.step}>
+                  <div className={s.stepContent}>
+                    <h3>📣 Share it</h3>
+                    <p>
+                      Tell your friends or post it anywhere you think people
+                      would enjoy playing with orbital mechanics.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

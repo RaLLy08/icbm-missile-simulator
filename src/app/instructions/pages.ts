@@ -11,6 +11,11 @@ export const INSTRUCTIONS_PAGES = [
     label: 'How does it work?',
     description: 'The physics and the trajectory search behind the simulator',
   },
+  {
+    id: 'support',
+    label: 'How to support me?',
+    description: 'Ways to help the project grow',
+  },
 ] as const;
 
 export type InstructionsPage =
