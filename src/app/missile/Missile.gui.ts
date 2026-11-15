@@ -1,7 +1,7 @@
 import { FolderApi, Pane } from 'tweakpane';
 import Missile from './Missile';
 import MultiStageMissile from './MultiStageMissile';
-import MissileView from './MissileView';
+import MissileView, { ForceArrowKey } from './MissileView';
 import * as THREE from 'three';
 import { formatSeconds } from 'app/utils';
 import MissileTrackingView from './MissileTrackingView';
@@ -15,7 +15,22 @@ export default class MissileGui {
   displacement = 0;
   gravityForce = 0;
   percentOfFuel = 0;
-  showForcesArrows = false;
+  showMissile = true;
+  /** Per-arrow visibility toggles (all off by default). */
+  readonly forceArrows: Record<ForceArrowKey, boolean> = {
+    velocity: false,
+    acceleration: false,
+    thrust: false,
+    gravity: false,
+    gravityPerpendicular: false,
+  };
+  private static readonly FORCE_ARROW_LABELS: Record<ForceArrowKey, string> = {
+    velocity: 'Velocity (total, red)',
+    acceleration: 'Acceleration (total, yellow)',
+    thrust: 'Net Thrust (green)',
+    gravity: 'Gravity (blue)',
+    gravityPerpendicular: 'Gravity Perpendicular (purple)',
+  };
   forcesArrowViewScale = 1;
   travelledDistance = 0;
   velocityToGravityAngle = 0;
@@ -177,15 +192,34 @@ export default class MissileGui {
       format: (v) => v.toFixed(1) + ' km',
     });
 
-    this.folder
-      .addBinding(this, 'showForcesArrows', {
-        label: 'Show Forces Arrows',
+    const arrowsFolder = this.folder.addFolder({
+      title: 'Visual Components',
+      expanded: false,
+    });
+
+    arrowsFolder
+      .addBinding(this, 'showMissile', {
+        label: 'Show Missile',
+        input: 'checkbox',
+        view: 'checkbox',
       })
-      .on('change', () => {
-        this.missileView.setArrowsEnabled(this.showForcesArrows);
+      .on('change', (ev) => {
+        this.missileView.setMissileVisible(ev.value);
       });
 
-    this.folder
+    (Object.keys(this.forceArrows) as ForceArrowKey[]).forEach((key) => {
+      arrowsFolder
+        .addBinding(this.forceArrows, key, {
+          label: MissileGui.FORCE_ARROW_LABELS[key],
+          input: 'checkbox',
+          view: 'checkbox',
+        })
+        .on('change', (ev) => {
+          this.missileView.setArrowEnabled(key, ev.value);
+        });
+    });
+
+    arrowsFolder
       .addBinding(this, 'forcesArrowViewScale', {
         label: 'Forces Arrow View Scale',
         min: 1,

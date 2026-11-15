@@ -1,6 +1,7 @@
 import EarthView from 'app/earth/EarthView';
 import Missile from './Missile';
 import StageDebris from './StageDebris';
+import ArrowLabel from './ArrowLabel';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -440,6 +441,126 @@ export class TrailView {
 //   next = new THREE.Vector3();
 // }
 
+// ----------------------------------------------------------------------------
+// Procedural textures (canvas-generated, shared by every missile)
+
+const textureCache = new Map<string, THREE.CanvasTexture | null>();
+
+/**
+ * Draw a texture once on a canvas and cache it. Returns null outside the
+ * browser (e.g. in jest), so the meshes fall back to plain colors.
+ */
+function getCanvasTexture(
+  key: string,
+  width: number,
+  height: number,
+  draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void
+): THREE.CanvasTexture | null {
+  if (textureCache.has(key)) return textureCache.get(key)!;
+
+  let texture: THREE.CanvasTexture | null = null;
+  const canvas =
+    typeof document !== 'undefined' ? document.createElement('canvas') : null;
+  const ctx = canvas?.getContext('2d');
+  if (canvas && ctx) {
+    canvas.width = width;
+    canvas.height = height;
+    draw(ctx, width, height);
+    texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = THREE.RepeatWrapping;
+  }
+  textureCache.set(key, texture);
+  return texture;
+}
+
+/**
+ * Nozzle skin: dark metal with cooling tubes and stiffener rings.
+ * Canvas top = nozzle exit, canvas bottom = throat (LatheGeometry v runs
+ * from the first profile point to the last).
+ */
+const getNozzleTexture = () =>
+  getCanvasTexture('nozzle-color', 128, 256, (ctx, w, h) => {
+    const base = ctx.createLinearGradient(0, 0, 0, h);
+    base.addColorStop(0, '#6b7079');
+    base.addColorStop(0.6, '#43464c');
+    base.addColorStop(1, '#2b2b2f');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, w, h);
+
+    // Regenerative cooling tubes running along the bell
+    for (let x = 0; x < w; x += 4) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.fillRect(x, 0, 1, h);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.fillRect(x + 2, 0, 1, h);
+    }
+
+    // Stiffener rings
+    ctx.fillStyle = 'rgba(20, 20, 24, 0.8)';
+    [0.22, 0.48, 0.74].forEach((f) => ctx.fillRect(0, f * h, w, 3));
+
+    // Bright exit lip
+    ctx.fillStyle = '#9aa1ab';
+    ctx.fillRect(0, 0, w, 5);
+  });
+
+/** Heat glow near the throat; used as the nozzle's emissive map. */
+const getNozzleGlowTexture = () =>
+  getCanvasTexture('nozzle-glow', 16, 256, (ctx, w, h) => {
+    const glow = ctx.createLinearGradient(0, h, 0, 0);
+    glow.addColorStop(0, '#ff6a1a');
+    glow.addColorStop(0.35, '#a02800');
+    glow.addColorStop(0.65, '#000000');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+  });
+
+/**
+ * Exhaust plume: white-hot core at the nozzle exit fading through orange to
+ * transparent red, with streaks and shock diamonds.
+ * Canvas top = flame top (attached to the nozzle).
+ */
+const getFireTexture = () =>
+  getCanvasTexture('burning-fire', 128, 512, (ctx, w, h) => {
+    const plume = ctx.createLinearGradient(0, 0, 0, h);
+    plume.addColorStop(0, 'rgba(255, 255, 235, 1)');
+    plume.addColorStop(0.12, 'rgba(255, 235, 140, 0.95)');
+    plume.addColorStop(0.4, 'rgba(255, 160, 45, 0.75)');
+    plume.addColorStop(0.75, 'rgba(255, 80, 15, 0.35)');
+    plume.addColorStop(1, 'rgba(200, 30, 0, 0)');
+    ctx.fillStyle = plume;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.globalCompositeOperation = 'lighter';
+
+    // Turbulent streaks
+    for (let i = 0; i < 60; i++) {
+      const x = Math.random() * w;
+      const length = h * (0.3 + Math.random() * 0.6);
+      const streak = ctx.createLinearGradient(0, 0, 0, length);
+      const alpha = 0.04 + Math.random() * 0.12;
+      streak.addColorStop(0, `rgba(255, 220, 150, ${alpha})`);
+      streak.addColorStop(1, 'rgba(255, 120, 30, 0)');
+      ctx.fillStyle = streak;
+      ctx.fillRect(x, 0, 1 + Math.random() * 3, length);
+    }
+
+    // Shock diamonds (bright bands close to the nozzle)
+    for (let i = 0; i < 4; i++) {
+      const y = h * (0.06 + i * 0.09);
+      const band = ctx.createLinearGradient(0, y - 6, 0, y + 6);
+      const alpha = 0.35 * (1 - i / 4);
+      band.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      band.addColorStop(0.5, `rgba(255, 255, 255, ${alpha})`);
+      band.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = band;
+      ctx.fillRect(0, y - 6, w, 12);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+  });
+
 export type CylinderDimensions = { height: number; radius: number };
 
 export type MissileDimensions = {
@@ -451,14 +572,39 @@ export type MissileDimensions = {
   fire: { height: number; topRadius: number; bottomRadius: number };
 };
 
+/** Force / motion vectors that can be drawn as arrows on the missile. */
+export type ForceArrowKey =
+  | 'velocity'
+  | 'acceleration'
+  | 'thrust'
+  | 'gravity'
+  | 'gravityPerpendicular';
+
+export const FORCE_ARROW_COLORS: Record<ForceArrowKey, number> = {
+  velocity: 0xff0000,
+  acceleration: 0xffff00,
+  thrust: 0x00ff00,
+  gravity: 0x0000ff,
+  gravityPerpendicular: 0xcc00cc,
+};
+
 export default class MissileView {
   group: THREE.Group;
   private arrows: THREE.ArrowHelper[] = [];
-  /** Force arrows are hidden by default; enabled from Missile Controls. */
-  private arrowsEnabled = false;
+  /** Value labels shown under each arrow's tip. */
+  private arrowLabels = new Map<ForceArrowKey, ArrowLabel>();
+  /** Arrows the user switched on; all hidden by default (Missile Controls). */
+  private enabledArrows = new Set<ForceArrowKey>();
+  /** Temporary hide (e.g. while rendering the tracking camera). */
+  private arrowsTemporarilyHidden = false;
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private trailView: TrailView | null = null;
   private burningFireMesh: THREE.Mesh | null = null;
+  /** Pivot at the top of the nozzle; rotates the nozzle + flame with thrust. */
+  private nozzleGimbal: THREE.Group | null = null;
+  private nozzleMaterial: THREE.MeshStandardMaterial | null = null;
+  /** Nozzle length in fire-group space (fire dimensions of the first stage). */
+  private nozzleHeight = 0;
   private explosionEffect: ExplosionEffect | null = null;
   private hasTriggeredExplosion: boolean = false;
   private engineSound: EngineSound | null = new EngineSound();
@@ -751,28 +897,82 @@ export default class MissileView {
     this.fireGroup.name = 'fire';
     this.group.add(this.fireGroup);
 
-    // Main burning fire (follows missile/velocity direction)
+    // ------------------------------------------------------------------------
+    // === Gimbaled nozzle (pivots at the bottom of the active stage) ===
+    this.nozzleGimbal = new THREE.Group();
+    this.nozzleGimbal.name = 'nozzle-gimbal';
+    this.fireGroup.add(this.nozzleGimbal);
+
+    const exitRadius = fire.topRadius * 1.1;
+    const nozzleHeight = fire.topRadius * 1.8;
+    this.nozzleHeight = nozzleHeight;
+
+    // Bell profile from the combustion chamber (top) down to the exit
+    const profile: THREE.Vector2[] = [];
+    const chamberRadius = exitRadius * 0.55;
+    const throatRadius = exitRadius * 0.35;
+    const throatY = -nozzleHeight * 0.18;
+    profile.push(new THREE.Vector2(chamberRadius, 0));
+    profile.push(new THREE.Vector2(throatRadius, throatY));
+    const bellSegments = 10;
+    for (let s = 1; s <= bellSegments; s++) {
+      const t = s / bellSegments;
+      // sqrt curve -> flares quickly after the throat, straighter near exit
+      const r = throatRadius + (exitRadius - throatRadius) * Math.sqrt(t);
+      const y = throatY + (-nozzleHeight - throatY) * t;
+      profile.push(new THREE.Vector2(r, y));
+    }
+
+    this.nozzleMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: getNozzleTexture(),
+      emissive: 0xffffff,
+      emissiveMap: getNozzleGlowTexture(),
+      emissiveIntensity: 0,
+      metalness: 0.7,
+      roughness: 0.45,
+      side: THREE.DoubleSide,
+    });
+    if (!this.nozzleMaterial.map) this.nozzleMaterial.color.set(0x555a60);
+    if (!this.nozzleMaterial.emissiveMap) this.nozzleMaterial.emissive.set(0);
+
+    const nozzleMesh = new THREE.Mesh(
+      new THREE.LatheGeometry(profile, 24),
+      this.nozzleMaterial
+    );
+    nozzleMesh.name = 'nozzle';
+    this.nozzleGimbal.add(nozzleMesh);
+
+    // ------------------------------------------------------------------------
+    // === Burning fire (hangs from the nozzle exit, gimbals with it) ===
+    const fireTexture = getFireTexture();
     const burningFireMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffa500,
+      color: fireTexture ? 0xffffff : 0xffa500,
+      map: fireTexture,
       transparent: true,
-      opacity: 0.6,
+      opacity: fireTexture ? 0.95 : 0.6,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
     });
     const burningFireGeometry = new THREE.CylinderGeometry(
       fire.topRadius,
       fire.bottomRadius,
       fire.height,
-      16
+      24,
+      1,
+      true
     );
     const burningFireMesh = new THREE.Mesh(
       burningFireGeometry,
       burningFireMaterial
     );
 
-    // Top of the flame touches the bottom of the body (y = 0)
-    burningFireMesh.position.y = -fire.height / 2;
+    // Top of the flame touches the nozzle exit
+    burningFireMesh.position.y = -nozzleHeight - fire.height / 2;
 
     this.burningFireMesh = burningFireMesh;
-    this.fireGroup.add(this.burningFireMesh);
+    this.nozzleGimbal.add(this.burningFireMesh);
 
     this.applyActiveStage();
 
@@ -782,66 +982,89 @@ export default class MissileView {
   }
 
   private initArrows() {
-    this.addArrow(
-      'velocity',
-      0xff0000,
-      this.group.position,
-      this.missile.velocity
-    );
-    this.addArrow('thrust', 0x00ff00, this.group.position, this.missile.thrust);
-    this.addArrow(
-      'gravity',
-      0x0000ff,
-      this.group.position,
-      this.missile.gravityForce
-    );
+    const initial: Record<ForceArrowKey, THREE.Vector3> = {
+      velocity: this.missile.velocity,
+      acceleration: this.missile.thrust
+        .clone()
+        .add(this.missile.gravityForce),
+      thrust: this.missile.thrust,
+      gravity: this.missile.gravityForce,
+      gravityPerpendicular: this.missile.calcThrustDirectionToIncline(),
+    };
 
-    this.addArrow(
-      'targetIncline',
-      0xcc00cc,
-      this.group.position,
-      this.missile.calcThrustDirectionToIncline()
-    );
+    (Object.keys(initial) as ForceArrowKey[]).forEach((key) => {
+      this.addArrow(
+        key,
+        FORCE_ARROW_COLORS[key],
+        this.group.position,
+        initial[key]
+      );
+    });
+  }
+
+  /** Standard gravity, for showing accelerations in g. Unit: m/s² */
+  private static readonly G0 = 9.80665;
+
+  /** km/s² -> "12.34 m/s² (1.26 g)" */
+  private static formatAcceleration(kmPerS2: number) {
+    const ms2 = kmPerS2 * 1000;
+    return `${ms2.toFixed(2)} m/s² (${(ms2 / MissileView.G0).toFixed(2)} g)`;
   }
 
   private updateArrows() {
     const velocity = this.getVelocity();
     const thrust = this.getThrust();
+    const gravity = this.missile.gravityForce;
+    // Total acceleration acting on the missile (thrust is already per unit mass)
+    const acceleration = thrust.clone().add(gravity);
+    const perpendicular = this.missile.calcThrustDirectionToIncline();
+
+    this.updateArrow(
+      'acceleration',
+      this.group.position,
+      acceleration.clone().normalize(),
+      acceleration.length(),
+      MissileView.formatAcceleration(acceleration.length())
+    );
 
     this.updateArrow(
       'gravity',
       this.group.position,
-      this.missile.gravityForce.clone().normalize(),
-      this.missile.gravityForce.length()
+      gravity.clone().normalize(),
+      gravity.length(),
+      MissileView.formatAcceleration(gravity.length())
     );
 
     this.updateArrow(
       'velocity',
       this.group.position,
       velocity.clone().normalize(),
-      velocity.length()
+      velocity.length(),
+      `${velocity.length().toFixed(3)} km/s`
     );
 
     this.updateArrow(
       'thrust',
       this.group.position,
       thrust.clone().normalize(),
-      thrust.length()
+      thrust.length(),
+      MissileView.formatAcceleration(thrust.length())
     );
 
     this.updateArrow(
-      'targetIncline',
+      'gravityPerpendicular',
       this.group.position,
-      this.missile.calcThrustDirectionToIncline().clone().normalize(),
-      this.missile.calcThrustDirectionToIncline().length()
+      perpendicular.clone().normalize(),
+      perpendicular.length()
     );
   }
 
   private updateArrow(
-    name: string,
+    name: ForceArrowKey,
     position: THREE.Vector3,
     direction: THREE.Vector3,
-    magnitude: number = 1
+    magnitude: number = 1,
+    labelText?: string
   ) {
     const arrow = this.arrows.find((a) => a.name === `${name}-arrow`);
 
@@ -860,6 +1083,14 @@ export default class MissileView {
     );
     arrow.position.copy(position);
 
+    // Label is a child of the arrow: local +Y is the arrow direction, and
+    // setLength() only scales the line/cone, not the arrow object itself.
+    const label = this.arrowLabels.get(name);
+    if (label) {
+      label.sprite.position.set(0, length, 0);
+      if (labelText !== undefined && arrow.visible) label.setText(labelText);
+    }
+
     // const label = this.arrowsLabels.find((l) => l.name === `${name}-label`);
     // if (label) {
     //   const midpoint = new THREE.Vector3().addVectors(
@@ -873,7 +1104,7 @@ export default class MissileView {
   }
 
   private addArrow(
-    name: string,
+    name: ForceArrowKey,
     color = 0x00ff00,
     position = new THREE.Vector3(0, 0, 0),
     direction = new THREE.Vector3(0, 0, 0)
@@ -885,9 +1116,17 @@ export default class MissileView {
     arrow.setLength(length, length * 0.1, length * 0.1);
     arrow.setDirection(direction);
     arrow.setColor(color);
-    arrow.visible = this.arrowsEnabled;
+    arrow.visible = this.isArrowShown(name);
     this.scene.add(arrow);
     this.arrows.push(arrow);
+
+    // Value label at the arrow tip; hidden together with the arrow.
+    // Gravity Perpendicular is a pure direction -> no number.
+    if (name !== 'gravityPerpendicular') {
+      const label = new ArrowLabel(color);
+      arrow.add(label.sprite);
+      this.arrowLabels.set(name, label);
+    }
 
     // const loader = new FontLoader();
     // loader.load(
@@ -964,6 +1203,7 @@ export default class MissileView {
     this.updateArrows();
 
     this.alignRotation();
+    this.updateNozzleGimbal();
 
     this.engineSound?.update(
       !this.missile.hasLanded && this.missile.thrust.lengthSq() > 0,
@@ -1028,13 +1268,70 @@ export default class MissileView {
     const burning = !this.missile.isEngineCutoff && !this.missile.hasLanded;
     const ratio = burning ? this.burnRatio : 0;
     this.burningFireMesh.visible = ratio > 0;
+
+    // Nozzle glows while firing and cools down after cutoff
+    if (this.nozzleMaterial) {
+      const glow = this.nozzleMaterial.emissiveIntensity;
+      this.nozzleMaterial.emissiveIntensity =
+        ratio > 0 ? 0.4 + 0.6 * ratio : glow * 0.97;
+    }
+
     if (ratio === 0) return;
 
-    // 100% size at the maximum burn rate, proportionally smaller below it.
-    // Keep the top of the flame attached to the bottom of the stage.
-    this.burningFireMesh.scale.setScalar(ratio);
+    // 100% size at the maximum burn rate, proportionally smaller below it,
+    // with a slight flicker. The top of the flame stays on the nozzle exit.
+    const flicker = 1 + (Math.random() - 0.5) * 0.08;
+    const width = ratio * (1 + (Math.random() - 0.5) * 0.05);
+    const length = ratio * flicker;
+    this.burningFireMesh.scale.set(width, length, width);
     this.burningFireMesh.position.y =
-      (-this.dimensions.fire.height * ratio) / 2;
+      -this.nozzleHeight - (this.dimensions.fire.height * length) / 2;
+  }
+
+
+
+  private readonly gimbalTarget = new THREE.Quaternion();
+
+  /**
+   * During the gravity turn the thrust rotates at `thrustInclineVelocity`
+   * rad/s; the nozzle tilts proportionally to that rate to steer it, with
+   * the exhaust swinging away from the target side. Neutral outside the turn
+   * or without thrust.
+   */
+  private updateNozzleGimbal() {
+    if (!this.nozzleGimbal) return;
+
+    const missile = this.missile;
+    const steering =
+      missile.isGravityTurnActive &&
+      !missile.isEngineCutoff &&
+      !missile.hasLanded &&
+      missile.thrustInclineVelocity !== 0;
+
+    this.gimbalTarget.identity();
+
+    if (steering) {
+      const angle = Math.abs(missile.thrustInclineVelocity);
+
+      // Exhaust swings away from the target (turn direction inversed),
+      // expressed in the missile's local space
+      const lateral = missile
+        .calcThrustDirectionToIncline()
+        .clone()
+        .applyQuaternion(this.group.quaternion.clone().invert())
+        .negate();
+      if (missile.thrustInclineVelocity < 0) lateral.negate();
+
+      // Tilt axis = exhaust axis (-Y) x lateral; the cross product ignores
+      // the component along the missile height, so no projection is needed
+      const axis = new THREE.Vector3(0, -1, 0).cross(lateral);
+      if (axis.lengthSq() > 1e-12) {
+        this.gimbalTarget.setFromAxisAngle(axis.normalize(), angle);
+      }
+    }
+
+    // Smooth the actuator movement
+    this.nozzleGimbal.quaternion.slerp(this.gimbalTarget, 0.1);
   }
 
   private updatePosition() {
@@ -1069,17 +1366,33 @@ export default class MissileView {
     this.prevThrust.copy(this.missile.thrust.clone());
   }
 
-  /** Toggle force arrows on/off (user setting). */
-  setArrowsEnabled(enabled: boolean) {
-    this.arrowsEnabled = enabled;
-    this.setArrowsVisible(enabled);
+  private isArrowShown(key: ForceArrowKey) {
+    return !this.arrowsTemporarilyHidden && this.enabledArrows.has(key);
   }
 
-  /** Temporarily show/hide arrows; never shows them while disabled. */
-  setArrowsVisible(visible: boolean) {
+  private refreshArrowsVisibility() {
     this.arrows.forEach((arrow) => {
-      arrow.visible = visible && this.arrowsEnabled;
+      const key = arrow.name.replace(/-arrow$/, '') as ForceArrowKey;
+      arrow.visible = this.isArrowShown(key);
     });
+  }
+
+  /** Show/hide the missile model itself (trail and arrows are unaffected). */
+  setMissileVisible(visible: boolean) {
+    this.group.visible = visible;
+  }
+
+  /** Toggle a single force arrow on/off (user setting). */
+  setArrowEnabled(key: ForceArrowKey, enabled: boolean) {
+    if (enabled) this.enabledArrows.add(key);
+    else this.enabledArrows.delete(key);
+    this.refreshArrowsVisibility();
+  }
+
+  /** Temporarily show/hide arrows; never shows ones the user disabled. */
+  setArrowsVisible(visible: boolean) {
+    this.arrowsTemporarilyHidden = !visible;
+    this.refreshArrowsVisibility();
   }
 
   applyScaleToArrows(scale: number) {
@@ -1105,6 +1418,9 @@ export default class MissileView {
       }
     });
     this.group.clear();
+
+    this.arrowLabels.forEach((label) => label.dispose());
+    this.arrowLabels.clear();
 
     this.arrows.forEach((arrow) => {
       arrow.dispose();
