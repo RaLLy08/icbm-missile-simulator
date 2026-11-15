@@ -35,6 +35,10 @@ import distantVariant12 from 'public/audio/distant_explosion_variants/distant_ex
 import engineStartAudio from 'public/audio/start.mp3';
 import engineFlightAudio from 'public/audio/flight.mp3';
 import engineEndAudio from 'public/audio/end.mp3';
+import detachVariant0 from 'public/audio/detach/detach_0.wav';
+import detachVariant1 from 'public/audio/detach/detach_1.wav';
+import detachVariant2 from 'public/audio/detach/detach_2.wav';
+import detachVariant3 from 'public/audio/detach/detach_3.wav';
 import {
     ENGINE_FALLOFF,
     EXPLOSION_FALLOFF,
@@ -80,8 +84,34 @@ const DISTANT_EXPLOSION_VARIANTS: string[] = [
   distantVariant12,
 ];
 
+const DETACH_VARIANTS: string[] = [
+  detachVariant0,
+  detachVariant1,
+  detachVariant2,
+  detachVariant3,
+];
+
+const DETACH_BASE_VOLUME = 0.6;
+
 const pickRandom = <T>(items: T[]): T =>
   items[Math.floor(Math.random() * items.length)];
+
+/**
+ * One-shot sound of a part separating (stage, shroud), a random variant.
+ * Volume follows camera distance at the moment of separation.
+ */
+function playDetachSound(position: THREE.Vector3) {
+  const volume = getDistanceVolume(position, ENGINE_FALLOFF);
+  if (volume <= 0) return;
+
+  const sound = createAudio(pickRandom(DETACH_VARIANTS));
+  sound.volume = DETACH_BASE_VOLUME * volume;
+  sound.addEventListener('ended', () => releaseAudio(sound), { once: true });
+  sound.play().catch((error) => {
+    releaseAudio(sound);
+    console.warn('Failed to play detach sound:', error);
+  });
+}
 
 /**
  * Engine sounds: plays `start` on ignition, then loops `flight` while the
@@ -844,6 +874,8 @@ export default class MissileView {
       );
     });
 
+    playDetachSound(this.group.position);
+
     shroud.visible = false;
     // The shroud no longer glows; the warhead takes over the heating
     this.noseMaterial = null;
@@ -867,6 +899,7 @@ export default class MissileView {
         MissileView.STAGE_SEPARATION_SPEED
       )
     );
+    playDetachSound(this.group.position);
   }
 
   /** Missile state that separating debris starts from. */
