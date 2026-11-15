@@ -77,7 +77,7 @@ export default class EarthGui {
 
     this.folder
       .addBinding(this, 'atmosphericDrag', {
-        label: 'Atmospheric Drag',
+        label: 'Atmospheric Drag (slows down calculations)',
         input: 'checkbox',
         view: 'checkbox',
       })
