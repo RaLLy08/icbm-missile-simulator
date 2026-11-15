@@ -35,6 +35,7 @@ export default class MissileGui {
   travelledDistance = 0;
   velocityToGravityAngle = 0;
   thrustInclineAngleDeg = 0;
+  thrustInclineVelocity = 0;
 
   onFocusCameraClick: () => void = () => {};
 
@@ -82,6 +83,44 @@ export default class MissileGui {
         this.onFocusCameraClick();
       });
 
+    const arrowsFolder = this.folder.addFolder({
+      title: 'Visual Components',
+      expanded: false,
+    });
+
+    arrowsFolder
+      .addBinding(this, 'showMissile', {
+        label: 'Show Missile',
+        input: 'checkbox',
+        view: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.missileView.setMissileVisible(ev.value);
+      });
+
+    (Object.keys(this.forceArrows) as ForceArrowKey[]).forEach((key) => {
+      arrowsFolder
+        .addBinding(this.forceArrows, key, {
+          label: MissileGui.FORCE_ARROW_LABELS[key],
+          input: 'checkbox',
+          view: 'checkbox',
+        })
+        .on('change', (ev) => {
+          this.missileView.setArrowEnabled(key, ev.value);
+        });
+    });
+
+    arrowsFolder
+      .addBinding(this, 'forcesArrowViewScale', {
+        label: 'Forces Arrow View Scale',
+        min: 1,
+        max: 3000,
+        step: 1,
+      })
+      .on('change', () => {
+        this.missileView.applyScaleToArrows(this.forcesArrowViewScale);
+      });
+
     this.folder.addBinding(this, 'velocity', {
       label: 'Velocity',
       readonly: true,
@@ -121,17 +160,16 @@ export default class MissileGui {
     });
 
     this.folder.addBinding(this, 'velocityToGravityAngle', {
-      label: 'Angle of attack Velocity',
+      label: 'Angle of Velocity to Gravity',
       view: 'cameraring',
       readonly: true,
       wide: true,
-      format: (v) => v.toFixed(2) + '°',
     });
 
     // Camerakit's ring is an input-only view (no readonly/monitor mode), so it
     // binds to a degree mirror that update() overwrites every frame.
     this.folder.addBinding(this, 'thrustInclineAngleDeg', {
-      label: 'Angle of attack Incline Thrust',
+      label: 'Angle of Thrust Net',
       view: 'cameraring',
       series: 0,
       wide: true,
@@ -180,6 +218,12 @@ export default class MissileGui {
       format: (v) => v.toFixed(1) + ' s',
     });
 
+    this.folder.addBinding(this, 'thrustInclineVelocity', {
+      label: ' Velocity Angular Velocity (ω) of Thrust',
+      readonly: true,
+      format: (v) => v.toFixed(3) + ' rad/s',
+    });
+
     this.folder.addBinding(this.missile, 'flightTime', {
       label: 'Flight Time',
       readonly: true,
@@ -191,44 +235,6 @@ export default class MissileGui {
       readonly: true,
       format: (v) => v.toFixed(1) + ' km',
     });
-
-    const arrowsFolder = this.folder.addFolder({
-      title: 'Visual Components',
-      expanded: false,
-    });
-
-    arrowsFolder
-      .addBinding(this, 'showMissile', {
-        label: 'Show Missile',
-        input: 'checkbox',
-        view: 'checkbox',
-      })
-      .on('change', (ev) => {
-        this.missileView.setMissileVisible(ev.value);
-      });
-
-    (Object.keys(this.forceArrows) as ForceArrowKey[]).forEach((key) => {
-      arrowsFolder
-        .addBinding(this.forceArrows, key, {
-          label: MissileGui.FORCE_ARROW_LABELS[key],
-          input: 'checkbox',
-          view: 'checkbox',
-        })
-        .on('change', (ev) => {
-          this.missileView.setArrowEnabled(key, ev.value);
-        });
-    });
-
-    arrowsFolder
-      .addBinding(this, 'forcesArrowViewScale', {
-        label: 'Forces Arrow View Scale',
-        min: 1,
-        max: 3000,
-        step: 1,
-      })
-      .on('change', () => {
-        this.missileView.applyScaleToArrows(this.forcesArrowViewScale);
-      });
 
     // Insert the viewport into the DOM only after all blades are added:
     // tweakpane inserts blades by child index, so a foreign element added
@@ -264,6 +270,7 @@ export default class MissileGui {
     this.thrustInclineAngleDeg = THREE.MathUtils.radToDeg(
       this.missile.thrustInclineAngle
     );
+    this.thrustInclineVelocity = this.missile.thrustInclineVelocity;
 
     this.folder.refresh();
   }

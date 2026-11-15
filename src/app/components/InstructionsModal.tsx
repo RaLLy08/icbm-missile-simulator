@@ -130,7 +130,7 @@ const InstructionsModal = () => {
                     <p>
                       To steer the missile toward its target, the simulator
                       performs a gravity turn: once a set altitude is reached,
-                      the angle of attack changes by <strong>X rad/s</strong>{' '}
+                      the angle of thrust changes by <strong>X rad/s</strong>{' '}
                       for <strong>N seconds</strong>. In real missiles this is
                       done with mechanisms like gimbaled nozzles.
                     </p>

@@ -852,6 +852,13 @@ export default class MissileView {
     return `${ms2.toFixed(2)} m/s² (${(ms2 / MissileView.G0).toFixed(2)} g)`;
   }
 
+  /** Angle between `v` and gravity, e.g. " · 45.2°" (empty if undefined). */
+  private angleToGravityText(v: THREE.Vector3) {
+    const g = this.missile.gravityForce;
+    if (v.lengthSq() === 0 || g.lengthSq() === 0) return '';
+    return ` · ${THREE.MathUtils.radToDeg(v.angleTo(g)).toFixed(1)}°`;
+  }
+
   private updateArrows() {
     const velocity = this.getVelocity();
     const thrust = this.getThrust();
@@ -865,7 +872,8 @@ export default class MissileView {
       this.group.position,
       acceleration.clone().normalize(),
       acceleration.length(),
-      MissileView.formatAcceleration(acceleration.length())
+      MissileView.formatAcceleration(acceleration.length()) +
+        this.angleToGravityText(acceleration)
     );
 
     this.updateArrow(
@@ -881,7 +889,7 @@ export default class MissileView {
       this.group.position,
       velocity.clone().normalize(),
       velocity.length(),
-      `${velocity.length().toFixed(3)} km/s`
+      `${velocity.length().toFixed(3)} km/s` + this.angleToGravityText(velocity)
     );
 
     this.updateArrow(
@@ -889,7 +897,8 @@ export default class MissileView {
       this.group.position,
       thrust.clone().normalize(),
       thrust.length(),
-      MissileView.formatAcceleration(thrust.length())
+      MissileView.formatAcceleration(thrust.length()) +
+        this.angleToGravityText(thrust)
     );
 
     this.updateArrow(

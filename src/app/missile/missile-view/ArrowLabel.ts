@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
-const CANVAS_WIDTH = 512;
+// Fits ~30 monospace chars, e.g. "24.10 m/s² (2.46 g) · 45.2°"
+const CANVAS_WIDTH = 640;
 const CANVAS_HEIGHT = 64;
 /** Label height as a fraction of the viewport height (constant on screen). */
 const SCREEN_HEIGHT = 0.035;
