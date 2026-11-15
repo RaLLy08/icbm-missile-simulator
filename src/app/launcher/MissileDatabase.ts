@@ -38,7 +38,37 @@ const MissileCategories = {
 type MissileCategories =
   (typeof MissileCategories)[keyof typeof MissileCategories];
 
+/** Id of the generic, freely editable preset (first entry, the default). */
+export const CUSTOM_MISSILE_ID = 'custom';
+
 export const MISSILES: MissileSpec[] = [
+  // ─── Custom (default) ───
+  {
+    id: CUSTOM_MISSILE_ID,
+    name: 'Custom',
+    country: '',
+    category: MissileCategories.ICBM,
+    // = MissileView.REFERENCE_MISSILE_HEIGHT -> default model size
+    height: 20,
+    payloadMass: 800,
+    startInclineAfterAltitude: { min: 300, max: 4000 },
+    thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
+    thrustInclineVelocityDeg: { min: 0, max: 20 },
+    stages: [
+      {
+        stage: 1,
+        exhaustVelocity: { min: 2000, max: 4000 },
+        massFlowRate: { min: 100, max: 400 },
+        fuelMass: { min: 1000, max: 30000 },
+      },
+      {
+        stage: 2,
+        exhaustVelocity: { min: 2000, max: 4000 },
+        massFlowRate: { min: 100, max: 200 },
+        fuelMass: { min: 1000, max: 4000 },
+      },
+    ],
+  },
   // ─── US ───
   {
     id: 'us_minuteman3',
@@ -47,8 +77,8 @@ export const MISSILES: MissileSpec[] = [
     category: MissileCategories.ICBM,
     height: 18.25,
     payloadMass: 1150,
-    startInclineAfterAltitude: { min: 1000, max: 4000 },
-    thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
+    startInclineAfterAltitude: { min: 1000, max: 20000 },
+    thrustInclineMaxDuration: { min: 10, max: 40 * 160 },
     thrustInclineVelocityDeg: { min: 0, max: 20 },
     stages: [
       // M55A1 — nominal: vₑ 2570 m/s, ṁ 346.4 kg/s, fuel 20785 kg (~60 s burn)
@@ -81,8 +111,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 18.25,
     payloadMass: 1150,
-    startInclineAfterAltitude: { min: 150, max: 400 },
-    thrustInclineMaxDuration: { min: 35, max: 55 },
+    startInclineAfterAltitude: { min: 150, max: 30000 },
+    thrustInclineMaxDuration: { min: 10, max: 180 * 60 },
     thrustInclineVelocityDeg: { min: 0.8, max: 1.4 },
     stages: [
       {
@@ -112,8 +142,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 21.8,
     payloadMass: 3950,
-    startInclineAfterAltitude: { min: 200, max: 450 },
-    thrustInclineMaxDuration: { min: 35, max: 50 },
+    startInclineAfterAltitude: { min: 300, max: 45000 },
+    thrustInclineMaxDuration: { min: 35, max: 180 * 60 },
     thrustInclineVelocityDeg: { min: 0.85, max: 1.45 },
     stages: [
       {
@@ -143,8 +173,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'SLBM' as MissileCategories,
     height: 13.58,
     payloadMass: 2700,
-    startInclineAfterAltitude: { min: 100, max: 350 },
-    thrustInclineMaxDuration: { min: 30, max: 50 },
+    startInclineAfterAltitude: { min: 100, max: 3500 },
+    thrustInclineMaxDuration: { min: 30, max: 50 * 30 },
     thrustInclineVelocityDeg: { min: 0.9, max: 1.6 },
     stages: [
       {
@@ -174,8 +204,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 22.7,
     payloadMass: 1200,
-    startInclineAfterAltitude: { min: 150, max: 400 },
-    thrustInclineMaxDuration: { min: 30, max: 50 },
+    startInclineAfterAltitude: { min: 150, max: 40000 },
+    thrustInclineMaxDuration: { min: 30, max: 50 * 60 },
     thrustInclineVelocityDeg: { min: 0.9, max: 1.55 },
     stages: [
       {
@@ -205,8 +235,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 34.3,
     payloadMass: 8800,
-    startInclineAfterAltitude: { min: 250, max: 600 },
-    thrustInclineMaxDuration: { min: 45, max: 75 },
+    startInclineAfterAltitude: { min: 250, max: 60000 },
+    thrustInclineMaxDuration: { min: 45, max: 75 * 60 },
     thrustInclineVelocityDeg: { min: 0.6, max: 1.15 },
     stages: [
       {
@@ -230,8 +260,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 22.0,
     payloadMass: 2500,
-    startInclineAfterAltitude: { min: 150, max: 450 },
-    thrustInclineMaxDuration: { min: 35, max: 55 },
+    startInclineAfterAltitude: { min: 150, max: 45000 },
+    thrustInclineMaxDuration: { min: 35, max: 55 * 60 },
     thrustInclineVelocityDeg: { min: 0.85, max: 1.45 },
     stages: [
       {
@@ -261,8 +291,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 17.5,
     payloadMass: 1500,
-    startInclineAfterAltitude: { min: 150, max: 400 },
-    thrustInclineMaxDuration: { min: 35, max: 55 },
+    startInclineAfterAltitude: { min: 150, max: 40000 },
+    thrustInclineMaxDuration: { min: 35, max: 55 * 60 },
     thrustInclineVelocityDeg: { min: 0.85, max: 1.45 },
     stages: [
       {
@@ -292,8 +322,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 25.0,
     payloadMass: 1250,
-    startInclineAfterAltitude: { min: 200, max: 500 },
-    thrustInclineMaxDuration: { min: 35, max: 60 },
+    startInclineAfterAltitude: { min: 200, max: 50000 },
+    thrustInclineMaxDuration: { min: 35, max: 60 * 60 },
     thrustInclineVelocityDeg: { min: 0.8, max: 1.4 },
     stages: [
       {
@@ -323,8 +353,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 26.0,
     payloadMass: 2500,
-    startInclineAfterAltitude: { min: 250, max: 600 },
-    thrustInclineMaxDuration: { min: 45, max: 75 },
+    startInclineAfterAltitude: { min: 250, max: 60000 },
+    thrustInclineMaxDuration: { min: 45, max: 75 * 60 },
     thrustInclineVelocityDeg: { min: 0.65, max: 1.2 },
     stages: [
       {
@@ -348,8 +378,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 15.5,
     payloadMass: 1150,
-    startInclineAfterAltitude: { min: 150, max: 350 },
-    thrustInclineMaxDuration: { min: 30, max: 50 },
+    startInclineAfterAltitude: { min: 150, max: 35000 },
+    thrustInclineMaxDuration: { min: 30, max: 50 * 60 },
     thrustInclineVelocityDeg: { min: 0.9, max: 1.55 },
     stages: [
       {
@@ -379,8 +409,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'MRBM' as MissileCategories,
     height: 19.3,
     payloadMass: 1000,
-    startInclineAfterAltitude: { min: 100, max: 300 },
-    thrustInclineMaxDuration: { min: 25, max: 45 },
+    startInclineAfterAltitude: { min: 100, max: 30000 },
+    thrustInclineMaxDuration: { min: 25, max: 45 * 60 },
     thrustInclineVelocityDeg: { min: 1.0, max: 1.75 },
     stages: [
       {
@@ -404,8 +434,8 @@ export const MISSILES: MissileSpec[] = [
     category: 'MRBM' as MissileCategories,
     height: 18.2,
     payloadMass: 750,
-    startInclineAfterAltitude: { min: 100, max: 300 },
-    thrustInclineMaxDuration: { min: 25, max: 45 },
+    startInclineAfterAltitude: { min: 100, max: 30000 },
+    thrustInclineMaxDuration: { min: 25, max: 45 * 60 },
     thrustInclineVelocityDeg: { min: 1.05, max: 1.8 },
     stages: [
       {

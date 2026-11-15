@@ -1,9 +1,15 @@
 import { FolderApi, Pane } from 'tweakpane';
-import { MISSILES, getMissileById, type MissileSpec } from './MissileDatabase';
+import {
+  CUSTOM_MISSILE_ID,
+  MISSILES,
+  getMissileById,
+  type MissileSpec,
+} from './MissileDatabase';
 
 type BindingApi = ReturnType<FolderApi['addBinding']>;
 
-const CUSTOM_MISSILE_ID = 'custom';
+/** Preset selected on startup */
+const DEFAULT_MISSILE = getMissileById(CUSTOM_MISSILE_ID)!;
 
 export interface CalculationRange {
   min: number;
@@ -38,9 +44,8 @@ const cloneStageBounds = (
 export default class LauncherGui {
   private folder: FolderApi;
 
-  /** `CUSTOM_MISSILE_ID` keeps the manually edited bounds */
-  selectedMissileId = CUSTOM_MISSILE_ID;
-  selectedMissileLabel = '';
+  selectedMissileId = DEFAULT_MISSILE.id;
+  selectedMissileLabel = DEFAULT_MISSILE.name;
 
   minimizeFlightTime = true;
   increaseCalculationAccuracy = false;
@@ -53,29 +58,16 @@ export default class LauncherGui {
   missileSizeMultiplier = 1;
 
   /** Payload of the selected missile, kg */
-  payloadMass = 800;
+  payloadMass = DEFAULT_MISSILE.payloadMass;
 
-  /** Real length of the selected missile, m. Null until a preset is picked. */
-  missileHeight: number | null = null;
+  /** Real length of the selected missile, m */
+  missileHeight: number | null = DEFAULT_MISSILE.height;
 
   calculationBounds: CalculationBounds = {
-    startInclineAfterAltitude: { min: 1000, max: 4000 },
-    thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
-    thrustInclineVelocityDeg: { min: 0, max: 20 },
-    stages: [
-      {
-        stage: 0,
-        exhaustVelocity: { min: 2000, max: 4000 },
-        massFlowRate: { min: 100, max: 400 },
-        fuelMass: { min: 1000, max: 30000 },
-      },
-      {
-        stage: 1,
-        exhaustVelocity: { min: 2000, max: 4000 },
-        massFlowRate: { min: 100, max: 200 },
-        fuelMass: { min: 1000, max: 4000 },
-      },
-    ],
+    startInclineAfterAltitude: { ...DEFAULT_MISSILE.startInclineAfterAltitude },
+    thrustInclineMaxDuration: { ...DEFAULT_MISSILE.thrustInclineMaxDuration },
+    thrustInclineVelocityDeg: { ...DEFAULT_MISSILE.thrustInclineVelocityDeg },
+    stages: DEFAULT_MISSILE.stages.map((s) => cloneStageBounds(s, s.stage)),
   };
 
   private stagesFolder: FolderApi | null = null;
@@ -89,22 +81,15 @@ export default class LauncherGui {
       expanded: false,
     });
 
-    const initialMissile = getMissileById(this.selectedMissileId);
-    if (initialMissile) this.applyMissilePreset(initialMissile);
-
     this.folder
       .addBinding(this, 'selectedMissileId', {
         label: 'Missile',
-        options: MISSILES.reduce<Record<string, string>>(
-          (acc, m) => {
-            acc[`${m.name} (${m.country})`] = m.id;
-            return acc;
-          },
-          { Custom: CUSTOM_MISSILE_ID }
-        ),
+        options: MISSILES.reduce<Record<string, string>>((acc, m) => {
+          acc[m.country ? `${m.name} (${m.country})` : m.name] = m.id;
+          return acc;
+        }, {}),
       })
       .on('change', (ev) => {
-        // Custom keeps the current bounds as they are
         const missile = getMissileById(ev.value);
         if (!missile) return;
         this.applyMissilePreset(missile);
