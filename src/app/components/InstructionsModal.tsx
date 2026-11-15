@@ -193,7 +193,7 @@ const InstructionsModal = () => {
                     <h3>
                       <a
                         className={s.modalLink}
-                        href={`${__webpack_public_path__}physics-units/`}
+                        href={`${__webpack_public_path__}physics/`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
