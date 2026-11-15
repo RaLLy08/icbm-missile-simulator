@@ -26,9 +26,8 @@ class Missile {
   gravityForce = new THREE.Vector3(0, 0, 0);
 
   // Reusable vectors to avoid allocations in hot paths
-  private _tempVec1 = new THREE.Vector3();
-  private _tempVec2 = new THREE.Vector3();
-  private _tempVec3 = new THREE.Vector3();
+  private _baseThrustDirection = new THREE.Vector3();
+  private _thrustRotationAxis = new THREE.Vector3();
 
   /**
    * Unit: km
@@ -74,13 +73,13 @@ class Missile {
    * @param earth The Earth instance to which the missile is associated.
    * @param initialPosition The initial position of the missile in 3D space.
    * @param targetInclineVector Thrust straight-line direction (Euclidean) towards the target.
-   * @param startInclineAfterAltitude The distance after which the missile starts to incline
-   * @param thrustInclineMaxDuration The maximum duration for the thrust incline
-   * @param thrustInclineVelocity The velocity of the thrust incline in radians per second
-   * @param fuelMass The mass of the missile fuel in kilograms
-   * @param exhaustVelocity The exhaust velocity of the missile in kilometers per second
-   * @param massFlowRate The mass flow rate of the missile in kilograms per second
-   * @param payloadMass The mass of the missile payload in kilograms
+   * @param startInclineAfterAltitude The distance after which the missile starts to incline. Unit: km
+   * @param thrustInclineMaxDuration The maximum duration for the thrust incline. Unit: seconds
+   * @param thrustInclineVelocity The velocity of the thrust incline. Unit: radians per second
+   * @param fuelMass The mass of the missile fuel. Unit: kilograms
+   * @param exhaustVelocity The exhaust velocity of the missile. Unit: kilometers per second
+   * @param massFlowRate The mass flow rate of the missile: Unit: kilograms per second
+   * @param payloadMass The mass of the missile payload. Unit: kilograms
    */
   constructor(
     private earth: Earth,
@@ -163,10 +162,7 @@ class Missile {
     const thrust = F / mT;
 
     // --- 1. Initial thrust direction is opposite of gravity ---
-    // Reuse _tempVec1 for gravityDirection
-    this._tempVec1.copy(this.gravityForce).normalize();
-    // Reuse _tempVec2 for baseThrustDirection
-    this._tempVec2.copy(this._tempVec1).negate();
+    this._baseThrustDirection.copy(this.gravityForce).normalize().negate();
 
     // --- 3. Gradual interpolation between gravity-opposite and toTarget ---
     if (
@@ -179,29 +175,27 @@ class Missile {
     this.thrustInclineAngle =
       this.thrustInclineVelocity * this.currentThrustInclineDuration;
 
-    // Compute axis of rotation - reuse _tempVec3
-    this._tempVec3
-      .copy(this._tempVec2)
+    // Compute axis of rotation
+    this._thrustRotationAxis
+      .copy(this._baseThrustDirection)
       .cross(targetFlatThrustDirection)
       .normalize();
 
     // Apply the rotation directly to thrust vector
     this.thrust
-      .copy(this._tempVec2)
-      .applyAxisAngle(this._tempVec3, this.thrustInclineAngle)
+      .copy(this._baseThrustDirection)
+      .applyAxisAngle(this._thrustRotationAxis, this.thrustInclineAngle)
       .multiplyScalar(thrust);
   }
 
   private _cachedThrustDirection = new THREE.Vector3();
 
   calcThrustDirectionToIncline() {
-    const gravityDir = this.earth.gravityForce(this.position);
-    this._tempVec1.copy(gravityDir).normalize();
-
-    // 3. Project targetInclineVector onto the plane perpendicular to gravity
+    // Project targetInclineVector onto the plane perpendicular to gravity
+    // (projectOnPlane doesn't require a normalized plane normal)
     this._cachedThrustDirection
       .copy(this.targetInclineVector)
-      .projectOnPlane(this._tempVec1)
+      .projectOnPlane(this.gravityForce)
       .normalize();
 
     return this._cachedThrustDirection;
@@ -228,25 +222,14 @@ class Missile {
       this.thrust.length() > this.gravityForce.length() ||
       this.velocity.length() !== 0
     ) {
-      // Use temp vectors to avoid allocations
-      this._tempVec1.copy(this.gravityForce).multiplyScalar(tick);
-      this.velocity.add(this._tempVec1);
-
-      this._tempVec2.copy(this.thrust).multiplyScalar(tick);
-      this.velocity.add(this._tempVec2);
-
-      this._tempVec1.copy(this.velocity).multiplyScalar(tick);
-      this.position.add(this._tempVec1);
+      this.velocity.addScaledVector(this.gravityForce, tick);
+      this.velocity.addScaledVector(this.thrust, tick);
+      this.position.addScaledVector(this.velocity, tick);
 
       // Update travelled distance
-      this._tempVec1
-        .set(
-          Math.abs(this.velocity.x),
-          Math.abs(this.velocity.y),
-          Math.abs(this.velocity.z)
-        )
-        .multiplyScalar(tick);
-      this.travelledDistance.add(this._tempVec1);
+      this.travelledDistance.x += Math.abs(this.velocity.x) * tick;
+      this.travelledDistance.y += Math.abs(this.velocity.y) * tick;
+      this.travelledDistance.z += Math.abs(this.velocity.z) * tick;
     }
 
     this.flightTime += tick;

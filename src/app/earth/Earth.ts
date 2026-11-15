@@ -38,7 +38,12 @@ class Earth {
 
   //   return lineSegments;
   // }
-
+  
+  /**
+   * Calculates the gravitational force exerted by the Earth on a target point.
+   * @param target The position of the target in 3D space.
+   * @returns The gravitational force vector in km/s².
+   */
   gravityForce(target: THREE.Vector3): THREE.Vector3 {
     const earthGravityVector = new THREE.Vector3()
       .subVectors(this.position, target) // Earth - Missile

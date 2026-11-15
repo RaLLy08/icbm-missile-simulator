@@ -459,7 +459,6 @@ export default class MissileView {
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private trailView: TrailView | null = null;
   private burningFireMesh: THREE.Mesh | null = null;
-  private thrustDirectionFireMesh: THREE.Mesh | null = null;
   private explosionEffect: ExplosionEffect | null = null;
   private hasTriggeredExplosion: boolean = false;
   private engineSound: EngineSound | null = new EngineSound();
@@ -775,29 +774,6 @@ export default class MissileView {
     this.burningFireMesh = burningFireMesh;
     this.fireGroup.add(this.burningFireMesh);
 
-    // Thrust direction fire (small, follows actual thrust direction)
-    const thrustFireMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff4500, // Orange-red to distinguish from main fire
-      transparent: true,
-      opacity: 0.7,
-    });
-    const thrustFireSize = 0.4 * firstStage.height; // Smaller fixed size
-    const thrustFireGeometry = new THREE.CylinderGeometry(
-      0.04 * thrustFireSize,
-      0.1 * thrustFireSize,
-      thrustFireSize,
-      16
-    );
-    const thrustDirectionFireMesh = new THREE.Mesh(
-      thrustFireGeometry,
-      thrustFireMaterial
-    );
-
-    thrustDirectionFireMesh.position.y = -0.5 * thrustFireSize;
-
-    this.thrustDirectionFireMesh = thrustDirectionFireMesh;
-    this.fireGroup.add(this.thrustDirectionFireMesh);
-
     this.applyActiveStage();
 
     // ------------------------------------------------------------------------
@@ -984,7 +960,6 @@ export default class MissileView {
     this.updateDebris(simDelta);
     this.updatePosition();
     this.updateBurningFireScale();
-    this.updateThrustDirectionFire();
 
     this.updateArrows();
 
@@ -1060,65 +1035,6 @@ export default class MissileView {
     this.burningFireMesh.scale.setScalar(ratio);
     this.burningFireMesh.position.y =
       (-this.dimensions.fire.height * ratio) / 2;
-  }
-
-  private updateThrustDirectionFire() {
-    if (
-      !this.thrustDirectionFireMesh ||
-      this.missile.thrust.length() === 0 ||
-      !this.missile.isGravityTurnActive
-    ) {
-      // Hide when no thrust or outside the gravity turn
-      if (this.thrustDirectionFireMesh) {
-        this.thrustDirectionFireMesh.visible = false;
-      }
-      return;
-    }
-
-    this.thrustDirectionFireMesh.visible = true;
-
-    const velocity = this.getVelocity();
-    const thrust = this.getThrust();
-
-    // Fixed small size for thrust direction indicator
-    const thrustFireSize = 0.4 * this.dimensions.stages[0].height;
-
-    // If there's velocity, calculate the angle between velocity and thrust
-    if (velocity.length() > 0) {
-      const velocityDir = velocity.clone().normalize();
-      const thrustDir = thrust.clone().normalize();
-
-      // Calculate rotation axis (perpendicular to both vectors)
-      const rotationAxis = new THREE.Vector3()
-        .crossVectors(velocityDir, thrustDir)
-        .normalize();
-
-      // Calculate angle between velocity and thrust
-      const angle = velocityDir.angleTo(thrustDir);
-
-      // Only apply rotation if there's a significant angle and valid rotation axis
-      if (angle > 0.001 && rotationAxis.length() > 0.001) {
-        // Transform rotation axis to local space of the group
-        const localRotationAxis = rotationAxis
-          .clone()
-          .applyQuaternion(this.group.quaternion.clone().invert());
-
-        this.thrustDirectionFireMesh.quaternion.setFromAxisAngle(
-          localRotationAxis,
-          angle
-        );
-      } else {
-        this.thrustDirectionFireMesh.quaternion.identity();
-      }
-    } else {
-      // No velocity yet, keep aligned with missile
-      this.thrustDirectionFireMesh.quaternion.identity();
-    }
-
-    // Update position after rotation so it stays aligned
-    const localOffset = new THREE.Vector3(0, -thrustFireSize / 2, 0);
-    localOffset.applyQuaternion(this.thrustDirectionFireMesh.quaternion);
-    this.thrustDirectionFireMesh.position.copy(localOffset);
   }
 
   private updatePosition() {
