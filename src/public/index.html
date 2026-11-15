@@ -10,19 +10,19 @@
 		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
 		<meta name="fragment" content="!" />
 		<title>
-			ICBM Missile Trajectory Simulator | 3D Ballistic Missile Calculator
+			3D Ballistic Missile Launch Simulator | Real World Ballistic Missile Configurator
 		</title>
 		<script type="application/ld+json">
 			{
 				"@context": "https://schema.org",
 				"@type": "SoftwareApplication",
-				"name": "ICBM Trajectory Simulator",
-				"alternateName": "ICBM Missile Trajectory Calculator",
+				"name": "Ballistic Missile Launch Simulator",
+				"alternateName": "Ballistic Missile Trajectory Calculator",
 				"applicationCategory": "Simulation",
 				"applicationSubCategory": "Educational Simulation",
 				"operatingSystem": "All",
 				"browserRequirements": "Requires JavaScript. Requires HTML5.",
-				"description": "A web-based simulator that calculates intercontinental ballistic missile trajectories using heuristic differential evolution algorithms.",
+				"description": "An open-source web ballistic missile launch simulation built on a simplified but realistic physics model grounded in fundamental equations. It uses Earth's real size, the gravitational constant, the directions of the forces acting on the missile, and orbital mechanics, with standardized units throughout the calculations. Using the Tsiolkovsky rocket equation, it works out the main missile parameters, such as fuel mass and mass flow rate, from the launch and target coordinates. Genetic algorithms then search for realistic parameters for each rocket preset, so that within the constraints the user sets, the rocket can launch, navigate and hit its target.",
 				"url": "https://kichibayov.github.io/ballistic-missile-simulator/",
 				"isAccessibleForFree": true,
 				"author": {
@@ -44,11 +44,15 @@
 					"ratingValue": "4.8",
 					"ratingCount": "1"
 				},
-				"keywords": "ICBM trajectory simulation, intercontinental missile simulator, nuclear missile simulator, missile path calculator, differential evolution, heuristic algorithm, aerospace simulation, ballistic missile simulator, missile trajectory, 3D missile simulation, trajectory optimization, ICBM simulator, intercontinental ballistic missile simulator",
+				"keywords": "ballistic missile launch simulator, ballistic missile simulator, ballistic missile configurator, intercontinental missile simulator, nuclear missile simulator, missile path calculator, missile trajectory, 3D missile simulation, ballistic missile preset optimization, ICBM, Hypersonic, IRBM, MRBM, SRBM",
 				"about": [
 					{
 						"@type": "Thing",
-						"name": "Ballistic Missile Trajectory"
+						"name": "Ballistic Missile Trajectory Simulation"
+					},
+					{
+						"@type": "Thing",
+						"name": "Ballistic Missile Configurator"
 					},
 					{
 						"@type": "Thing",
@@ -60,7 +64,7 @@
 					},
 					{
 						"@type": "Thing",
-						"name": "Differential Evolution Algorithm"
+						"name": "Ballistic Missile Preset Optimization"
 					},
 					{
 						"@type": "Thing",
@@ -82,15 +86,11 @@
 				"educationalUse": "Educational tool for understanding ballistic missile trajectories, differential evolution algorithms, and aerospace physics",
 				"learningResourceType": "Interactive Simulation",
 				"educationalLevel": "College/University",
-				"audience": {
-					"@type": "EducationalAudience",
-					"educationalRole": "student"
-				},
 				"screenshot": "https://kichibayov.github.io/ballistic-missile-simulator/preview.png",
 				"image": "https://kichibayov.github.io/ballistic-missile-simulator/preview.png",
 				"inLanguage": "en-US",
 				"datePublished": "2025-07-29",
-				"dateModified": "2026-11-07"
+				"dateModified": "2026-11-15"
 			}
 		</script>
 		<!-- Google tag (gtag.js) -->
@@ -112,10 +112,10 @@
 			property="og:url"
 			content="https://kichibayov.github.io/ballistic-missile-simulator/"
 		/>
-		<meta property="og:title" content="3D Ballistic Missile Simulation" />
+		<meta property="og:title" content="3D Ballistic Missile Launch Simulator" />
 		<meta
 			property="og:description"
-			content="An interactive 3D simulation of intercontinental ballistic missile (ICBM) trajectories"
+			content="An interactive 3D simulation and configurator of various ballistic missile trajectories"
 		/>
 		<meta
 			property="og:image"
@@ -125,16 +125,16 @@
 		<meta property="og:image:height" content="630" />
 		<meta
 			property="og:image:alt"
-			content="ICBM Trajectory Simulator 3D Visualization"
+			content="3D Ballistic Missile Launch Simulator"
 		/>
-		<meta property="og:site_name" content="ICBM Missile Simulator" />
+		<meta property="og:site_name" content="Ballistic Missile Simulator" />
 		<meta property="og:locale" content="en_US" />
 
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="3D Ballistic Missile Simulation" />
+		<meta name="twitter:title" content="3D Ballistic Missile Launch Simulator" />
 		<meta
 			name="twitter:description"
-			content="An interactive 3D simulation of intercontinental ballistic missile (ICBM) trajectories."
+			content="An interactive 3D simulation and configurator of various ballistic missile trajectories."
 		/>
 		<meta
 			name="twitter:image"
@@ -142,16 +142,16 @@
 		/>
 		<meta
 			name="twitter:image:alt"
-			content="ICBM Trajectory Simulator 3D Visualization"
+			content="3D Ballistic Missile Launch Simulator | Real World Ballistic Missile Configurator"
 		/>
 
 		<meta
 			name="description"
-			content="Simulate intercontinental ballistic missile (ICBM) trajectories using an advanced differential evolution algorithm. Explore realistic 3D visualizations and trajectory optimizations. Free online nuclear missile simulator for educational purposes."
+			content="Calculate and launch various ballistic missiles in realistic scenarios. Explore realistic 3D visualizations and ballistic missile presets. Free online nuclear missile simulator for educational purposes."
 		/>
 		<meta
 			name="keywords"
-			content="intercontinental missile simulator, nuclear missile simulator, ICBM trajectory simulation, ICBM simulator, missile path calculator, differential evolution, heuristic algorithm, aerospace simulation, intercontinental ballistic missile, ballistic missile simulator, missile trajectory, 3D missile simulation, trajectory optimization"
+			content="ballistic missile simulator, ballistic missile configurator, intercontinental missile simulator, nuclear missile simulator, missile path calculator, missile trajectory, 3D missile simulation, ballistic missile preset optimization, ICBM, Hypersonic, IRBM, MRBM, SRBM"
 		/>
 		<meta name="author" content="Azad Kichibayov" />
 		<meta
@@ -194,10 +194,10 @@
 		<meta name="msapplication-TileColor" content="#000000" />
 
 		<!-- Mobile / home-screen app -->
-		<meta name="application-name" content="ICBM Simulator" />
+		<meta name="application-name" content="Ballistic Missile Launch Simulator" />
 		<meta name="mobile-web-app-capable" content="yes" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-title" content="ICBM Simulator" />
+		<meta name="apple-mobile-web-app-title" content="Ballistic Missile Launch Simulator" />
 		<meta
 			name="apple-mobile-web-app-status-bar-style"
 			content="black-translucent"
@@ -212,17 +212,23 @@
 			content="yS3rlgsLN4z781ne5ntcskXKLEtl1oSLGdcYeVFj-Jw"
 		/>
 	</head>
+
 	<body>
 		<noscript>
-			<h1>ICBM Missile Trajectory Simulator</h1>
+			<h1>Ballistic Missile Launch Simulator</h1>
 			<p>
-				An interactive 3D simulator of intercontinental ballistic missile (ICBM)
-				trajectories. Pick a launch site and a target on the globe and a
+				An interactive 3D simulator of intercontinental ballistic missile (ICBM, Hypersonic, IRBM, MRBM, SRBM)
+				launches. Pick a launch site and a target on the globe and a
 				differential evolution algorithm searches for a ballistic trajectory
 				that reaches it, then follow the missile in real time with chase and
 				first-person cameras. Works in desktop and mobile browsers.
 			</p>
 			<p>Please enable JavaScript to run the 3D simulation.</p>
+			<p>
+				<a href="<%= htmlWebpackPlugin.files.publicPath %>physics/"
+					>Physics units and models used in the ballistic missile simulation</a
+				>
+			</p>
 		</noscript>
 		<div id="app"></div>
 	</body>

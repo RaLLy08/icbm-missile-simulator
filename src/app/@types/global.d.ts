@@ -31,6 +31,8 @@ declare module '*.svg' {
   export default content;
 }
 declare const __VERSION__: string;
+/** Webpack's runtime public path, e.g. "/ballistic-missile-simulator/" in production. */
+declare const __webpack_public_path__: string;
 
 // .env variables
 

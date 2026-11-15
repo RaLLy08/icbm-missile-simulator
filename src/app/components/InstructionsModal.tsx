@@ -180,10 +180,33 @@ const InstructionsModal = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+            </>
+          )}
 
-                <div className={s.tip}>
-                  <strong>💡 Note:</strong> To keep things simple, atmospheric
-                  drag, heat and other external perturbations are not included.
+          {instructionsPage === 'documentation' && (
+            <>
+              <h2 className={s.modalTitle}>Full Documentation</h2>
+              <div className={s.instructions}>
+                <div className={s.step}>
+                  <div className={s.stepContent}>
+                    <h3>
+                      <a
+                        className={s.modalLink}
+                        href={`${__webpack_public_path__}physics-units/`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Physical units and models used in simulator{' '}
+                        <span aria-hidden="true">↗</span>
+                      </a>
+                    </h3>
+                    <p>
+                      SI units used in the simulation, the accepted and derived
+                      parameters of the missile, the multi-stage missile and the
+                      Earth, and the equations that connect them.
+                    </p>
+                  </div>
                 </div>
               </div>
             </>

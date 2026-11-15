@@ -8,12 +8,17 @@ export const INSTRUCTIONS_PAGES = [
   },
   {
     id: 'how-it-works',
-    label: 'How does it work?',
+    label: 'How does it work? (Briefly)',
     description: 'The physics and the trajectory search behind the simulator',
   },
   {
+    id: 'documentation',
+    label: 'Full Documentation',
+    description: 'Units, parameters and equations of the physics model',
+  },
+  {
     id: 'support',
-    label: 'How to support me?',
+    label: 'How to support me? 😊',
     description: '',
   },
 ] as const;

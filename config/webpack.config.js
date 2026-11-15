@@ -136,6 +136,11 @@ module.exports = (env, argv) => {
 			patterns: [
 				{ from: 'src/public/robots.txt', to: 'robots.txt' },
 				{ from: 'src/public/sitemap.xml', to: 'sitemap.xml' },
+				// Static SEO page, served at /physics/
+				{
+					from: 'src/public/physics.html',
+					to: 'physics/index.html',
+				},
 				{ from: 'preview.png', to: 'preview.png' },
 				{ from: 'src/public/favicon', to: 'favicon' },
 				{ from: 'src/public/favicon/favicon.ico', to: 'favicon.ico' },
