@@ -246,9 +246,9 @@ const InstructionsModal = () => {
                     <h3>Launch!</h3>
                     <p>
                       Click the <strong>"Launch 🚀"</strong> button to fire the
-                      next missile in your queue. Each click launches one missile
-                      and removes it from the queue. You can launch them one by
-                      one, even while time is running!
+                      next missile in your queue. Each click launches one
+                      missile and removes it from the queue. You can launch them
+                      one by one, even while time is running!
                     </p>
                   </div>
                 </div>
@@ -287,9 +287,10 @@ const InstructionsModal = () => {
                         open source
                       </a>
                       . I spent many hours on it, writing the code by hand in
-                      the early stages and working with AI for the rest. I would
-                      be very grateful for every cent you donate, it supports my
-                      efforts and helps fund further improvements.
+                      the early stages and working with AI for the rest
+                      carefully verifying every detail. I would be very grateful
+                      for every cent you donate, it supports my efforts and
+                      helps fund further improvements.
                     </p>
                     <p>
                       <br />
@@ -302,7 +303,6 @@ const InstructionsModal = () => {
                     </p>
                   </div>
                 </div>
-
               </div>
             </>
           )}
