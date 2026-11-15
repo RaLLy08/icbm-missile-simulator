@@ -27,21 +27,26 @@ export default class FrameTimeManager {
 
     this.missileView.setLerpAlpha(this.stepProgress);
     this.missileView.setActiveStage(this.missile.currentStageIndex);
-    // Game-clock delta is already 0 while paused
-    this.missileView.update(delta * this.worldGui.timeMultiplier);
+    this.missileView.update();
 
     if (this.stepProgress >= 1) {
       this.missileView.updatePrevFromMissile();
-      this.missile.update();
+      this.step();
 
       this.missedUpdateCalls += this.stepProgress - 1;
 
       while (this.missedUpdateCalls > 1) {
-        this.missile.update();
+        this.step();
         this.missedUpdateCalls -= 1;
       }
 
       this.stepProgress = 0;
     }
+  }
+
+  /** One physics step of the missile and its separated debris. */
+  private step() {
+    this.missile.update(FrameTimeManager.MINIMUM_TIME_UNIT_S);
+    this.missileView.stepDebris(FrameTimeManager.MINIMUM_TIME_UNIT_S);
   }
 }

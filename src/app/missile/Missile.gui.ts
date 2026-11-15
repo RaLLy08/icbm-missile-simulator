@@ -158,7 +158,7 @@ export default class MissileGui {
       format: (v) => {
         const count = this.multiStageMissile.stages.length;
         return v >= count
-          ? `burnt out (${count} stages)`
+          ? `warhead (${count} stages burnt out)`
           : `${v + 1} / ${count}`;
       },
     });

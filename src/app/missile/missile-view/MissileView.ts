@@ -1,6 +1,8 @@
 import EarthView from 'app/earth/EarthView';
 import Missile from '../Missile';
 import StageDebris from './StageDebris';
+import Warhead from './Warhead';
+import { getCanvasTexture } from './canvasTexture';
 import ArrowLabel from './ArrowLabel';
 import TrailView from './TrailView';
 import * as THREE from 'three';
@@ -285,36 +287,6 @@ export class ExplosionEffect {
 
 // ----------------------------------------------------------------------------
 // Procedural textures (canvas-generated, shared by every missile)
-
-const textureCache = new Map<string, THREE.CanvasTexture | null>();
-
-/**
- * Draw a texture once on a canvas and cache it. Returns null outside the
- * browser (e.g. in jest), so the meshes fall back to plain colors.
- */
-function getCanvasTexture(
-  key: string,
-  width: number,
-  height: number,
-  draw: (ctx: CanvasRenderingContext2D, w: number, h: number) => void
-): THREE.CanvasTexture | null {
-  if (textureCache.has(key)) return textureCache.get(key)!;
-
-  let texture: THREE.CanvasTexture | null = null;
-  const canvas =
-    typeof document !== 'undefined' ? document.createElement('canvas') : null;
-  const ctx = canvas?.getContext('2d');
-  if (canvas && ctx) {
-    canvas.width = width;
-    canvas.height = height;
-    draw(ctx, width, height);
-    texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.wrapS = THREE.RepeatWrapping;
-  }
-  textureCache.set(key, texture);
-  return texture;
-}
 
 /**
  * Nozzle skin: dark metal with cooling tubes and stiffener rings.
@@ -649,6 +621,11 @@ export default class MissileView {
   private nozzleMaterial: THREE.MeshStandardMaterial | null = null;
   /** Nose skin; its emissive glow shows aerodynamic heating. */
   private noseMaterial: THREE.MeshStandardMaterial | null = null;
+  /** Nose shroud: two clamshell halves jettisoned after the last burnout. */
+  private shroudGroup: THREE.Group | null = null;
+  private shroudHalves: THREE.Group[] = [];
+  /** Re-entry vehicle under the shroud; flies on alone after separation. */
+  private warhead: Warhead | null = null;
   /** Bow shock / plasma sheath enveloping the nose. */
   private plasmaShellMesh: THREE.Mesh | null = null;
   /** White-hot layer hugging the nose tip, inside the bow shock. */
@@ -788,11 +765,13 @@ export default class MissileView {
 
   /**
    * Show only stages from `index` upwards (spent stages are dropped) and
-   * move the flame to the bottom of the active stage.
+   * move the flame to the bottom of the active stage. `index` equal to the
+   * stage count means all stages burnt out: the last stage separates, the
+   * nose shroud flies off and the warhead continues alone.
    */
   setActiveStage(index: number) {
-    const last = this.dimensions.stages.length - 1;
-    const i = THREE.MathUtils.clamp(Math.floor(index), 0, last);
+    const stageCount = this.dimensions.stages.length;
+    const i = THREE.MathUtils.clamp(Math.floor(index), 0, stageCount);
     if (i === this.activeStageIndex && this.stageGroups.length > 0) return;
 
     // Stages that just burnt out separate and fall away
@@ -802,10 +781,71 @@ export default class MissileView {
 
     this.activeStageIndex = i;
     this.applyActiveStage();
+
+    if (i >= stageCount) this.deployWarhead();
   }
 
   /** Backward push of a separating stage relative to the missile. Unit: m/s */
   static STAGE_SEPARATION_SPEED = 10;
+  /** Sideways push of each shroud half, per m of shroud radius. Unit: 1/s */
+  static SHROUD_LATERAL_SPEED_PER_RADIUS = 0.6;
+  /** Tumble rate range of the jettisoned shroud halves. Unit: rad/s */
+  static SHROUD_TUMBLE_SPEED: [number, number] = [0.5, 0.9];
+
+  /** True once the shroud is jettisoned and only the warhead flies on. */
+  get isWarheadDeployed() {
+    return this.warhead?.deployed ?? false;
+  }
+
+  private deployWarhead() {
+    if (!this.warhead || this.warhead.deployed) return;
+    this.jettisonShroud();
+    this.warhead.deploy();
+  }
+
+  /** The two shroud halves hinge outwards and drift away sideways. */
+  private jettisonShroud() {
+    const shroud = this.shroudGroup;
+    if (!shroud || !shroud.visible) return;
+
+    const quaternion = this.group.quaternion;
+    const forward = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
+    const state = this.separationState();
+    const lateralSpeed =
+      this.dimensions.head.radius *
+      MissileView.SHROUD_LATERAL_SPEED_PER_RADIUS;
+
+    this.shroudHalves.forEach((half) => {
+      // Half i sits on the local ±X side; its hinge is the base rim there
+      const side = Math.sign(half.position.x) || 1;
+      const outward = new THREE.Vector3(side, 0, 0).applyQuaternion(quaternion);
+      // Rotating about -Z (local) tips +Y towards +X: top peels outwards
+      const hingeAxis = new THREE.Vector3(0, 0, -side).applyQuaternion(
+        quaternion
+      );
+
+      this.debris.push(
+        new StageDebris(
+          this.scene,
+          half,
+          state,
+          forward,
+          MissileView.STAGE_SEPARATION_SPEED * 0.5,
+          {
+            extraVelocity: outward.multiplyScalar(lateralSpeed),
+            angularAxis: hingeAxis,
+            angularSpeed: THREE.MathUtils.randFloat(
+              ...MissileView.SHROUD_TUMBLE_SPEED
+            ),
+          }
+        )
+      );
+    });
+
+    shroud.visible = false;
+    // The shroud no longer glows; the warhead takes over the heating
+    this.noseMaterial = null;
+  }
 
   private debris: StageDebris[] = [];
 
@@ -820,17 +860,37 @@ export default class MissileView {
       new StageDebris(
         this.scene,
         stageGroup,
-        this.getVelocity(),
+        this.separationState(),
         forward,
         MissileView.STAGE_SEPARATION_SPEED
       )
     );
   }
 
-  private updateDebris(dt: number) {
+  /** Missile state that separating debris starts from. */
+  private separationState() {
+    return {
+      drawnPosition: this.group.position,
+      prevPosition: this.prevPosition,
+      position: this.missile.position,
+      velocity: this.missile.velocity,
+    };
+  }
+
+  /**
+   * Advance the debris one physics step. Call right after each missile
+   * physics step, so debris and missile stay on the same timeline.
+   * @param dt Simulation seconds of the step.
+   */
+  stepDebris(dt: number) {
     if (this.debris.length === 0) return;
-    this.debris.forEach((d) => d.update(dt));
+    this.debris.forEach((d) => d.step(dt));
     this.debris = this.debris.filter((d) => !d.finished);
+  }
+
+  /** Draw the debris interpolated like the missile. */
+  private renderDebris() {
+    this.debris.forEach((d) => d.render(this.lerpAlpha));
   }
 
   private applyActiveStage() {
@@ -838,6 +898,10 @@ export default class MissileView {
     this.stageGroups.forEach((g, k) => (g.visible = k >= i));
 
     const stage = this.dimensions.stages[i];
+    // All stages gone: no engine left (the warhead flies unpowered)
+    this.fireGroup.visible = !!stage;
+    if (!stage) return;
+
     this.fireGroup.position.y = this.stageBaseY(i);
     // Fire dimensions are given for the first stage; fit them to the active one
     const k = stage.radius / this.dimensions.stages[0].radius;
@@ -925,15 +989,38 @@ export default class MissileView {
       emissive: PLASMA_COLOR,
       emissiveMap: noseHeatTexture,
       emissiveIntensity: 0,
+      // Inside of the clamshell halves shows once they open
+      side: THREE.DoubleSide,
     });
     this.noseMaterial = coneMaterial;
-    const coneMesh = new THREE.Mesh(
-      new THREE.LatheGeometry(createNoseProfile(head.radius, head.height), 32),
-      coneMaterial
-    );
-    coneMesh.name = 'nose';
-    coneMesh.position.y = bodyHeight; // base sits on top of the body
-    this.group.add(coneMesh);
+
+    // Two clamshell halves (local +X / -X sides). Each half's origin is its
+    // hinge on the base rim, so it peels outwards when jettisoned.
+    const noseProfile = createNoseProfile(head.radius, head.height);
+    this.shroudGroup = new THREE.Group();
+    this.shroudGroup.name = 'nose';
+    this.shroudGroup.position.y = bodyHeight; // base sits on top of the body
+    this.shroudHalves = [0, 1].map((h) => {
+      // LatheGeometry: x = r·sin(phi) -> phi in [0, π] is the +X half
+      const side = h === 0 ? 1 : -1;
+      const halfMesh = new THREE.Mesh(
+        new THREE.LatheGeometry(noseProfile, 16, h * Math.PI, Math.PI),
+        coneMaterial
+      );
+      halfMesh.position.x = -side * head.radius;
+
+      const half = new THREE.Group();
+      half.name = `shroud-half-${h + 1}`;
+      half.position.x = side * head.radius;
+      half.add(halfMesh);
+      this.shroudGroup!.add(half);
+      return half;
+    });
+    this.group.add(this.shroudGroup);
+
+    // Re-entry vehicle hidden under the shroud, on top of the last stage
+    this.warhead = new Warhead(Warhead.fitShroud(head), bodyHeight);
+    this.group.add(this.warhead.object);
 
     // ------------------------------------------------------------------------
     // === Aerodynamic heating: plasma sheath + wake around the nose ===
@@ -1390,10 +1477,9 @@ export default class MissileView {
 
   endPositionSkyMarker: null | THREE.Line = null;
 
-  /** @param simDelta Simulation seconds since the last call (animates debris). */
-  update(simDelta = 0): void {
-    this.updateDebris(simDelta);
+  update(): void {
     this.updatePosition();
+    this.renderDebris();
     this.updateBurningFireScale();
     this.updateAeroHeating();
 
@@ -1529,6 +1615,7 @@ export default class MissileView {
     if (this.noseMaterial) {
       this.noseMaterial.emissiveIntensity = 3 * i * i;
     }
+    if (this.warhead?.deployed) this.warhead.setHeating(i);
 
     const shell = this.plasmaShellMesh;
     if (shell) {
@@ -1654,6 +1741,7 @@ export default class MissileView {
     this.prevPosition.copy(this.missile.position.clone());
     this.prevVelocity.copy(this.missile.velocity.clone());
     this.prevThrust.copy(this.missile.thrust.clone());
+    this.debris.forEach((d) => d.savePrevious());
   }
 
   private isArrowShown(key: ForceArrowKey) {
@@ -1711,6 +1799,11 @@ export default class MissileView {
     // Sprites are not Meshes; their geometry is shared, only the material is ours
     this.plasmaHalo?.material.dispose();
     this.plasmaHalo = null;
+    // Shroud halves share one material; the traversal above disposed it
+    this.shroudGroup = null;
+    this.shroudHalves = [];
+    this.noseMaterial = null;
+    this.warhead = null;
 
     this.arrowLabels.forEach((label) => label.dispose());
     this.arrowLabels.clear();
