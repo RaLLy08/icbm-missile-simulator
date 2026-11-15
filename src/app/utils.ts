@@ -69,6 +69,14 @@ export const formatUnit = (
 export const formatMeters = (meters: number, fractionDigits = 0): string =>
   formatUnit(meters, 'm', fractionDigits);
 
+/**
+ * Formats a distance given in meters as kilometers,
+ * e.g. formatKm(1234567) -> "1,234.6 km". Display only: all internal
+ * values stay in meters.
+ */
+export const formatKm = (meters: number, fractionDigits = 1): string =>
+  formatUnit(meters / 1000, 'km', fractionDigits);
+
 export const toExponentGrowth = (
   percentage: number,
   exponentBase = 2

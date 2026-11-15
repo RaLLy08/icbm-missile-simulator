@@ -1,13 +1,13 @@
 import * as THREE from 'three';
 import clsx from 'clsx';
 import s from '../App.module.scss';
-import { formatMeters, formatSeconds, formatUnit } from '../utils';
+import { formatKm, formatMeters, formatSeconds, formatUnit } from '../utils';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import type { BestCandidate } from '../store/types';
 
 /** @param meters Distance between the impact point and the target */
 const formatMissDistance = (meters: number) =>
-  formatMeters(meters, meters < 100 ? 1 : 0);
+  formatKm(meters, meters < 10_000 ? 2 : 1);
 
 const formatDuration = (seconds: number) => formatSeconds(seconds);
 
@@ -85,12 +85,12 @@ const getCandidateRows = (c: BestCandidate) => [
   {
     key: 'apogee',
     label: 'Max Altitude',
-    value: formatMeters(c.maxAltitude),
+    value: formatKm(c.maxAltitude),
   },
   {
     key: 'travelled',
     label: 'Travelled Distance',
-    value: formatMeters(c.travelledDistance),
+    value: formatKm(c.travelledDistance),
   },
   { key: 'flight', label: 'Flight Time', value: formatDuration(c.flightTime) },
 ];

@@ -20,11 +20,11 @@ export default class EarthGui {
     [atmosphereLayerKeys.EXOSPHERE]: true,
   };
   private readonly atmosphereLayersLabels = {
-    [atmosphereLayerKeys.TROPOSPHERE]: 'Troposphere (0-10,000 m)',
-    [atmosphereLayerKeys.STRATOSPHERE]: 'Stratosphere (10,000-50,000 m)',
-    [atmosphereLayerKeys.MESOSPHERE]: 'Mesosphere (50,000-85,000 m)',
-    [atmosphereLayerKeys.THERMOSPHERE]: 'Thermosphere (85,000-600,000 m)',
-    [atmosphereLayerKeys.EXOSPHERE]: 'Exosphere (1,000,000 m)',
+    [atmosphereLayerKeys.TROPOSPHERE]: 'Troposphere (0-10 km)',
+    [atmosphereLayerKeys.STRATOSPHERE]: 'Stratosphere (10-50 km)',
+    [atmosphereLayerKeys.MESOSPHERE]: 'Mesosphere (50-85 km)',
+    [atmosphereLayerKeys.THERMOSPHERE]: 'Thermosphere (85-600 km)',
+    [atmosphereLayerKeys.EXOSPHERE]: 'Exosphere (1000 km)',
   };
 
   readonly atmosphereBordersStates = {
@@ -35,11 +35,11 @@ export default class EarthGui {
     [atmosphereLayerKeys.EXOSPHERE]: false,
   };
   private readonly atmosphereBordersLabels = {
-    [atmosphereLayerKeys.TROPOSPHERE]: 'Troposphere (0-10,000 m)',
-    [atmosphereLayerKeys.STRATOSPHERE]: 'Stratosphere (10,000-50,000 m)',
-    [atmosphereLayerKeys.MESOSPHERE]: 'Mesosphere (50,000-85,000 m)',
-    [atmosphereLayerKeys.THERMOSPHERE]: 'Thermosphere (85,000-600,000 m)',
-    [atmosphereLayerKeys.EXOSPHERE]: 'Exosphere (1,000,000 m)',
+    [atmosphereLayerKeys.TROPOSPHERE]: 'Troposphere (0-10 km)',
+    [atmosphereLayerKeys.STRATOSPHERE]: 'Stratosphere (10-50 km)',
+    [atmosphereLayerKeys.MESOSPHERE]: 'Mesosphere (50-85 km)',
+    [atmosphereLayerKeys.THERMOSPHERE]: 'Thermosphere (85-600 km)',
+    [atmosphereLayerKeys.EXOSPHERE]: 'Exosphere (1000 km)',
   };
 
   onAddAtmosphereLayerClicked: (layerKey: atmosphereLayerKeys) => void =

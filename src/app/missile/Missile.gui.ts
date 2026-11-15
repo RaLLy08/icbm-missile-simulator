@@ -3,7 +3,7 @@ import Missile from './Missile';
 import MultiStageMissile from './MultiStageMissile';
 import MissileView, { ForceArrowKey } from './missile-view/MissileView';
 import * as THREE from 'three';
-import { formatMeters, formatSeconds, formatUnit } from 'app/utils';
+import { formatKm, formatSeconds, formatUnit } from 'app/utils';
 import MissileTrackingView from './missile-view/MissileTrackingView';
 
 export default class MissileGui {
@@ -198,13 +198,13 @@ export default class MissileGui {
     this.folder.addBinding(this, 'displacement', {
       label: 'Displacement',
       readonly: true,
-      format: (v) => formatMeters(v),
+      format: (v) => formatKm(v),
     });
 
     this.folder.addBinding(this.missile, 'altitude', {
       label: 'Altitude',
       readonly: true,
-      format: (v) => formatMeters(v),
+      format: (v) => formatKm(v),
     });
 
     this.folder.addBinding(this, 'gravityForce', {
@@ -234,7 +234,7 @@ export default class MissileGui {
     this.folder.addBinding(this, 'travelledDistance', {
       label: 'Travelled Distance',
       readonly: true,
-      format: (v) => formatMeters(v),
+      format: (v) => formatKm(v),
     });
 
     // Insert the viewport into the DOM only after all blades are added:
