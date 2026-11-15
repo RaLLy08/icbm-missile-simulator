@@ -650,6 +650,8 @@ export default class MissileView {
   prevPosition = new THREE.Vector3();
   prevVelocity = new THREE.Vector3();
   prevThrust = new THREE.Vector3();
+  prevGravity = new THREE.Vector3();
+  prevDrag = new THREE.Vector3();
 
   /**
    * Default missile geometry in m (at size multiplier = 1). The body is
@@ -1274,8 +1276,8 @@ export default class MissileView {
   private updateArrows() {
     const velocity = this.getVelocity();
     const thrust = this.getThrust();
-    const gravity = this.missile.gravityForce;
-    const drag = this.missile.dragForce;
+    const gravity = this.getGravity();
+    const drag = this.getDrag();
     // Total acceleration acting on the missile (thrust is already per unit mass)
     const acceleration = thrust.clone().add(gravity).add(drag);
     const perpendicular = this.missile.calcThrustDirectionToIncline();
@@ -1737,10 +1739,28 @@ export default class MissileView {
     );
   }
 
+  private getGravity() {
+    return new THREE.Vector3().lerpVectors(
+      this.prevGravity,
+      this.missile.gravityForce,
+      this.lerpAlpha
+    );
+  }
+
+  private getDrag() {
+    return new THREE.Vector3().lerpVectors(
+      this.prevDrag,
+      this.missile.dragForce,
+      this.lerpAlpha
+    );
+  }
+
   updatePrevFromMissile() {
-    this.prevPosition.copy(this.missile.position.clone());
-    this.prevVelocity.copy(this.missile.velocity.clone());
-    this.prevThrust.copy(this.missile.thrust.clone());
+    this.prevPosition.copy(this.missile.position);
+    this.prevVelocity.copy(this.missile.velocity);
+    this.prevThrust.copy(this.missile.thrust);
+    this.prevGravity.copy(this.missile.gravityForce);
+    this.prevDrag.copy(this.missile.dragForce);
     this.debris.forEach((d) => d.savePrevious());
   }
 
