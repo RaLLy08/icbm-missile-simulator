@@ -54,6 +54,12 @@ export const createMissileLauncher = (ctx: SimulationContext) => {
   let missileSelector: ListBladeApi<number> | null = null;
   const launchedMissiles: LaunchedMissile[] = [];
 
+  launcherGui.onShowTrailsChange = (visible) => {
+    launchedMissiles.forEach(({ missileView }) =>
+      missileView.setTrailVisible(visible)
+    );
+  };
+
   const updateMissileSelector = (selectedId: number) => {
     const options = [...missileActivators.keys()].map((id) => ({
       text: `Missile ${id}`,
@@ -149,6 +155,7 @@ export const createMissileLauncher = (ctx: SimulationContext) => {
       Math.max(...multiStageMissile.stages.map((s) => s.massFlowRate))
     );
     missileView.init();
+    missileView.setTrailVisible(launcherGui.showTrails);
     missileView.updatePrevFromMissile();
 
     const markers = [

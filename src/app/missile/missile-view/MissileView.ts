@@ -1116,16 +1116,28 @@ export default class MissileView {
     // );
   }
 
+  setTrailVisible(visible: boolean) {
+    this.trailView?.setVisible(visible);
+  }
+
+  private readonly trailLastPoint = new THREE.Vector3();
+  private readonly trailColor = new THREE.Color();
+
   private extendTrail() {
     if (!this.trailView) return;
+
+    // update() runs every render frame, including while the simulation is
+    // paused. Appending the same point repeatedly would fill the trail's
+    // vertex limit with duplicates and push the real path out.
+    const last = this.trailView.getLastVectorPosition(this.trailLastPoint);
+    if (last && last.equals(this.prevPosition)) return;
 
     const thrustPercentage =
       this.missile.thrust.length() / this.missile.maxAcceleration;
 
-    this.trailView.extendFromVectors(
-      this.prevPosition.clone(),
-      new THREE.Color(1, thrustPercentage, 1 - thrustPercentage)
-    );
+    // TrailView copies the values, so scratch objects can be reused
+    this.trailColor.setRGB(1, thrustPercentage, 1 - thrustPercentage);
+    this.trailView.extendFromVectors(this.prevPosition, this.trailColor);
   }
 
   private alignRotation() {

@@ -170,7 +170,7 @@ export default class MissileGui {
     // Camerakit's ring is an input-only view (no readonly/monitor mode), so it
     // binds to a degree mirror that update() overwrites every frame.
     this.folder.addBinding(this, 'thrustInclineAngleDeg', {
-      label: 'Angle of Thrust Net',
+      label: 'Angle of Thrust Net to Gravity',
       view: 'cameraring',
       series: 0,
       wide: true,

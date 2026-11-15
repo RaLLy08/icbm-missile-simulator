@@ -50,6 +50,10 @@ export default class LauncherGui {
   minimizeFlightTime = true;
   increaseCalculationAccuracy = false;
   showCalculationPreview = false;
+  showTrails = true;
+
+  /** Called when "Show Trails" is toggled. */
+  onShowTrailsChange: ((visible: boolean) => void) | null = null;
 
   startLongitude: number | string = 'N/A';
   startLatitude: number | string = 'N/A';
@@ -125,6 +129,14 @@ export default class LauncherGui {
       })
       .on('change', (ev) => {
         this.showCalculationPreview = ev.value;
+      });
+
+    this.folder
+      .addBinding(this, 'showTrails', {
+        label: 'Show Trails',
+      })
+      .on('change', (ev) => {
+        this.onShowTrailsChange?.(ev.value);
       });
 
     this.folder.addBinding(this, 'missileCount', {

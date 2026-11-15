@@ -19,6 +19,29 @@
       "type": "image/png"
     }
   ],
+  "screenshots": [
+    {
+      "src": "../preview_2.png",
+      "sizes": "3812x1780",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Ballistic missile trajectory over the 3D globe"
+    },
+    {
+      "src": "../preview_3.png",
+      "sizes": "3778x1798",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Missile configurator and flight view"
+    },
+    {
+      "src": "../preview_mobile.png",
+      "sizes": "1179x2556",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Simulator on mobile"
+    }
+  ],
   "theme_color": "#000000",
   "background_color": "#000000",
   "display": "standalone"
