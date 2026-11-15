@@ -403,6 +403,110 @@ const getFireTexture = () =>
     ctx.globalCompositeOperation = 'source-over';
   });
 
+/** Nose profile sampling: ogive body points + blunt-tip arc points. */
+const NOSE_OGIVE_SEGMENTS = 40;
+const NOSE_TIP_SEGMENTS = 8;
+/** Spherical tip radius as a fraction of the nose base radius. */
+const NOSE_TIP_RADIUS_RATIO = 0.14;
+/** Texture v where the ogive meets the blunt tip (LatheGeometry v = point index). */
+const NOSE_TIP_V =
+  NOSE_OGIVE_SEGMENTS / (NOSE_OGIVE_SEGMENTS + NOSE_TIP_SEGMENTS);
+
+/**
+ * Spherically blunted tangent ogive (the classic ICBM shroud / RV shape),
+ * as LatheGeometry profile points from the base (y = 0, r = radius) up to
+ * the tip (y = height, r = 0).
+ */
+function createNoseProfile(radius: number, height: number): THREE.Vector2[] {
+  const R = radius;
+  const L = height;
+  // Ogive radius; x is measured from the (sharp) tip along the axis
+  const rho = (R * R + L * L) / (2 * R);
+  const rn = R * NOSE_TIP_RADIUS_RATIO;
+  // Tip sphere center, tangency point and apex
+  const x0 = L - Math.sqrt((rho - rn) ** 2 - (rho - R) ** 2);
+  const yt = (rn * (rho - R)) / (rho - rn);
+  const xt = x0 - Math.sqrt(rn * rn - yt * yt);
+  const xa = x0 - rn;
+  // Blunting shortens the nose; stretch it back to the requested height
+  const stretch = L / (L - xa);
+  const toPoint = (x: number, r: number) =>
+    new THREE.Vector2(Math.max(0, r), (L - x) * stretch);
+
+  const profile: THREE.Vector2[] = [];
+  for (let s = 0; s <= NOSE_OGIVE_SEGMENTS; s++) {
+    const x = L - ((L - xt) * s) / NOSE_OGIVE_SEGMENTS;
+    profile.push(toPoint(x, Math.sqrt(rho * rho - (L - x) ** 2) + R - rho));
+  }
+  const thetaT = Math.atan2(yt, xt - x0);
+  for (let s = 1; s <= NOSE_TIP_SEGMENTS; s++) {
+    const theta = thetaT + ((Math.PI - thetaT) * s) / NOSE_TIP_SEGMENTS;
+    const r = s === NOSE_TIP_SEGMENTS ? 0 : rn * Math.sin(theta);
+    profile.push(toPoint(x0 + rn * Math.cos(theta), r));
+  }
+  return profile;
+}
+
+/**
+ * Nose shroud skin: off-white panels with seams, a dark separation joint at
+ * the base and a charred ablative heat shield on the blunt tip.
+ * Canvas top = tip (v = 1), canvas bottom = base (v = 0).
+ */
+const getNoseTexture = () =>
+  getCanvasTexture('nose-color', 256, 512, (ctx, w, h) => {
+    const yAt = (v: number) => (1 - v) * h;
+
+    const base = ctx.createLinearGradient(0, h, 0, 0);
+    base.addColorStop(0, '#d9dad5');
+    base.addColorStop(0.7, '#ecece7');
+    base.addColorStop(1, '#f4f4f0');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle panel tone variation (4 shroud panels)
+    for (let p = 0; p < 4; p++) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${0.015 + 0.02 * (p % 2)})`;
+      ctx.fillRect((p * w) / 4, 0, w / 4, h);
+    }
+
+    // Longitudinal panel seams
+    ctx.fillStyle = 'rgba(40, 42, 46, 0.45)';
+    for (let p = 0; p < 4; p++) ctx.fillRect((p * w) / 4, 0, 2, h);
+
+    // Circumferential seams with rivet rows
+    [0.3, 0.6].forEach((v) => {
+      const y = yAt(v);
+      ctx.fillStyle = 'rgba(40, 42, 46, 0.4)';
+      ctx.fillRect(0, y, w, 2);
+      ctx.fillStyle = 'rgba(60, 62, 66, 0.35)';
+      for (let x = 3; x < w; x += 8) ctx.fillRect(x, y + 4, 2, 2);
+    });
+
+    // Separation joint band at the base
+    ctx.fillStyle = '#55585e';
+    ctx.fillRect(0, yAt(0.035), w, yAt(0) - yAt(0.035));
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.fillRect(0, yAt(0.035), w, 2);
+
+    // Ablative heat shield: dark tip blending into the shroud
+    const shieldStart = NOSE_TIP_V - 0.12;
+    const shield = ctx.createLinearGradient(0, yAt(shieldStart), 0, yAt(1));
+    shield.addColorStop(0, 'rgba(38, 32, 28, 0)');
+    shield.addColorStop(0.35, 'rgba(38, 32, 28, 0.85)');
+    shield.addColorStop(1, 'rgba(24, 20, 18, 1)');
+    ctx.fillStyle = shield;
+    ctx.fillRect(0, 0, w, yAt(shieldStart));
+
+    // Char speckles on the heat shield
+    for (let i = 0; i < 400; i++) {
+      const v = shieldStart + 0.06 + Math.random() * (1 - shieldStart - 0.06);
+      ctx.fillStyle = `rgba(${Math.random() < 0.5 ? '0, 0, 0' : '90, 70, 55'}, ${
+        0.15 + Math.random() * 0.25
+      })`;
+      ctx.fillRect(Math.random() * w, yAt(v), 1 + Math.random() * 2, 1);
+    }
+  });
+
 export type CylinderDimensions = { height: number; radius: number };
 
 export type MissileDimensions = {
@@ -657,7 +761,6 @@ export default class MissileView {
   }
 
   private buildMissileMesh() {
-    const coneColor = 0xff0000;
     const bodyColor = 0xcccccc;
     const legColor = 0x888888;
 
@@ -695,12 +798,20 @@ export default class MissileView {
 
     // ------------------------------------------------------------------------
     // === Missile Nose Cone (on top of the last stage) ===
-    const coneHeight = head.height;
-    const coneRadius = head.radius;
-    const coneGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 16);
-    const coneMaterial = new THREE.MeshStandardMaterial({ color: coneColor });
-    const coneMesh = new THREE.Mesh(coneGeometry, coneMaterial);
-    coneMesh.position.y = bodyHeight + coneHeight / 2; // sits on top of the body
+    // Blunted tangent ogive shroud with an ablative tip
+    const noseTexture = getNoseTexture();
+    const coneMaterial = new THREE.MeshStandardMaterial({
+      color: noseTexture ? 0xffffff : 0xe6e6e1,
+      map: noseTexture,
+      metalness: 0.25,
+      roughness: 0.55,
+    });
+    const coneMesh = new THREE.Mesh(
+      new THREE.LatheGeometry(createNoseProfile(head.radius, head.height), 32),
+      coneMaterial
+    );
+    coneMesh.name = 'nose';
+    coneMesh.position.y = bodyHeight; // base sits on top of the body
     this.group.add(coneMesh);
 
     // ------------------------------------------------------------------------
