@@ -1,22 +1,22 @@
 import * as THREE from 'three';
 
 export type AudioFalloff = {
-  /** Distance (km) up to which the sound plays at full volume. */
+  /** Distance (m) up to which the sound plays at full volume. */
   refDistance: number;
-  /** Distance (km) at and beyond which the sound is completely silent. */
+  /** Distance (m) at and beyond which the sound is completely silent. */
   maxDistance: number;
 };
 
-/** Missile engines: loud up close, inaudible after a few tens of km. */
+/** Missile engines: loud up close, inaudible after a few tens of thousands of meters. */
 export const ENGINE_FALLOFF: AudioFalloff = {
-  refDistance: 5,
-  maxDistance: 50,
+  refDistance: 5_000,
+  maxDistance: 50_000,
 };
 
 /** Nuclear detonation: heard much farther than engines. */
 export const EXPLOSION_FALLOFF: AudioFalloff = {
-  refDistance: 400,
-  maxDistance: 2000,
+  refDistance: 400_000,
+  maxDistance: 2_000_000,
 };
 
 const MUTED_STORAGE_KEY = 'audioMuted';
@@ -69,7 +69,7 @@ export function setAudioListener(getter: () => THREE.Object3D | null) {
   getListener = getter;
 }
 
-/** Distance (km) from the active camera to `position`, or Infinity if none. */
+/** Distance (m) from the active camera to `position`, or Infinity if none. */
 export function getListenerDistance(position: THREE.Vector3): number {
   const listener = getListener();
   if (!listener) return Infinity;

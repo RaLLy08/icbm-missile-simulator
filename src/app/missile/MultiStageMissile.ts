@@ -5,7 +5,7 @@ import Missile from './Missile';
  * the next one ignites.
  */
 export type MissileStage = {
-  /** Unit: km/s */
+  /** Unit: m/s */
   exhaustVelocity: number;
   /** Unit: kg/s */
   massFlowRate: number;

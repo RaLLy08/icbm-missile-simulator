@@ -47,9 +47,9 @@ export type SimulationOptions = {
   onTimePassedUpdate?: (text: string) => void;
   /**
    * Called every frame with the main-view camera's altitude above the
-   * Earth's surface, in km (Earth camera, or the chase camera in chase mode).
+   * Earth's surface, in m (Earth camera, or the chase camera in chase mode).
    */
-  onCameraAltitudeUpdate?: (altitudeKm: number) => void;
+  onCameraAltitudeUpdate?: (altitude: number) => void;
 };
 
 /**

@@ -48,6 +48,27 @@ export const formatSeconds = (seconds: number): string => {
   return joinDuration(splitSeconds(seconds));
 };
 
+/**
+ * Formats a value with thousands separators and a unit,
+ * e.g. formatUnit(1234567.8, 'm') -> "1,234,568 m".
+ */
+export const formatUnit = (
+  value: number,
+  unit: string,
+  fractionDigits = 0
+): string => {
+  if (!Number.isFinite(value)) return '—';
+  const text = value.toLocaleString('en-US', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+  return `${text} ${unit}`;
+};
+
+/** Formats meters, e.g. formatMeters(1234567) -> "1,234,567 m". */
+export const formatMeters = (meters: number, fractionDigits = 0): string =>
+  formatUnit(meters, 'm', fractionDigits);
+
 export const toExponentGrowth = (
   percentage: number,
   exponentBase = 2

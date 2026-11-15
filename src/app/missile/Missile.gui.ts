@@ -3,7 +3,7 @@ import Missile from './Missile';
 import MultiStageMissile from './MultiStageMissile';
 import MissileView, { ForceArrowKey } from './missile-view/MissileView';
 import * as THREE from 'three';
-import { formatSeconds } from 'app/utils';
+import { formatMeters, formatSeconds, formatUnit } from 'app/utils';
 import MissileTrackingView from './missile-view/MissileTrackingView';
 
 export default class MissileGui {
@@ -31,7 +31,8 @@ export default class MissileGui {
     gravity: 'Gravity (blue)',
     gravityPerpendicular: 'Gravity Perpendicular (purple)',
   };
-  forcesArrowViewScale = 1;
+  /** Arrow length. Unit: m */
+  forcesArrowViewScale = 1000;
   travelledDistance = 0;
   velocityToGravityAngle = 0;
   thrustInclineAngleDeg = 0;
@@ -112,10 +113,10 @@ export default class MissileGui {
 
     arrowsFolder
       .addBinding(this, 'forcesArrowViewScale', {
-        label: 'Forces Arrow View Scale',
-        min: 1,
-        max: 3000,
-        step: 1,
+        label: 'Forces Arrow View Scale (m)',
+        min: 1000,
+        max: 3_000_000,
+        step: 1000,
       })
       .on('change', () => {
         this.missileView.applyScaleToArrows(this.forcesArrowViewScale);
@@ -124,7 +125,7 @@ export default class MissileGui {
     this.folder.addBinding(this, 'velocity', {
       label: 'Velocity',
       readonly: true,
-      format: (v) => v.toFixed(5) + ' km/s',
+      format: (v) => formatUnit(v, 'm/s', 2),
     });
 
     this.folder.addBinding(this, 'thrust', {
@@ -133,7 +134,7 @@ export default class MissileGui {
       view: 'graph',
       min: 0,
       max: this.missile.maxAcceleration,
-      format: (v) => (v * 1000).toFixed(5) + ' kg*(m/s²)',
+      format: (v) => v.toFixed(5) + ' m/s²',
     });
 
     this.folder.addBinding(this, 'thrust', {
@@ -197,19 +198,19 @@ export default class MissileGui {
     this.folder.addBinding(this, 'displacement', {
       label: 'Displacement',
       readonly: true,
-      format: (v) => v.toFixed(1) + ' km',
+      format: (v) => formatMeters(v),
     });
 
     this.folder.addBinding(this.missile, 'altitude', {
       label: 'Altitude',
       readonly: true,
-      format: (v) => v.toFixed(1) + ' km',
+      format: (v) => formatMeters(v),
     });
 
     this.folder.addBinding(this, 'gravityForce', {
       label: 'Gravity',
       readonly: true,
-      format: (v) => v.toExponential(5) + ' km/s²',
+      format: (v) => v.toFixed(5) + ' m/s²',
     });
 
     this.folder.addBinding(this.missile, 'currentThrustInclineDuration', {
@@ -233,7 +234,7 @@ export default class MissileGui {
     this.folder.addBinding(this, 'travelledDistance', {
       label: 'Travelled Distance',
       readonly: true,
-      format: (v) => v.toFixed(1) + ' km',
+      format: (v) => formatMeters(v),
     });
 
     // Insert the viewport into the DOM only after all blades are added:

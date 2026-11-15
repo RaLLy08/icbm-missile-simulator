@@ -6,7 +6,7 @@ interface MinMax {
 /** Search range of one engine stage. Stages burn in ascending `stage` order. */
 export interface MissileStageSpec {
   stage: number;
-  exhaustVelocity: MinMax; // km/s
+  exhaustVelocity: MinMax; // m/s
   massFlowRate: MinMax; // kg/s
   fuelMass: MinMax; // kg
 }
@@ -19,7 +19,7 @@ export interface MissileSpec {
   height: number; // m
   payloadMass: number; // kg
 
-  startInclineAfterAltitude: MinMax; // km
+  startInclineAfterAltitude: MinMax; // m
   thrustInclineMaxDuration: MinMax; // seconds
   thrustInclineVelocityDeg: MinMax; // degrees per second
   stages: MissileStageSpec[];
@@ -47,28 +47,28 @@ export const MISSILES: MissileSpec[] = [
     category: MissileCategories.ICBM,
     height: 18.25,
     payloadMass: 1150,
-    startInclineAfterAltitude: { min: 1, max: 4 },
+    startInclineAfterAltitude: { min: 1000, max: 4000 },
     thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
     thrustInclineVelocityDeg: { min: 0, max: 20 },
     stages: [
-      // M55A1 — nominal: vₑ 2.57 km/s, ṁ 346.4 kg/s, fuel 20785 kg (~60 s burn)
+      // M55A1 — nominal: vₑ 2570 m/s, ṁ 346.4 kg/s, fuel 20785 kg (~60 s burn)
       {
         stage: 1,
-        exhaustVelocity: { min: 2.45, max: 2.7 },
+        exhaustVelocity: { min: 2450, max: 2700 },
         massFlowRate: { min: 310, max: 380 },
         fuelMass: { min: 19750, max: 21800 },
       },
-      // SR19 — nominal: vₑ 2.82 km/s, ṁ 94.5 kg/s, fuel 6237 kg (~66 s burn)
+      // SR19 — nominal: vₑ 2820 m/s, ṁ 94.5 kg/s, fuel 6237 kg (~66 s burn)
       {
         stage: 2,
-        exhaustVelocity: { min: 2.68, max: 2.96 },
+        exhaustVelocity: { min: 2680, max: 2960 },
         massFlowRate: { min: 85, max: 104 },
         fuelMass: { min: 5900, max: 6550 },
       },
-      // SR73 — nominal: vₑ 2.79 km/s, ṁ 52.5 kg/s, fuel 3200 kg (~61 s burn)
+      // SR73 — nominal: vₑ 2790 m/s, ṁ 52.5 kg/s, fuel 3200 kg (~61 s burn)
       {
         stage: 3,
-        exhaustVelocity: { min: 2.65, max: 2.93 },
+        exhaustVelocity: { min: 2650, max: 2930 },
         massFlowRate: { min: 47, max: 58 },
         fuelMass: { min: 3040, max: 3360 },
       },
@@ -81,25 +81,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 18.25,
     payloadMass: 1150,
-    startInclineAfterAltitude: { min: 0.15, max: 0.4 },
+    startInclineAfterAltitude: { min: 150, max: 400 },
     thrustInclineMaxDuration: { min: 35, max: 55 },
     thrustInclineVelocityDeg: { min: 0.8, max: 1.4 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.32, max: 2.57 },
+        exhaustVelocity: { min: 2320, max: 2570 },
         massFlowRate: { min: 335, max: 360 },
         fuelMass: { min: 20500, max: 21000 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.75, max: 2.85 },
+        exhaustVelocity: { min: 2750, max: 2850 },
         massFlowRate: { min: 90, max: 100 },
         fuelMass: { min: 6150, max: 6350 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.72, max: 2.82 },
+        exhaustVelocity: { min: 2720, max: 2820 },
         massFlowRate: { min: 48, max: 56 },
         fuelMass: { min: 3100, max: 3300 },
       },
@@ -112,25 +112,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 21.8,
     payloadMass: 3950,
-    startInclineAfterAltitude: { min: 0.2, max: 0.45 },
+    startInclineAfterAltitude: { min: 200, max: 450 },
     thrustInclineMaxDuration: { min: 35, max: 50 },
     thrustInclineVelocityDeg: { min: 0.85, max: 1.45 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.42, max: 2.65 },
+        exhaustVelocity: { min: 2420, max: 2650 },
         massFlowRate: { min: 790, max: 840 },
         fuelMass: { min: 44200, max: 45400 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.72, max: 2.82 },
+        exhaustVelocity: { min: 2720, max: 2820 },
         massFlowRate: { min: 375, max: 405 },
         fuelMass: { min: 22100, max: 22900 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.8, max: 2.9 },
+        exhaustVelocity: { min: 2800, max: 2900 },
         massFlowRate: { min: 110, max: 122 },
         fuelMass: { min: 7300, max: 7650 },
       },
@@ -143,25 +143,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'SLBM' as MissileCategories,
     height: 13.58,
     payloadMass: 2700,
-    startInclineAfterAltitude: { min: 0.1, max: 0.35 },
+    startInclineAfterAltitude: { min: 100, max: 350 },
     thrustInclineMaxDuration: { min: 30, max: 50 },
     thrustInclineVelocityDeg: { min: 0.9, max: 1.6 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.48, max: 2.7 },
+        exhaustVelocity: { min: 2480, max: 2700 },
         massFlowRate: { min: 515, max: 545 },
         fuelMass: { min: 34000, max: 34900 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.76, max: 2.86 },
+        exhaustVelocity: { min: 2760, max: 2860 },
         massFlowRate: { min: 205, max: 225 },
         fuelMass: { min: 12650, max: 13150 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.82, max: 2.92 },
+        exhaustVelocity: { min: 2820, max: 2920 },
         massFlowRate: { min: 80, max: 90 },
         fuelMass: { min: 3750, max: 3950 },
       },
@@ -174,25 +174,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 22.7,
     payloadMass: 1200,
-    startInclineAfterAltitude: { min: 0.15, max: 0.4 },
+    startInclineAfterAltitude: { min: 150, max: 400 },
     thrustInclineMaxDuration: { min: 30, max: 50 },
     thrustInclineVelocityDeg: { min: 0.9, max: 1.55 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.38, max: 2.62 },
+        exhaustVelocity: { min: 2380, max: 2620 },
         massFlowRate: { min: 455, max: 495 },
         fuelMass: { min: 26800, max: 27800 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.7, max: 2.82 },
+        exhaustVelocity: { min: 2700, max: 2820 },
         massFlowRate: { min: 155, max: 175 },
         fuelMass: { min: 9200, max: 9800 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.74, max: 2.85 },
+        exhaustVelocity: { min: 2740, max: 2850 },
         massFlowRate: { min: 65, max: 78 },
         fuelMass: { min: 3600, max: 3900 },
       },
@@ -205,19 +205,19 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 34.3,
     payloadMass: 8800,
-    startInclineAfterAltitude: { min: 0.25, max: 0.6 },
+    startInclineAfterAltitude: { min: 250, max: 600 },
     thrustInclineMaxDuration: { min: 45, max: 75 },
     thrustInclineVelocityDeg: { min: 0.6, max: 1.15 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.75, max: 3.02 },
+        exhaustVelocity: { min: 2750, max: 3020 },
         massFlowRate: { min: 1120, max: 1200 },
         fuelMass: { min: 149000, max: 152000 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 3.15, max: 3.26 },
+        exhaustVelocity: { min: 3150, max: 3260 },
         massFlowRate: { min: 210, max: 235 },
         fuelMass: { min: 37000, max: 38200 },
       },
@@ -230,25 +230,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 22.0,
     payloadMass: 2500,
-    startInclineAfterAltitude: { min: 0.15, max: 0.45 },
+    startInclineAfterAltitude: { min: 150, max: 450 },
     thrustInclineMaxDuration: { min: 35, max: 55 },
     thrustInclineVelocityDeg: { min: 0.85, max: 1.45 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.4, max: 2.64 },
+        exhaustVelocity: { min: 2400, max: 2640 },
         massFlowRate: { min: 710, max: 760 },
         fuelMass: { min: 43500, max: 45000 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.72, max: 2.84 },
+        exhaustVelocity: { min: 2720, max: 2840 },
         massFlowRate: { min: 270, max: 295 },
         fuelMass: { min: 16800, max: 17600 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.76, max: 2.88 },
+        exhaustVelocity: { min: 2760, max: 2880 },
         massFlowRate: { min: 115, max: 130 },
         fuelMass: { min: 6800, max: 7300 },
       },
@@ -261,25 +261,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 17.5,
     payloadMass: 1500,
-    startInclineAfterAltitude: { min: 0.15, max: 0.4 },
+    startInclineAfterAltitude: { min: 150, max: 400 },
     thrustInclineMaxDuration: { min: 35, max: 55 },
     thrustInclineVelocityDeg: { min: 0.85, max: 1.45 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.35, max: 2.58 },
+        exhaustVelocity: { min: 2350, max: 2580 },
         massFlowRate: { min: 420, max: 460 },
         fuelMass: { min: 27000, max: 28200 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.68, max: 2.8 },
+        exhaustVelocity: { min: 2680, max: 2800 },
         massFlowRate: { min: 165, max: 185 },
         fuelMass: { min: 10200, max: 10800 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.72, max: 2.84 },
+        exhaustVelocity: { min: 2720, max: 2840 },
         massFlowRate: { min: 60, max: 75 },
         fuelMass: { min: 3600, max: 4000 },
       },
@@ -292,25 +292,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 25.0,
     payloadMass: 1250,
-    startInclineAfterAltitude: { min: 0.2, max: 0.5 },
+    startInclineAfterAltitude: { min: 200, max: 500 },
     thrustInclineMaxDuration: { min: 35, max: 60 },
     thrustInclineVelocityDeg: { min: 0.8, max: 1.4 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.34, max: 2.56 },
+        exhaustVelocity: { min: 2340, max: 2560 },
         massFlowRate: { min: 520, max: 570 },
         fuelMass: { min: 33500, max: 35000 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.66, max: 2.78 },
+        exhaustVelocity: { min: 2660, max: 2780 },
         massFlowRate: { min: 190, max: 215 },
         fuelMass: { min: 11800, max: 12500 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.7, max: 2.82 },
+        exhaustVelocity: { min: 2700, max: 2820 },
         massFlowRate: { min: 70, max: 85 },
         fuelMass: { min: 4100, max: 4500 },
       },
@@ -323,19 +323,19 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 26.0,
     payloadMass: 2500,
-    startInclineAfterAltitude: { min: 0.25, max: 0.6 },
+    startInclineAfterAltitude: { min: 250, max: 600 },
     thrustInclineMaxDuration: { min: 45, max: 75 },
     thrustInclineVelocityDeg: { min: 0.65, max: 1.2 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.65, max: 2.95 },
+        exhaustVelocity: { min: 2650, max: 2950 },
         massFlowRate: { min: 560, max: 620 },
         fuelMass: { min: 72000, max: 76000 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.98, max: 3.15 },
+        exhaustVelocity: { min: 2980, max: 3150 },
         massFlowRate: { min: 130, max: 155 },
         fuelMass: { min: 18500, max: 20500 },
       },
@@ -348,25 +348,25 @@ export const MISSILES: MissileSpec[] = [
     category: 'ICBM' as MissileCategories,
     height: 15.5,
     payloadMass: 1150,
-    startInclineAfterAltitude: { min: 0.15, max: 0.35 },
+    startInclineAfterAltitude: { min: 150, max: 350 },
     thrustInclineMaxDuration: { min: 30, max: 50 },
     thrustInclineVelocityDeg: { min: 0.9, max: 1.55 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.38, max: 2.6 },
+        exhaustVelocity: { min: 2380, max: 2600 },
         massFlowRate: { min: 280, max: 315 },
         fuelMass: { min: 16200, max: 17200 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.7, max: 2.82 },
+        exhaustVelocity: { min: 2700, max: 2820 },
         massFlowRate: { min: 95, max: 115 },
         fuelMass: { min: 5400, max: 5900 },
       },
       {
         stage: 3,
-        exhaustVelocity: { min: 2.75, max: 2.86 },
+        exhaustVelocity: { min: 2750, max: 2860 },
         massFlowRate: { min: 40, max: 52 },
         fuelMass: { min: 2100, max: 2400 },
       },
@@ -379,19 +379,19 @@ export const MISSILES: MissileSpec[] = [
     category: 'MRBM' as MissileCategories,
     height: 19.3,
     payloadMass: 1000,
-    startInclineAfterAltitude: { min: 0.1, max: 0.3 },
+    startInclineAfterAltitude: { min: 100, max: 300 },
     thrustInclineMaxDuration: { min: 25, max: 45 },
     thrustInclineVelocityDeg: { min: 1.0, max: 1.75 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.32, max: 2.52 },
+        exhaustVelocity: { min: 2320, max: 2520 },
         massFlowRate: { min: 310, max: 350 },
         fuelMass: { min: 15500, max: 16800 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.62, max: 2.75 },
+        exhaustVelocity: { min: 2620, max: 2750 },
         massFlowRate: { min: 110, max: 130 },
         fuelMass: { min: 5200, max: 5800 },
       },
@@ -404,19 +404,19 @@ export const MISSILES: MissileSpec[] = [
     category: 'MRBM' as MissileCategories,
     height: 18.2,
     payloadMass: 750,
-    startInclineAfterAltitude: { min: 0.1, max: 0.3 },
+    startInclineAfterAltitude: { min: 100, max: 300 },
     thrustInclineMaxDuration: { min: 25, max: 45 },
     thrustInclineVelocityDeg: { min: 1.05, max: 1.8 },
     stages: [
       {
         stage: 1,
-        exhaustVelocity: { min: 2.3, max: 2.5 },
+        exhaustVelocity: { min: 2300, max: 2500 },
         massFlowRate: { min: 270, max: 305 },
         fuelMass: { min: 13500, max: 14500 },
       },
       {
         stage: 2,
-        exhaustVelocity: { min: 2.6, max: 2.72 },
+        exhaustVelocity: { min: 2600, max: 2720 },
         massFlowRate: { min: 95, max: 115 },
         fuelMass: { min: 4500, max: 5000 },
       },

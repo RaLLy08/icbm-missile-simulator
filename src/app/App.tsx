@@ -21,16 +21,9 @@ stats.dom.style.cssText = 'position:relative;cursor:pointer;opacity:0.9;';
 const altitudeFormat = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 });
-const lowAltitudeFormat = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-// One decimal close to the ground (the chase camera near launch)
-const formatAltitude = (km: number) => {
-  const value = Math.max(0, km);
-  const format = value < 10 ? lowAltitudeFormat : altitudeFormat;
-  return `📷 ${format.format(value)} km`;
-};
+/** @param meters Camera altitude above the surface */
+const formatAltitude = (meters: number) =>
+  `📷 ${altitudeFormat.format(Math.max(0, meters))} m`;
 
 const App = () => {
   // Updated imperatively every frame to avoid re-rendering React
@@ -84,8 +77,8 @@ const App = () => {
             timePassedElRef.current.textContent = `⏱ ${text}`;
           }
         },
-        onCameraAltitudeUpdate: (altitudeKm) => {
-          const text = formatAltitude(altitudeKm);
+        onCameraAltitudeUpdate: (altitude) => {
+          const text = formatAltitude(altitude);
           if (text === altitudeTextRef.current) return;
           altitudeTextRef.current = text;
           if (altitudeElRef.current) altitudeElRef.current.textContent = text;

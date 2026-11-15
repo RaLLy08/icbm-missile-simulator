@@ -17,7 +17,7 @@ export const createTrajectoryPreview = (scene: THREE.Scene) => {
   scene.add(line);
 
   const impactMarker = new THREE.Mesh(
-    new THREE.SphereGeometry(40, 16, 16),
+    new THREE.SphereGeometry(40_000, 16, 16),
     new THREE.MeshBasicMaterial({ color: PREVIEW_COLOR })
   );
   impactMarker.visible = false;

@@ -5,21 +5,21 @@ class Missile {
   id = 0;
 
   /**
-   * Unit: km
+   * Unit: m
    */
   position = new THREE.Vector3(0, 0, 0);
   /**
-   * Unit: km
+   * Unit: m
    */
   travelledDistance = new THREE.Vector3(0, 0, 0);
 
   /**
-   * Unit: km/s
+   * Unit: m/s
    */
   velocity = new THREE.Vector3(0, 0, 0);
 
   /**
-   * Unit: km/s^2
+   * Unit: m/s²
    */
   thrust = new THREE.Vector3(0, 0, 0);
 
@@ -30,11 +30,11 @@ class Missile {
   private _thrustRotationAxis = new THREE.Vector3();
 
   /**
-   * Unit: km
+   * Unit: m
    */
   altitude = 0;
   /**
-   * Unit: km
+   * Unit: m
    */
   maxAltitude = 0;
 
@@ -50,7 +50,7 @@ class Missile {
   flightTime = 0;
 
   /**
-   * Indicates whether the missile has finished its flight. (has displacement > 0.5 and altitude < 0)
+   * Indicates whether the missile has finished its flight. (has displacement > 10,000 m and altitude < 0)
    */
   hasLanded = false;
 
@@ -73,11 +73,11 @@ class Missile {
    * @param earth The Earth instance to which the missile is associated.
    * @param initialPosition The initial position of the missile in 3D space.
    * @param targetInclineVector Thrust straight-line direction (Euclidean) towards the target.
-   * @param startInclineAfterAltitude The distance after which the missile starts to incline. Unit: km
+   * @param startInclineAfterAltitude The distance after which the missile starts to incline. Unit: m
    * @param thrustInclineMaxDuration The maximum duration for the thrust incline. Unit: seconds
    * @param thrustInclineVelocity The velocity of the thrust incline. Unit: radians per second
    * @param fuelMass The mass of the missile fuel. Unit: kilograms
-   * @param exhaustVelocity The exhaust velocity of the missile. Unit: kilometers per second
+   * @param exhaustVelocity The exhaust velocity of the missile. Unit: meters per second
    * @param massFlowRate The mass flow rate of the missile: Unit: kilograms per second
    * @param payloadMass The mass of the missile payload. Unit: kilograms
    */
@@ -85,13 +85,13 @@ class Missile {
     private earth: Earth,
     public readonly initialPosition: THREE.Vector3,
     public readonly targetInclineVector: THREE.Vector3,
-    public readonly startInclineAfterAltitude: number = 8,
+    public readonly startInclineAfterAltitude: number = 8000, // m
     public readonly thrustInclineMaxDuration: number = 160,
     public readonly thrustInclineVelocity: number = THREE.MathUtils.degToRad(
       0.5
     ),
     public fuelMass = 18400,
-    public exhaustVelocity = 3, // km/s
+    public exhaustVelocity = 3000, // m/s
     public massFlowRate = 50, // kg/s
     public readonly payloadMass = 800 // kg
   ) {
@@ -132,7 +132,7 @@ class Missile {
 
   /**
    * The maximum acceleration the current engine can achieve (at burnout mass = payload).
-   * @returns Maximum acceleration in km/s².
+   * @returns Maximum acceleration in m/s².
    */
   get maxAcceleration() {
     return (this.massFlowRate * this.exhaustVelocity) / this.payloadMass;
@@ -143,9 +143,9 @@ class Missile {
    * @param targetFlatThrustDirection The target direction for the thrust, in 3D space.
    */
   setThrust(tick: number, targetFlatThrustDirection: THREE.Vector3) {
-    const ve = this.exhaustVelocity; // Exhaust velocity (km/s)
+    const ve = this.exhaustVelocity; // Exhaust velocity (m/s)
     const dmdt = this.massFlowRate; // Mass flow rate (kg/s)
-    const F = dmdt * ve; // Thrust (kg*(km/s²))
+    const F = dmdt * ve; // Thrust (N = kg·m/s²)
     const remainingFuel = this.remainingFuel;
     const mT = this.payloadMass + remainingFuel; // Current mass of the missile (kg)
 
@@ -210,7 +210,7 @@ class Missile {
     const displacementMagnitude = this.displacement.length();
 
     // todo fix (if too high time multiplier)
-    if (displacementMagnitude > 10 && this.altitude <= 0) {
+    if (displacementMagnitude > 10_000 && this.altitude <= 0) {
       this.velocity.set(0, 0, 0);
       this.thrust.set(0, 0, 0);
       this.hasLanded = true;

@@ -14,7 +14,7 @@ describe('MultiStageMissile', () => {
     .normalize();
 
   const gravityAtSurface =
-    (Earth.G * Earth.MASS * 0.001) / (Earth.RADIUS * 1000) ** 2;
+    (Earth.G * Earth.MASS) / Earth.RADIUS ** 2; // m/s²
 
   const createMissile = (payloadMass: number) =>
     new Missile(
@@ -33,8 +33,8 @@ describe('MultiStageMissile', () => {
   it('switches engine after the fuel of the current stage ends', () => {
     const payloadMass = 1000;
     const multiStage = new MultiStageMissile(createMissile(payloadMass), [
-      { fuelMass: 10000, exhaustVelocity: 3, massFlowRate: 100 }, // 100 s
-      { fuelMass: 3000, exhaustVelocity: 3.5, massFlowRate: 50 }, // 60 s
+      { fuelMass: 10000, exhaustVelocity: 3000, massFlowRate: 100 }, // 100 s
+      { fuelMass: 3000, exhaustVelocity: 3500, massFlowRate: 50 }, // 60 s
     ]);
     const { missile } = multiStage;
 
@@ -45,7 +45,7 @@ describe('MultiStageMissile', () => {
     for (let tick = 0; tick < 100; tick++) multiStage.update();
 
     expect(multiStage.currentStageIndex).toBe(1);
-    expect(missile.exhaustVelocity).toBe(3.5);
+    expect(missile.exhaustVelocity).toBe(3500);
     expect(missile.massFlowRate).toBe(50);
     expect(missile.remainingFuel).toBeCloseTo(3000, 6);
 
@@ -56,17 +56,17 @@ describe('MultiStageMissile', () => {
 
     // Tsiolkovsky per stage, minus gravity losses
     const expectedDeltaV =
-      3 * Math.log((payloadMass + 13000) / (payloadMass + 3000)) +
-      3.5 * Math.log((payloadMass + 3000) / payloadMass) -
+      3000 * Math.log((payloadMass + 13000) / (payloadMass + 3000)) +
+      3500 * Math.log((payloadMass + 3000) / payloadMass) -
       gravityAtSurface * 160;
 
-    expect(missile.velocity.length()).toBeCloseTo(expectedDeltaV, 0);
+    expect(missile.velocity.length()).toBeCloseTo(expectedDeltaV, -3); // within 500 m/s
   });
 
   it('splits a step at the stage boundary', () => {
     const multiStage = new MultiStageMissile(createMissile(1000), [
-      { fuelMass: 150, exhaustVelocity: 3, massFlowRate: 100 }, // 1.5 s
-      { fuelMass: 1000, exhaustVelocity: 3, massFlowRate: 50 },
+      { fuelMass: 150, exhaustVelocity: 3000, massFlowRate: 100 }, // 1.5 s
+      { fuelMass: 1000, exhaustVelocity: 3000, massFlowRate: 50 },
     ]);
 
     multiStage.update(1);

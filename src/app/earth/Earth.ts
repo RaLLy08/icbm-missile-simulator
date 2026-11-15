@@ -3,9 +3,10 @@ import * as THREE from 'three';
 
 class Earth {
   /**
-   * Unit: km
+   * Unit: m
    */
-  static readonly RADIUS = 6378;
+  static readonly RADIUS = 6_378_000;
+  /** Unit: m³/(kg·s²) */
   static readonly G = 6.6743e-11;
   /**
    * Unit: kg
@@ -17,14 +18,15 @@ class Earth {
    * Gravitational acceleration at the surface of the Earth.
    */
   // static readonly GRAVITY_AT_SURFACE =
-  //   (Earth.G * Earth.MASS * 0.001) / (Earth.RADIUS * 1000) ** 2;
+  //   (Earth.G * Earth.MASS) / Earth.RADIUS ** 2;
 
+  /** Unit: m */
   static readonly atmosphereLayersHeights = Object.freeze({
-    [atmosphereLayerKeys.TROPOSPHERE]: 10,
-    [atmosphereLayerKeys.STRATOSPHERE]: 50,
-    [atmosphereLayerKeys.MESOSPHERE]: 85,
-    [atmosphereLayerKeys.THERMOSPHERE]: 600,
-    [atmosphereLayerKeys.EXOSPHERE]: 1000,
+    [atmosphereLayerKeys.TROPOSPHERE]: 10_000,
+    [atmosphereLayerKeys.STRATOSPHERE]: 50_000,
+    [atmosphereLayerKeys.MESOSPHERE]: 85_000,
+    [atmosphereLayerKeys.THERMOSPHERE]: 600_000,
+    [atmosphereLayerKeys.EXOSPHERE]: 1_000_000,
   });
 
   constructor(public position = new THREE.Vector3(0, 0, 0)) {}
@@ -42,24 +44,22 @@ class Earth {
   /**
    * Calculates the gravitational force exerted by the Earth on a target point.
    * @param target The position of the target in 3D space.
-   * @returns The gravitational force vector in km/s².
+   * @returns The gravitational acceleration vector in m/s².
    */
   gravityForce(target: THREE.Vector3): THREE.Vector3 {
     const earthGravityVector = new THREE.Vector3()
       .subVectors(this.position, target) // Earth - Missile
       .normalize();
 
-    const distanceToMissileMeters = this.position.distanceTo(target) * 1000; // Convert km to meters
+    const distanceToMissile = this.position.distanceTo(target); // m
 
-    // Calculate gravitational force
-    const gravityForceMagnitude =
-      (Earth.G * Earth.MASS) / distanceToMissileMeters ** 2;
+    const gravityForceMagnitude = (Earth.G * Earth.MASS) / distanceToMissile ** 2;
 
-    return earthGravityVector.multiplyScalar(gravityForceMagnitude * 0.001); // Convert to km/s^2
+    return earthGravityVector.multiplyScalar(gravityForceMagnitude);
   }
 
   /**
-   * @returns The distance to the surface of the Earth in kilometers.
+   * @returns The distance to the surface of the Earth in meters.
    */
   calcAltitude(position: THREE.Vector3): number {
     const distanceToEarthCenters = this.position.distanceTo(position);

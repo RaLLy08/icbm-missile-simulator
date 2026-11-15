@@ -15,7 +15,7 @@ describe('Missile', () => {
   it('should match the velocity according to the Tsiolkovsky missile equation', () => {
     const missilePayloadMass = 1000;
     const missileFuelMass = 18400;
-    const exhaustVelocity = 3;
+    const exhaustVelocity = 3000; // m/s
     const massFlowRate = 50;
 
     const missile = new Missile(
@@ -41,12 +41,12 @@ describe('Missile', () => {
     const m0 = missileFuelMass + missilePayloadMass;
     const mf = missilePayloadMass;
     const gravityAtSurface =
-      (Earth.G * Earth.MASS * 0.001) / (Earth.RADIUS * 1000) ** 2;
+      (Earth.G * Earth.MASS) / Earth.RADIUS ** 2; // m/s²
     const expectedDeltaV =
       exhaustVelocity * Math.log(m0 / mf) -
       gravityAtSurface * simulatedFlightTime;
     const actualSpeed = missile.velocity.length();
 
-    expect(actualSpeed).toBeCloseTo(expectedDeltaV, 0);
+    expect(actualSpeed).toBeCloseTo(expectedDeltaV, -3); // within 500 m/s
   });
 });

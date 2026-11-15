@@ -10,11 +10,11 @@ export default class Launcher {
 
   missileStartPosition: THREE.Vector3 | null = null;
   missileTargetPosition: THREE.Vector3 | null = null;
-  startInclineAfterAltitude = 8; // km
+  startInclineAfterAltitude = 8000; // m
   thrustInclineMaxDuration = 160; // seconds
   thrustInclineVelocity = THREE.MathUtils.degToRad(0.5); // radians per second
   stages: MissileStage[] = [
-    { exhaustVelocity: 4, massFlowRate: 50, fuelMass: 30000 },
+    { exhaustVelocity: 4000, massFlowRate: 50, fuelMass: 30000 },
   ];
   payloadMass = 800; // kg
 
@@ -73,7 +73,7 @@ export default class Launcher {
       {
         maxDistanceThreshold: euclideanDistance * 6,
         maxFlightTimeSeconds: 60 * 120,
-        maxAltitude: 6000,
+        maxAltitude: 6_000_000, // m
       },
       this.launcherGui.minimizeFlightTime,
       this.launcherGui.increaseCalculationAccuracy,

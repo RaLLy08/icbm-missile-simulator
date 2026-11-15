@@ -44,8 +44,8 @@ import {
 import { announceTargetReached } from 'app/helpers/Speech';
 
 const TARGET_REACHED_ANNOUNCE_DELAY_MS = 1000;
-/** "Target reached" is only announced if the impact is within this distance (km). */
-const TARGET_HIT_MAX_MISS_KM = 20;
+/** "Target reached" is only announced if the impact is within this distance (m). */
+const TARGET_HIT_MAX_MISS_M = 20_000;
 
 const NUKE_EXPLOSION_VARIANTS: string[] = [
   nukeVariant00,
@@ -203,7 +203,7 @@ export class ExplosionEffect {
 
     // Create expanding rings
     for (let i = 0; i < this.ringCount; i++) {
-      const ringGeometry = new THREE.RingGeometry(1, 2, 32);
+      const ringGeometry = new THREE.RingGeometry(1000, 2000, 32);
       const ringMaterial = new THREE.MeshBasicMaterial({
         color: 0xff4500,
         side: THREE.DoubleSide,
@@ -455,23 +455,23 @@ export default class MissileView {
   prevThrust = new THREE.Vector3();
 
   /**
-   * Default missile geometry in km (at size multiplier = 1). The body is
+   * Default missile geometry in m (at size multiplier = 1). The body is
    * split between `stageCount` cylinders, each upper stage shorter and
-   * thinner than the one below; the total body height stays 1 km.
+   * thinner than the one below; the total body height stays 1000 m.
    */
   static baseDimensions(stageCount = 1): MissileDimensions {
     const n = Math.max(1, Math.floor(stageCount));
     // Height weights n, n-1, ..., 1 -> lower stages are taller
     const weightSum = (n * (n + 1)) / 2;
     const stages = Array.from({ length: n }, (_, i) => ({
-      height: (n - i) / weightSum,
-      radius: 0.1 * Math.pow(0.85, i),
+      height: (1000 * (n - i)) / weightSum,
+      radius: 100 * Math.pow(0.85, i),
     }));
     const topRadius = stages[n - 1].radius;
     return {
       stages,
-      head: { height: 0.3, radius: topRadius },
-      fire: { height: 1.5, topRadius: 0.06, bottomRadius: 0.14 },
+      head: { height: 300, radius: topRadius },
+      fire: { height: 1500, topRadius: 60, bottomRadius: 140 },
     };
   }
 
@@ -557,7 +557,7 @@ export default class MissileView {
     );
   }
 
-  /** Set explicit stage / head / fire dimensions (km). Call before `init()`. */
+  /** Set explicit stage / head / fire dimensions (m). Call before `init()`. */
   setDimensions(dimensions: MissileDimensions) {
     if (dimensions.stages.length === 0) {
       throw new Error('MissileView requires at least one stage cylinder.');
@@ -584,8 +584,8 @@ export default class MissileView {
     this.applyActiveStage();
   }
 
-  /** Backward push of a separating stage relative to the missile. Unit: km/s */
-  static STAGE_SEPARATION_SPEED = 0.01;
+  /** Backward push of a separating stage relative to the missile. Unit: m/s */
+  static STAGE_SEPARATION_SPEED = 10;
 
   private debris: StageDebris[] = [];
 
@@ -846,9 +846,8 @@ export default class MissileView {
   /** Standard gravity, for showing accelerations in g. Unit: m/s² */
   private static readonly G0 = 9.80665;
 
-  /** km/s² -> "12.34 m/s² (1.26 g)" */
-  private static formatAcceleration(kmPerS2: number) {
-    const ms2 = kmPerS2 * 1000;
+  /** m/s² -> "12.34 m/s² (1.26 g)" */
+  private static formatAcceleration(ms2: number) {
     return `${ms2.toFixed(2)} m/s² (${(ms2 / MissileView.G0).toFixed(2)} g)`;
   }
 
@@ -889,7 +888,7 @@ export default class MissileView {
       this.group.position,
       velocity.clone().normalize(),
       velocity.length(),
-      `${velocity.length().toFixed(3)} km/s` + this.angleToGravityText(velocity)
+      `${velocity.length().toFixed(1)} m/s` + this.angleToGravityText(velocity)
     );
 
     this.updateArrow(
@@ -928,8 +927,8 @@ export default class MissileView {
     arrow.setDirection(direction);
     arrow.setLength(
       length,
-      Math.min(length * 0.05, 10),
-      Math.min(length * 0.03, 5)
+      Math.min(length * 0.05, 10_000),
+      Math.min(length * 0.03, 5_000)
     );
     arrow.position.copy(position);
 
@@ -1087,7 +1086,7 @@ export default class MissileView {
       const missDistance = this.targetPosition
         ? this.missile.position.distanceTo(this.targetPosition)
         : Infinity;
-      if (missDistance <= TARGET_HIT_MAX_MISS_KM) {
+      if (missDistance <= TARGET_HIT_MAX_MISS_M) {
         // Same number as the "Missile N" label in the GUI
         const missileId = this.missile.id;
         setTimeout(

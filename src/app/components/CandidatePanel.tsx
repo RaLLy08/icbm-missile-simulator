@@ -1,15 +1,13 @@
 import * as THREE from 'three';
 import clsx from 'clsx';
 import s from '../App.module.scss';
-import { formatSeconds } from '../utils';
+import { formatMeters, formatSeconds, formatUnit } from '../utils';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import type { BestCandidate } from '../store/types';
 
-const formatMissDistance = (km: number) => {
-  if (km < 10) return `${km.toFixed(2)} km`;
-  if (km < 1000) return `${km.toFixed(1)} km`;
-  return `${Math.round(km)} km`;
-};
+/** @param meters Distance between the impact point and the target */
+const formatMissDistance = (meters: number) =>
+  formatMeters(meters, meters < 100 ? 1 : 0);
 
 const formatDuration = (seconds: number) => formatSeconds(seconds);
 
@@ -32,7 +30,7 @@ const getStageRows = (c: BestCandidate) =>
       {
         key: `stage${i}Exhaust`,
         label: 'Exhaust Velocity (vₑ)',
-        value: `${stage.exhaustVelocity.toFixed(2)} km/s`,
+        value: formatUnit(stage.exhaustVelocity, 'm/s', 1),
       },
       {
         key: `stage${i}Burn`,
@@ -54,7 +52,7 @@ const getCandidateRows = (c: BestCandidate) => [
   {
     key: 'incline',
     label: 'Gravity Turn Start Altitude',
-    value: `${c.startInclineAfterAltitude.toFixed(2)} km`,
+    value: formatMeters(c.startInclineAfterAltitude, 1),
   },
   {
     key: 'turnDuration',
@@ -87,12 +85,12 @@ const getCandidateRows = (c: BestCandidate) => [
   {
     key: 'apogee',
     label: 'Max Altitude',
-    value: `${c.maxAltitude.toFixed(1)} km`,
+    value: formatMeters(c.maxAltitude),
   },
   {
     key: 'travelled',
     label: 'Travelled Distance',
-    value: `${c.travelledDistance.toFixed(1)} km`,
+    value: formatMeters(c.travelledDistance),
   },
   { key: 'flight', label: 'Flight Time', value: formatDuration(c.flightTime) },
 ];

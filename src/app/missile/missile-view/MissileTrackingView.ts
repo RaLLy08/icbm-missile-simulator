@@ -238,7 +238,7 @@ export default class MissileTrackingView {
     this.camera = new THREE.PerspectiveCamera(
       50,
       1,
-      Math.max(this.missileView.size * 0.01, 0.001),
+      Math.max(this.missileView.size * 0.01, 1),
       Earth.RADIUS * 100
     );
   }

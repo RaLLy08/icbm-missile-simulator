@@ -152,8 +152,8 @@ export const createMissileLauncher = (ctx: SimulationContext) => {
     missileView.updatePrevFromMissile();
 
     const markers = [
-      earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4),
-      earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40, 4),
+      earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40_000, 4_000),
+      earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40_000, 4_000),
     ];
     launcherView.remove();
 

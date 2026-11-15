@@ -6,8 +6,8 @@ const createMarker = (
   earth: Earth,
   color: number = 0x0000ff
 ) => {
-  const radius = 80; // torus radius
-  const tube = 16; // torus thickness
+  const radius = 80_000; // torus radius, m
+  const tube = 16_000; // torus thickness, m
 
   const normal = position.clone().sub(earth.position).normalize();
 

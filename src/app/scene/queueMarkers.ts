@@ -10,7 +10,7 @@ const faceOutward = (object: THREE.Object3D, position: THREE.Vector3) => {
 };
 
 export const createHighlightRing = (position: THREE.Vector3, color: number) => {
-  const geometry = new THREE.TorusGeometry(150, 14, 16, 100);
+  const geometry = new THREE.TorusGeometry(150_000, 14_000, 16, 100);
   const material = new THREE.MeshBasicMaterial({
     color,
     transparent: true,
@@ -30,7 +30,7 @@ export const createQueueMarker = (
 
   if (type === 'start') {
     // Sphere (point) for the start position
-    const geometry = new THREE.SphereGeometry(50, 16, 16);
+    const geometry = new THREE.SphereGeometry(50_000, 16, 16);
     const material = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
@@ -39,8 +39,8 @@ export const createQueueMarker = (
     marker = new THREE.Mesh(geometry, material);
   } else {
     // Cross (two intersecting planes) for the target position
-    const size = 100;
-    const thickness = 10;
+    const size = 100_000; // m
+    const thickness = 10_000; // m
     const material = new THREE.MeshBasicMaterial({
       color,
       transparent: true,

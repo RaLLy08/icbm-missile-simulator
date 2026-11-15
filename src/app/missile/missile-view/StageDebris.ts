@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import Earth from '../../earth/Earth';
 
-/** Earth's gravitational parameter. Unit: km³/s² */
-const EARTH_MU = Earth.G * Earth.MASS * 1e-9;
+/** Earth's gravitational parameter. Unit: m³/s² */
+const EARTH_MU = Earth.G * Earth.MASS;
 /** Longest integration step, so fast time multipliers stay stable. Unit: s */
 const MAX_STEP_S = 1;
 
@@ -32,9 +32,9 @@ export default class StageDebris {
 
   /**
    * @param source The stage group to copy (its world transform is used).
-   * @param velocity Missile velocity at separation. Unit: km/s
+   * @param velocity Missile velocity at separation. Unit: m/s
    * @param forward Missile forward direction (world space).
-   * @param separationSpeed Backward push relative to the missile. Unit: km/s
+   * @param separationSpeed Backward push relative to the missile. Unit: m/s
    */
   constructor(
     private readonly scene: THREE.Scene,

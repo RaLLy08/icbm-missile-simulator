@@ -13,7 +13,7 @@ describe('FlightTrajectory', () => {
       start,
       target,
       {
-        startInclineAfterAltitude: { min: 1, max: 4 },
+        startInclineAfterAltitude: { min: 1000, max: 4000 },
         thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
         thrustInclineVelocity: {
           min: THREE.MathUtils.degToRad(0),
@@ -22,13 +22,13 @@ describe('FlightTrajectory', () => {
         stages: [
           {
             stage: 0,
-            exhaustVelocity: { min: 2, max: 4 },
+            exhaustVelocity: { min: 2000, max: 4000 },
             massFlowRate: { min: 100, max: 400 },
             fuelMass: { min: 1000, max: 30000 },
           },
           {
             stage: 1,
-            exhaustVelocity: { min: 2, max: 4 },
+            exhaustVelocity: { min: 2000, max: 4000 },
             massFlowRate: { min: 100, max: 200 },
             fuelMass: { min: 1000, max: 4000 },
           },
@@ -37,7 +37,7 @@ describe('FlightTrajectory', () => {
       {
         maxDistanceThreshold: start.distanceTo(target) * 6,
         maxFlightTimeSeconds: 60 * 120,
-        maxAltitude: 6000,
+        maxAltitude: 6_000_000, // m
       }
     );
 
@@ -46,10 +46,10 @@ describe('FlightTrajectory', () => {
     const bestGenome = await trajectory.calcTrajectory(0);
 
     const missile = bestGenome.missile;
-    const missDistance = missile.position.distanceTo(target); // km
+    const missDistance = missile.position.distanceTo(target); // m
 
     expect(missile.hasLanded).toBe(true);
-    expect(missDistance).toBeLessThan(50);
+    expect(missDistance).toBeLessThan(50_000);
     expect(bestGenome.multiStageMissile.stages).toHaveLength(2);
   }, 120_000);
 

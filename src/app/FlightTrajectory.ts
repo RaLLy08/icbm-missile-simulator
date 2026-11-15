@@ -30,6 +30,9 @@ export type MissileConstraints = {
   payloadMass?: number;
 };
 
+/** Fitness penalty per second of flight time. Unit: m/s */
+const FLIGHT_TIME_FITNESS_WEIGHT = 1000;
+
 /** Genes before the per-stage genes. */
 const GUIDANCE_GENES = 3;
 /** Genes per stage: exhaustVelocity, massFlowRate, fuelMass. */
@@ -175,7 +178,7 @@ export class FlightTrajectory {
     return new Promise<any>((resolve) => {
       let lastBestFitness = Infinity;
       let noImprovementCount = 0;
-      const convergenceThreshold = 0.001; // km
+      const convergenceThreshold = 1; // m
       const maxNoImprovementGenerations = 20;
       let tracedGenome: any = null;
       let bestTrajectory: THREE.Vector3[] = [];
@@ -269,13 +272,14 @@ export class FlightTrajectory {
     genome.missile = missile;
     genome.multiStageMissile = multiStageMissile;
 
-    // Use cached vector for distance calculation to avoid allocation
+    // Miss distance in m. Use cached vector to avoid allocation
     let fitness = this._tempDistanceVec
       .copy(missile.position)
       .distanceTo(this.target);
 
     if (this.minimizeFlightTime) {
-      fitness += missile.flightTime;
+      // 1 s of flight costs as much as 1000 m of miss distance
+      fitness += missile.flightTime * FLIGHT_TIME_FITNESS_WEIGHT;
     }
 
     return fitness;

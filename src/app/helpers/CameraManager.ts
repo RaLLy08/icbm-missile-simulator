@@ -17,7 +17,7 @@ export default class CameraManager {
     return new THREE.PerspectiveCamera(
       50,
       aspectRatio,
-      0.1,
+      100, // m
       Earth.RADIUS * 100
     );
   }
@@ -158,7 +158,7 @@ class EarthCamera {
   ) {
     const { x, y, z } = this.earthCenter;
 
-    this.controls.minDistance = Earth.RADIUS + 50;
+    this.controls.minDistance = Earth.RADIUS + 50_000; // m
     this.controls.maxDistance = Earth.RADIUS * 6;
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.8;
@@ -217,7 +217,7 @@ class EarthCamera {
     if (this.prevPinchDistance > 0 && pinchDistance > 0) {
       // Fingers apart -> closer to the surface. Scale the altitude above the
       // surface (not the distance from Earth's center), so zoom slows down
-      // near the ground instead of racing through the last few hundred km.
+      // near the ground instead of racing through the last few hundred thousand meters.
       const altitude = this.targetDistance - Earth.RADIUS;
       const newAltitude =
         altitude *
@@ -265,7 +265,7 @@ class EarthCamera {
     const offset = this.camera.position.clone().sub(this.earthCenter);
     const distance = offset.length();
 
-    if (Math.abs(distance - this.targetDistance) < 0.01) return;
+    if (Math.abs(distance - this.targetDistance) < 10) return; // m
 
     // Frame-rate independent exponential easing
     const alpha = 1 - Math.exp(-this.zoomSmoothness * delta);
@@ -332,13 +332,13 @@ class EarthCamera {
   private updateCameraRotation = () => {
     const distance = this.camera.position.length();
 
-    const rotationEffectStartFromSurfaceKm = 6000;
+    const rotationEffectStartFromSurface = 6_000_000; // m
     const approachingToSurface =
-      this.controls.minDistance + rotationEffectStartFromSurfaceKm - distance;
+      this.controls.minDistance + rotationEffectStartFromSurface - distance;
 
     if (approachingToSurface > 0) {
       const effectPercentage =
-        approachingToSurface / rotationEffectStartFromSurfaceKm;
+        approachingToSurface / rotationEffectStartFromSurface;
       const effectPercentageExp = toExponentGrowth(effectPercentage, 4);
       const maxAngle = THREE.MathUtils.degToRad(80);
 

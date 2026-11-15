@@ -327,8 +327,8 @@ export default class EarthView {
   addTorusMarker = (
     position: THREE.Vector3,
     color: number = 0x0000ff,
-    radius: number = 80,
-    tube: number = 16
+    radius: number = 80_000, // m
+    tube: number = 16_000 // m
   ) => {
     const normal = position.clone().sub(this.earth.position).normalize();
 
@@ -349,8 +349,8 @@ export default class EarthView {
   addCrossMarker = (
     position: THREE.Vector3,
     color: number = 0xff0000,
-    size: number = 100,
-    thickness: number = 10
+    size: number = 100_000, // m
+    thickness: number = 10_000 // m
   ) => {
     const normal = position.clone().sub(this.earth.position).normalize();
 
@@ -385,7 +385,7 @@ export default class EarthView {
   createLineToSkyMarker(
     position: THREE.Vector3,
     color: number = 0x00ff00,
-    length: number = 1000
+    length: number = 1_000_000 // m
   ) {
     const material = new THREE.LineBasicMaterial({ color: color });
 
@@ -460,8 +460,9 @@ export default class EarthView {
             const [lon1, lat1] = coords[i];
             const [lon2, lat2] = coords[i + 1];
 
-            const p1 = latLonToVector3(lon1, lat1, Earth.RADIUS + 2);
-            const p2 = latLonToVector3(lon2, lat2, Earth.RADIUS + 2);
+            // Lifted 2000 m above the surface to avoid z-fighting
+            const p1 = latLonToVector3(lon1, lat1, Earth.RADIUS + 2000);
+            const p2 = latLonToVector3(lon2, lat2, Earth.RADIUS + 2000);
 
             points.push(p1, p2);
           }

@@ -12,13 +12,13 @@ export interface CalculationRange {
 
 export interface StageCalculationBounds {
   stage: number;
-  exhaustVelocity: CalculationRange; // km/s
+  exhaustVelocity: CalculationRange; // m/s
   massFlowRate: CalculationRange; // kg/s
   fuelMass: CalculationRange; // kg
 }
 
 export interface CalculationBounds {
-  startInclineAfterAltitude: CalculationRange; // km
+  startInclineAfterAltitude: CalculationRange; // m
   thrustInclineMaxDuration: CalculationRange; // seconds
   thrustInclineVelocityDeg: CalculationRange; // degrees per second
   /** Burnt in ascending `stage` order */
@@ -59,19 +59,19 @@ export default class LauncherGui {
   missileHeight: number | null = null;
 
   calculationBounds: CalculationBounds = {
-    startInclineAfterAltitude: { min: 1, max: 4 },
+    startInclineAfterAltitude: { min: 1000, max: 4000 },
     thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
     thrustInclineVelocityDeg: { min: 0, max: 20 },
     stages: [
       {
         stage: 0,
-        exhaustVelocity: { min: 2, max: 4 },
+        exhaustVelocity: { min: 2000, max: 4000 },
         massFlowRate: { min: 100, max: 400 },
         fuelMass: { min: 1000, max: 30000 },
       },
       {
         stage: 1,
-        exhaustVelocity: { min: 2, max: 4 },
+        exhaustVelocity: { min: 2000, max: 4000 },
         massFlowRate: { min: 100, max: 200 },
         fuelMass: { min: 1000, max: 4000 },
       },
@@ -170,8 +170,8 @@ export default class LauncherGui {
         calculationFolder,
         bounds.startInclineAfterAltitude,
         'Gravity Turn Start Altitude',
-        'km',
-        { min: 0, step: 0.1 }
+        'm',
+        { min: 0, step: 10 }
       ),
       ...this.addRangeBindings(
         calculationFolder,
@@ -229,8 +229,8 @@ export default class LauncherGui {
         folder,
         stage.exhaustVelocity,
         'Exhaust Velocity (vₑ)',
-        'km/s',
-        { min: 0, step: 0.1 }
+        'm/s',
+        { min: 0, step: 10 }
       );
       this.addRangeBindings(
         folder,
