@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import type { ListBladeApi } from 'tweakpane';
-import MissileView from '../missile/MissileView';
+import MissileView from '../missile/missile-view/MissileView';
 import MissileGui from '../missile/Missile.gui';
 import FrameTimeManager from '../helpers/FrameTimeManager';
 import { announceEstimatedFlightTime, announceLaunch } from '../helpers/Speech';

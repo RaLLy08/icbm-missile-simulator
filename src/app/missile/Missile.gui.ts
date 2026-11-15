@@ -1,10 +1,10 @@
 import { FolderApi, Pane } from 'tweakpane';
 import Missile from './Missile';
 import MultiStageMissile from './MultiStageMissile';
-import MissileView, { ForceArrowKey } from './MissileView';
+import MissileView, { ForceArrowKey } from './missile-view/MissileView';
 import * as THREE from 'three';
 import { formatSeconds } from 'app/utils';
-import MissileTrackingView from './MissileTrackingView';
+import MissileTrackingView from './missile-view/MissileTrackingView';
 
 export default class MissileGui {
   private folder: FolderApi;

@@ -3,7 +3,7 @@ import { normalizeBetween, toExponentGrowth } from 'app/utils';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import MouseTracker from './MouseTracker';
-import MissileTrackingView from 'app/missile/MissileTrackingView';
+import MissileTrackingView from 'app/missile/missile-view/MissileTrackingView';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;

@@ -1,5 +1,5 @@
 import MultiStageMissile from '../missile/MultiStageMissile';
-import MissileView from '../missile/MissileView';
+import MissileView from '../missile/missile-view/MissileView';
 import WorldGui from '../WorldGui';
 
 export default class FrameTimeManager {

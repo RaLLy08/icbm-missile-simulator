@@ -11,7 +11,7 @@ import WorldGui from '../WorldGui';
 import Launcher from '../launcher/Launcher';
 import LauncherView from '../launcher/LauncherView';
 import LauncherGui from '../launcher/Launcher.gui';
-import MissileTrackingView from '../missile/MissileTrackingView';
+import MissileTrackingView from '../missile/missile-view/MissileTrackingView';
 import MouseTracker from '../helpers/MouseTracker';
 import MouseTrackerGui from '../helpers/MouseTracker.gui';
 import CameraManager from '../helpers/CameraManager';

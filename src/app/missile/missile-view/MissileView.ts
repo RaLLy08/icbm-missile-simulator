@@ -1,5 +1,5 @@
 import EarthView from 'app/earth/EarthView';
-import Missile from './Missile';
+import Missile from '../Missile';
 import StageDebris from './StageDebris';
 import ArrowLabel from './ArrowLabel';
 import * as THREE from 'three';

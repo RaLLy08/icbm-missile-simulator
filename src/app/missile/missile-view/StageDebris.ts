@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import Earth from '../earth/Earth';
+import Earth from '../../earth/Earth';
 
 /** Earth's gravitational parameter. Unit: km³/s² */
 const EARTH_MU = Earth.G * Earth.MASS * 1e-9;
