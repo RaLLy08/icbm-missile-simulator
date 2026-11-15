@@ -3,6 +3,10 @@ $queue_panel_max_height: 200px;
 // Keep in sync with isMobileViewport() in OrbitalVelocity.tsx
 $mobile_breakpoint: 640px;
 
+button {
+    user-select: none;
+}
+
 .container {
   width: 100%;
   height: 100%;
@@ -32,7 +36,6 @@ $mobile_breakpoint: 640px;
     flex-direction: column;
     align-items: center;
     backdrop-filter: blur(8px);
-    user-select: none;
 
     .infoButton {
       position: absolute;
@@ -271,7 +274,6 @@ $mobile_breakpoint: 640px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  user-select: none;
 
   // "Return to Earth" with the mute toggle beside it (chase mode)
   .returnRow {
@@ -470,7 +472,6 @@ $mobile_breakpoint: 640px;
   font-size: 11px;
   font-family: 'Orbitron', sans-serif;
   pointer-events: none;
-  user-select: none;
 }
 
 .sourceLink {

@@ -259,33 +259,6 @@ class Missile {
     }
   }
 
-  // private lookAtVelocity(): void {
-  //   if (this.acceleration.lengthSq() === 0) return;
-
-  // const direction = this.acceleration.clone().normalize();
-  // const lookTarget = this.mesh.position.clone().add(direction);
-  // this.mesh.lookAt(lookTarget);
-
-  // this.mesh.quaternion.setFromUnitVectors(
-  //   new THREE.Vector3(0, 1, 0), // current axis (Y-axis)
-  //   this.velocity.clone().sub(this.mesh.position).normalize() // desired direction
-  // );
-
-  // this.mesh.rotateY(Math.PI);
-  // this.mesh.rotateX(-Math.PI / 2);
-  // }
-
-  // private lookAtSky(target: THREE.Mesh): void {
-  //   if (this.missile) {
-  //     const gravityForce = this.gravityForce(target.position);
-
-  //     this.missile.mesh.quaternion.setFromUnitVectors(
-  //       new THREE.Vector3(0, 1, 0), // current axis (Y-axis)
-  //       gravityForce.clone().sub(this.missile.position).normalize() // desired direction
-  //     );
-  //   }
-  // }
-
   private _displacement = new THREE.Vector3();
 
   get displacement() {
