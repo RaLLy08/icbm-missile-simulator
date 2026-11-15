@@ -292,6 +292,7 @@ const InstructionsModal = () => {
                       efforts and helps fund further improvements.
                     </p>
                     <p>
+                      <br />
                       <strong>TRON (TRC20):</strong>{' '}
                       <code
                         style={{ userSelect: 'all', wordBreak: 'break-all' }}
@@ -302,61 +303,6 @@ const InstructionsModal = () => {
                   </div>
                 </div>
 
-                <div className={s.step}>
-                  <div className={s.stepContent}>
-                    <h3>⭐ Star the repository</h3>
-                    <p>
-                      Giving the project a star on{' '}
-                      <a
-                        className={s.modalLink}
-                        href="https://github.com/RaLLy08/icbm-missile-simulator"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        GitHub
-                      </a>{' '}
-                      helps more people discover it.
-                    </p>
-                  </div>
-                </div>
-
-                <div className={s.step}>
-                  <div className={s.stepContent}>
-                    <h3>🐞 Report bugs &amp; suggest ideas</h3>
-                    <p>
-                      Found something broken or have an idea for a feature?{' '}
-                      <a
-                        className={s.modalLink}
-                        href="https://github.com/RaLLy08/icbm-missile-simulator/issues"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Open an issue
-                      </a>
-                      .
-                    </p>
-                  </div>
-                </div>
-
-                <div className={s.step}>
-                  <div className={s.stepContent}>
-                    <h3>🛠️ Contribute</h3>
-                    <p>
-                      Pull requests are welcome, whether it's a physics
-                      improvement, a new missile in the database or a UI fix.
-                    </p>
-                  </div>
-                </div>
-
-                <div className={s.step}>
-                  <div className={s.stepContent}>
-                    <h3>📣 Share it</h3>
-                    <p>
-                      Tell your friends or post it anywhere you think people
-                      would enjoy playing with orbital mechanics.
-                    </p>
-                  </div>
-                </div>
               </div>
             </>
           )}

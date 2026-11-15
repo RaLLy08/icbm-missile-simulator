@@ -14,7 +14,7 @@ export const INSTRUCTIONS_PAGES = [
   {
     id: 'support',
     label: 'How to support me?',
-    description: 'Ways to help the project grow',
+    description: '',
   },
 ] as const;
 
