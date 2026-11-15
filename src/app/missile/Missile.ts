@@ -25,6 +25,29 @@ class Missile {
 
   gravityForce = new THREE.Vector3(0, 0, 0);
 
+  /**
+   * Atmospheric drag acceleration (opposite to the velocity).
+   * Unit: m/s²
+   */
+  dragForce = new THREE.Vector3(0, 0, 0);
+
+  /**
+   * Air density at the current position.
+   * Unit: kg/m³
+   */
+  airDensity = 0;
+
+  /**
+   * Drag coefficient Cd (dimensionless). 0 disables drag.
+   */
+  dragCoefficient = 0.3;
+
+  /**
+   * Frontal cross-section area (≈ 1.8 m diameter body).
+   * Unit: m²
+   */
+  crossSectionArea = Math.PI * 0.9 ** 2;
+
   // Reusable vectors to avoid allocations in hot paths
   private _baseThrustDirection = new THREE.Vector3();
   private _thrustRotationAxis = new THREE.Vector3();
@@ -224,6 +247,7 @@ class Missile {
     ) {
       this.velocity.addScaledVector(this.gravityForce, tick);
       this.velocity.addScaledVector(this.thrust, tick);
+      this.applyDrag(tick);
       this.position.addScaledVector(this.velocity, tick);
 
       // Update travelled distance
@@ -233,6 +257,42 @@ class Missile {
     }
 
     this.flightTime += tick;
+  }
+
+  /**
+   * Quadratic air drag, a = -k·|v|·v with k = ½·ρ·Cd·A / m. The density
+   * depends on the altitude (distance to the Earth).
+   *
+   * The speed is updated with the implicit step v' = v / (1 + k·|v|·dt),
+   * which stays stable for large ticks (drag can never reverse the velocity).
+   */
+  private applyDrag(tick: number) {
+    // With atmospheric drag disabled the missile flies as in vacuum: no
+    // density means no drag and no aerodynamic heating effects either
+    this.airDensity = this.earth.atmosphericDragEnabled
+      ? Earth.airDensity(this.altitude)
+      : 0;
+
+    const k =
+      this.dragCoefficient > 0 && this.airDensity > 0
+        ? this.earth.dragFactor(
+            this.position,
+            this.dragCoefficient,
+            this.crossSectionArea,
+            this.currentTotalMass
+          )
+        : 0;
+    const speed = this.velocity.length();
+
+    if (k === 0 || speed === 0) {
+      this.dragForce.set(0, 0, 0);
+      return;
+    }
+
+    const scale = 1 / (1 + k * speed * tick);
+    // Effective (average) drag acceleration over the step, for display
+    this.dragForce.copy(this.velocity).multiplyScalar((scale - 1) / tick);
+    this.velocity.multiplyScalar(scale);
   }
 
   private setAltitude() {

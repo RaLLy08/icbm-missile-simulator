@@ -9,6 +9,7 @@ export default class EarthGui {
 
   showEarth = true;
   showCountryBorders = true;
+  atmosphericDrag = true;
   massKg = Earth.MASS;
   gravityConst = Earth.G;
 
@@ -52,6 +53,7 @@ export default class EarthGui {
     () => {};
   onShowEarthClicked: (show: boolean) => void = () => {};
   onToggleCountryBordersClicked: (show: boolean) => void = () => {};
+  onAtmosphericDragToggled: (enabled: boolean) => void = () => {};
 
   onFocusCameraClick: () => void = () => {};
 
@@ -72,6 +74,16 @@ export default class EarthGui {
       format: (v) => v + ' m³/(kg·s²)',
       readonly: true,
     });
+
+    this.folder
+      .addBinding(this, 'atmosphericDrag', {
+        label: 'Atmospheric Drag',
+        input: 'checkbox',
+        view: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.onAtmosphericDragToggled(ev.value);
+      });
 
     this.atmosphereLayersFolder = this.folder.addFolder({
       title: 'Atmosphere Layers',

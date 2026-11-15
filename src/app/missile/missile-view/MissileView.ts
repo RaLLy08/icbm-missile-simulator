@@ -507,6 +507,102 @@ const getNoseTexture = () =>
     }
   });
 
+/**
+ * Aerodynamic heating glow of the nose skin (emissive map): dark at the
+ * base, hottest at the stagnation point on the tip.
+ * Canvas top = tip (v = 1), canvas bottom = base (v = 0).
+ */
+const getNoseHeatTexture = () =>
+  getCanvasTexture('nose-heat', 16, 256, (ctx, w, h) => {
+    const heat = ctx.createLinearGradient(0, h, 0, 0);
+    heat.addColorStop(0, '#000000');
+    heat.addColorStop(0.45, '#2a0800');
+    heat.addColorStop(NOSE_TIP_V - 0.1, '#b33a00');
+    heat.addColorStop(1, '#ffffff');
+    ctx.fillStyle = heat;
+    ctx.fillRect(0, 0, w, h);
+  });
+
+/**
+ * Shock layer / plasma sheath around the nose (white, tinted by the
+ * material color): opaque at the tip, thinning out towards the base.
+ * Canvas top = tip (v = 1).
+ */
+const getPlasmaShellTexture = () =>
+  getCanvasTexture('plasma-shell', 64, 256, (ctx, w, h) => {
+    const shell = ctx.createLinearGradient(0, 0, 0, h);
+    shell.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    shell.addColorStop(0.2, 'rgba(255, 255, 255, 0.75)');
+    shell.addColorStop(0.6, 'rgba(255, 255, 255, 0.3)');
+    shell.addColorStop(1, 'rgba(255, 255, 255, 0.05)');
+    ctx.fillStyle = shell;
+    ctx.fillRect(0, 0, w, h);
+  });
+
+/**
+ * Hot wake flowing back from the nose along the body: bright at the top,
+ * fading out with streaks. Canvas top = top of the wake (at the nose).
+ */
+const getPlasmaWakeTexture = () =>
+  getCanvasTexture('plasma-wake', 128, 256, (ctx, w, h) => {
+    const wake = ctx.createLinearGradient(0, 0, 0, h);
+    wake.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+    wake.addColorStop(0.3, 'rgba(255, 255, 255, 0.35)');
+    wake.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = wake;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 40; i++) {
+      const length = h * (0.3 + Math.random() * 0.7);
+      const streak = ctx.createLinearGradient(0, 0, 0, length);
+      streak.addColorStop(0, `rgba(255, 255, 255, ${0.05 + Math.random() * 0.15})`);
+      streak.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = streak;
+      ctx.fillRect(Math.random() * w, 0, 1 + Math.random() * 2, length);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  });
+
+/** Sutton–Graves constant for Earth's air. Unit: kg^0.5 / m */
+const SUTTON_GRAVES_K = 1.7415e-4;
+/** Real (not drawn) nose tip radius used for the heating estimate. Unit: m */
+const REAL_NOSE_RADIUS_M = 0.5;
+/**
+ * Heat flux at which the effect starts. ~10 kW/m² is reached at ~120 km at
+ * re-entry speed (the "entry interface", where the plasma glow begins).
+ * Unit: W/m²
+ */
+const HEAT_FLUX_VISIBLE = 1e4;
+/** Heat flux at which the effect is at full strength. Unit: W/m² */
+const HEAT_FLUX_FULL = 1e7;
+
+/** Faint shock layer (weak heating) -> orange plasma (strong heating). */
+const SHOCK_COLOR = new THREE.Color(0xbfd8ff);
+const PLASMA_COLOR = new THREE.Color(0xff6a2a);
+/** White-hot gas right behind the bow shock at the stagnation point. */
+const PLASMA_CORE_COLOR = new THREE.Color(0xfff1c8);
+
+/** Bow shock size relative to the nose (it stands well off the body). */
+const BOW_SHOCK_RADIUS_SCALE = 2.2;
+const BOW_SHOCK_HEIGHT_SCALE = 1.5;
+/** Full plasma trail length as a multiple of the missile body height. */
+const PLASMA_WAKE_LENGTH_SCALE = 4;
+/** Tip halo diameter at full heating, relative to the nose radius. */
+const PLASMA_HALO_SIZE_SCALE = 14;
+
+/** Soft round glow (halo around the stagnation point). */
+const getPlasmaHaloTexture = () =>
+  getCanvasTexture('plasma-halo', 128, 128, (ctx, w, h) => {
+    const glow = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    glow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    glow.addColorStop(0.15, 'rgba(255, 255, 255, 0.8)');
+    glow.addColorStop(0.45, 'rgba(255, 255, 255, 0.2)');
+    glow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+  });
+
 export type CylinderDimensions = { height: number; radius: number };
 
 export type MissileDimensions = {
@@ -524,6 +620,7 @@ export type ForceArrowKey =
   | 'acceleration'
   | 'thrust'
   | 'gravity'
+  | 'drag'
   | 'gravityPerpendicular';
 
 export const FORCE_ARROW_COLORS: Record<ForceArrowKey, number> = {
@@ -531,6 +628,7 @@ export const FORCE_ARROW_COLORS: Record<ForceArrowKey, number> = {
   acceleration: 0xffff00,
   thrust: 0x00ff00,
   gravity: 0x0000ff,
+  drag: 0xff8800,
   gravityPerpendicular: 0xcc00cc,
 };
 
@@ -549,6 +647,23 @@ export default class MissileView {
   /** Pivot at the top of the nozzle; rotates the nozzle + flame with thrust. */
   private nozzleGimbal: THREE.Group | null = null;
   private nozzleMaterial: THREE.MeshStandardMaterial | null = null;
+  /** Nose skin; its emissive glow shows aerodynamic heating. */
+  private noseMaterial: THREE.MeshStandardMaterial | null = null;
+  /** Bow shock / plasma sheath enveloping the nose. */
+  private plasmaShellMesh: THREE.Mesh | null = null;
+  /** White-hot layer hugging the nose tip, inside the bow shock. */
+  private plasmaCoreMesh: THREE.Mesh | null = null;
+  /** Bright glow around the stagnation point. */
+  private plasmaHalo: THREE.Sprite | null = null;
+  /** Hot wake streaming back from the nose along the body. */
+  private plasmaWakeMesh: THREE.Mesh | null = null;
+  /** Y of the wake top in the missile's local space. */
+  private plasmaWakeTopY = 0;
+  /** Unscaled wake length. Unit: m */
+  private plasmaWakeHeight = 0;
+  /** Smoothed aerodynamic heating intensity (0..1). */
+  private heatingIntensity = 0;
+  private readonly heatColor = new THREE.Color();
   /** Nozzle length in fire-group space (fire dimensions of the first stage). */
   private nozzleHeight = 0;
   private explosionEffect: ExplosionEffect | null = null;
@@ -800,12 +915,18 @@ export default class MissileView {
     // === Missile Nose Cone (on top of the last stage) ===
     // Blunted tangent ogive shroud with an ablative tip
     const noseTexture = getNoseTexture();
+    const noseHeatTexture = getNoseHeatTexture();
     const coneMaterial = new THREE.MeshStandardMaterial({
       color: noseTexture ? 0xffffff : 0xe6e6e1,
       map: noseTexture,
       metalness: 0.25,
       roughness: 0.55,
+      // Aerodynamic heating glow; intensity driven in updateAeroHeating()
+      emissive: PLASMA_COLOR,
+      emissiveMap: noseHeatTexture,
+      emissiveIntensity: 0,
     });
+    this.noseMaterial = coneMaterial;
     const coneMesh = new THREE.Mesh(
       new THREE.LatheGeometry(createNoseProfile(head.radius, head.height), 32),
       coneMaterial
@@ -813,6 +934,97 @@ export default class MissileView {
     coneMesh.name = 'nose';
     coneMesh.position.y = bodyHeight; // base sits on top of the body
     this.group.add(coneMesh);
+
+    // ------------------------------------------------------------------------
+    // === Aerodynamic heating: plasma sheath + wake around the nose ===
+    const plasmaShellTexture = getPlasmaShellTexture();
+    const plasmaMaterial = (color: THREE.Color) =>
+      new THREE.MeshBasicMaterial({
+        color,
+        map: plasmaShellTexture,
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+
+    // Bow shock: much wider than the nose and standing off ahead of the tip
+    const plasmaShellMesh = new THREE.Mesh(
+      new THREE.LatheGeometry(
+        createNoseProfile(
+          head.radius * BOW_SHOCK_RADIUS_SCALE,
+          head.height * BOW_SHOCK_HEIGHT_SCALE
+        ),
+        32
+      ),
+      plasmaMaterial(SHOCK_COLOR)
+    );
+    plasmaShellMesh.name = 'plasma-shell';
+    plasmaShellMesh.position.y = bodyHeight - head.height * 0.3;
+    plasmaShellMesh.visible = false;
+    this.plasmaShellMesh = plasmaShellMesh;
+    this.group.add(plasmaShellMesh);
+
+    // White-hot shock layer hugging the nose
+    const plasmaCoreMesh = new THREE.Mesh(
+      new THREE.LatheGeometry(
+        createNoseProfile(head.radius * 1.35, head.height * 1.18),
+        32
+      ),
+      plasmaMaterial(PLASMA_CORE_COLOR)
+    );
+    plasmaCoreMesh.name = 'plasma-core';
+    plasmaCoreMesh.position.y = bodyHeight - head.height * 0.05;
+    plasmaCoreMesh.visible = false;
+    this.plasmaCoreMesh = plasmaCoreMesh;
+    this.group.add(plasmaCoreMesh);
+
+    // Halo around the stagnation point (reads as bloom from far away)
+    const plasmaHalo = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        color: PLASMA_COLOR,
+        map: getPlasmaHaloTexture(),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    plasmaHalo.name = 'plasma-halo';
+    plasmaHalo.position.y = bodyHeight + head.height * 1.1;
+    plasmaHalo.visible = false;
+    this.plasmaHalo = plasmaHalo;
+    this.group.add(plasmaHalo);
+
+    // Open cone widening backwards from the bow shock, several bodies long
+    const wakeHeight = bodyHeight * PLASMA_WAKE_LENGTH_SCALE;
+    this.plasmaWakeHeight = wakeHeight;
+    const plasmaWakeMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        head.radius * BOW_SHOCK_RADIUS_SCALE * 0.9,
+        head.radius * BOW_SHOCK_RADIUS_SCALE * 3,
+        wakeHeight,
+        32,
+        1,
+        true
+      ),
+      new THREE.MeshBasicMaterial({
+        color: SHOCK_COLOR,
+        map: getPlasmaWakeTexture(),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      })
+    );
+    plasmaWakeMesh.name = 'plasma-wake';
+    this.plasmaWakeTopY = bodyHeight;
+    plasmaWakeMesh.position.y = this.plasmaWakeTopY - wakeHeight / 2;
+    plasmaWakeMesh.visible = false;
+    this.plasmaWakeMesh = plasmaWakeMesh;
+    this.group.add(plasmaWakeMesh);
 
     // ------------------------------------------------------------------------
     // === Landing Legs (4), attached to the first stage ===
@@ -939,9 +1151,11 @@ export default class MissileView {
       velocity: this.missile.velocity,
       acceleration: this.missile.thrust
         .clone()
-        .add(this.missile.gravityForce),
+        .add(this.missile.gravityForce)
+        .add(this.missile.dragForce),
       thrust: this.missile.thrust,
       gravity: this.missile.gravityForce,
+      drag: this.missile.dragForce,
       gravityPerpendicular: this.missile.calcThrustDirectionToIncline(),
     };
 
@@ -974,8 +1188,9 @@ export default class MissileView {
     const velocity = this.getVelocity();
     const thrust = this.getThrust();
     const gravity = this.missile.gravityForce;
+    const drag = this.missile.dragForce;
     // Total acceleration acting on the missile (thrust is already per unit mass)
-    const acceleration = thrust.clone().add(gravity);
+    const acceleration = thrust.clone().add(gravity).add(drag);
     const perpendicular = this.missile.calcThrustDirectionToIncline();
 
     this.updateArrow(
@@ -993,6 +1208,14 @@ export default class MissileView {
       gravity.clone().normalize(),
       gravity.length(),
       MissileView.formatAcceleration(gravity.length())
+    );
+
+    this.updateArrow(
+      'drag',
+      this.group.position,
+      drag.clone().normalize(),
+      drag.length(),
+      MissileView.formatAcceleration(drag.length())
     );
 
     this.updateArrow(
@@ -1172,6 +1395,7 @@ export default class MissileView {
     this.updateDebris(simDelta);
     this.updatePosition();
     this.updateBurningFireScale();
+    this.updateAeroHeating();
 
     this.updateArrows();
 
@@ -1259,6 +1483,99 @@ export default class MissileView {
     this.burningFireMesh.scale.set(width, length, width);
     this.burningFireMesh.position.y =
       -this.nozzleHeight - (this.dimensions.fire.height * length) / 2;
+  }
+
+  /**
+   * Strength (0..1) of the aerodynamic heating effect at the nose, from the
+   * Sutton–Graves stagnation-point heat flux q = k·√(ρ/Rn)·v³. It grows with
+   * air density and steeply with speed: barely visible at max-Q on ascent,
+   * strongest during re-entry. Mapped logarithmically between
+   * HEAT_FLUX_VISIBLE and HEAT_FLUX_FULL.
+   * @param density Air density. Unit: kg/m³
+   * @param speed Unit: m/s
+   */
+  static aeroHeatingIntensity(density: number, speed: number) {
+    if (!(density > 0) || !(speed > 0)) return 0;
+    const heatFlux =
+      SUTTON_GRAVES_K * Math.sqrt(density / REAL_NOSE_RADIUS_M) * speed ** 3;
+    if (heatFlux <= HEAT_FLUX_VISIBLE) return 0;
+    return THREE.MathUtils.clamp(
+      Math.log(heatFlux / HEAT_FLUX_VISIBLE) /
+        Math.log(HEAT_FLUX_FULL / HEAT_FLUX_VISIBLE),
+      0,
+      1
+    );
+  }
+
+  /** Nose glow, plasma sheath and wake driven by aerodynamic heating. */
+  private updateAeroHeating() {
+    const target = this.missile.hasLanded
+      ? 0
+      : MissileView.aeroHeatingIntensity(
+          this.missile.airDensity,
+          this.getVelocity().length()
+        );
+
+    // Heats up quickly, cools down slowly
+    const rate = target > this.heatingIntensity ? 0.15 : 0.03;
+    this.heatingIntensity += (target - this.heatingIntensity) * rate;
+    if (this.heatingIntensity < 1e-3) this.heatingIntensity = 0;
+
+    const i = this.heatingIntensity;
+    const flicker = 1 + (Math.random() - 0.5) * 0.15;
+    // Faint bluish shock layer at low heating, orange plasma at high
+    this.heatColor.copy(SHOCK_COLOR).lerp(PLASMA_COLOR, Math.min(1, i * 1.4));
+
+    if (this.noseMaterial) {
+      this.noseMaterial.emissiveIntensity = 3 * i * i;
+    }
+
+    const shell = this.plasmaShellMesh;
+    if (shell) {
+      shell.visible = i > 0;
+      const material = shell.material as THREE.MeshBasicMaterial;
+      material.color.copy(this.heatColor);
+      material.opacity = Math.min(1, 0.75 * i * flicker);
+      // The bow shock widens as heating grows (starts close to the nose)
+      const s = 0.6 + 0.4 * i;
+      shell.scale.set(s, 0.8 + 0.2 * i, s);
+    }
+
+    const core = this.plasmaCoreMesh;
+    if (core) {
+      // White-hot layer only appears under strong heating
+      const c = THREE.MathUtils.clamp((i - 0.35) / 0.65, 0, 1);
+      core.visible = c > 0;
+      const material = core.material as THREE.MeshBasicMaterial;
+      material.opacity = Math.min(1, c * flicker);
+    }
+
+    const halo = this.plasmaHalo;
+    if (halo) {
+      halo.visible = i > 0;
+      const material = halo.material as THREE.SpriteMaterial;
+      material.color.copy(this.heatColor);
+      material.opacity = Math.min(1, i * flicker);
+      const size =
+        this.dimensions.head.radius * PLASMA_HALO_SIZE_SCALE * i * flicker;
+      halo.scale.set(size, size, 1);
+    }
+
+    const wake = this.plasmaWakeMesh;
+    if (wake) {
+      // The wake only forms once heating is significant
+      const w = THREE.MathUtils.clamp((i - 0.15) / 0.85, 0, 1);
+      wake.visible = w > 0;
+      const material = wake.material as THREE.MeshBasicMaterial;
+      material.color.copy(this.heatColor);
+      material.opacity = 0.85 * w * flicker;
+      // Grows backwards from the nose; the top stays anchored
+      const length = (0.15 + 0.85 * w * w) * flicker;
+      const width = 0.6 + 0.6 * w;
+      wake.scale.set(width, length, width);
+      wake.position.y =
+        this.plasmaWakeTopY - (this.plasmaWakeHeight * length) / 2;
+    }
   }
 
 
@@ -1391,6 +1708,9 @@ export default class MissileView {
       }
     });
     this.group.clear();
+    // Sprites are not Meshes; their geometry is shared, only the material is ours
+    this.plasmaHalo?.material.dispose();
+    this.plasmaHalo = null;
 
     this.arrowLabels.forEach((label) => label.dispose());
     this.arrowLabels.clear();

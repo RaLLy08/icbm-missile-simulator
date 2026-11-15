@@ -16,8 +16,8 @@ describe('MultiStageMissile', () => {
   const gravityAtSurface =
     (Earth.G * Earth.MASS) / Earth.RADIUS ** 2; // m/s²
 
-  const createMissile = (payloadMass: number) =>
-    new Missile(
+  const createMissile = (payloadMass: number) => {
+    const missile = new Missile(
       earth,
       missileInitialPosition,
       toTargetIncline,
@@ -29,6 +29,10 @@ describe('MultiStageMissile', () => {
       undefined,
       payloadMass
     );
+    // Tsiolkovsky equation is for vacuum
+    missile.dragCoefficient = 0;
+    return missile;
+  };
 
   it('switches engine after the fuel of the current stage ends', () => {
     const payloadMass = 1000;

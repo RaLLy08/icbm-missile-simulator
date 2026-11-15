@@ -119,6 +119,10 @@ export const createSimulation = (
   const launcherGui = new LauncherGui(mainPane);
 
   const earthGui = new EarthGui(mainPane);
+  earth.atmosphericDragEnabled = earthGui.atmosphericDrag;
+  earthGui.onAtmosphericDragToggled = (enabled) => {
+    earth.atmosphericDragEnabled = enabled;
+  };
   const earthView = new EarthView(earth, scene, earthGui);
   updateTriggers.push(starField, earth, cameraManager, earthView);
 

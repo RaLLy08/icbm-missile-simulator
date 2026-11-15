@@ -14,6 +14,7 @@ export default class MissileGui {
   thrust = 0;
   displacement = 0;
   gravityForce = 0;
+  dragForce = 0;
   percentOfFuel = 0;
   showMissile = true;
   /** Per-arrow visibility toggles (all off by default). */
@@ -22,6 +23,7 @@ export default class MissileGui {
     acceleration: false,
     thrust: false,
     gravity: false,
+    drag: false,
     gravityPerpendicular: false,
   };
   private static readonly FORCE_ARROW_LABELS: Record<ForceArrowKey, string> = {
@@ -29,6 +31,7 @@ export default class MissileGui {
     acceleration: 'Acceleration (total, yellow)',
     thrust: 'Net Thrust (green)',
     gravity: 'Gravity (blue)',
+    drag: 'Air Drag (orange)',
     gravityPerpendicular: 'Gravity Perpendicular (purple)',
   };
   /** Arrow length. Unit: m */
@@ -213,6 +216,18 @@ export default class MissileGui {
       format: (v) => v.toFixed(5) + ' m/s²',
     });
 
+    this.folder.addBinding(this, 'dragForce', {
+      label: 'Air Drag',
+      readonly: true,
+      format: (v) => v.toFixed(5) + ' m/s²',
+    });
+
+    this.folder.addBinding(this.missile, 'airDensity', {
+      label: 'Air Density',
+      readonly: true,
+      format: (v) => v.toExponential(3) + ' kg/m³',
+    });
+
     this.folder.addBinding(this.missile, 'currentThrustInclineDuration', {
       label: 'Thrust Gravity Turn Duration',
       readonly: true,
@@ -255,6 +270,7 @@ export default class MissileGui {
 
     this.displacement = this.missile.displacement.length();
     this.gravityForce = this.missile.gravityForce.length();
+    this.dragForce = this.missile.dragForce.length();
     this.travelledDistance = this.missile.travelledDistance.length();
     this.percentOfFuel =
       this.missile.fuelMass > 0
