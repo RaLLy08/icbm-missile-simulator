@@ -27,8 +27,8 @@ export default class MissileGui {
     gravityPerpendicular: false,
   };
   private static readonly FORCE_ARROW_LABELS: Record<ForceArrowKey, string> = {
-    velocity: 'Velocity (total, red)',
-    acceleration: 'Acceleration (total, yellow)',
+    velocity: 'Velocity (red)',
+    acceleration: 'Thrust (yellow)',
     thrust: 'Net Thrust (green)',
     gravity: 'Gravity (blue)',
     drag: 'Air Drag (orange)',

@@ -8,11 +8,11 @@
 		</title>
 		<meta
 			name="description"
-			content="SI units used in the Ballistic Missile Launch Trajectory simulator: metre, kilogram, second, velocity, acceleration, thrust in newtons, mass flow rate, angular velocity, and the Earth constants behind the gravity model."
+			content="SI units used in the Ballistic Missile Launch Trajectory simulator: metre, kilogram, second, velocity, acceleration, thrust in newtons, mass flow rate, angular velocity, air density, and the Earth constants behind the gravity and atmospheric drag models."
 		/>
 		<meta
 			name="keywords"
-			content="SI units, missile physics, Ballistic missile physics, rocket thrust units, exhaust velocity, mass flow rate, gravitational constant, ballistic trajectory units, newton, metre per second squared"
+			content="SI units, missile physics, Ballistic missile physics, rocket thrust units, exhaust velocity, mass flow rate, gravitational constant, ballistic trajectory units, newton, metre per second squared, atmospheric drag, air density, drag coefficient"
 		/>
 		<meta name="author" content="Azad Kichibayov" />
 		<meta name="robots" content="index, follow, max-image-preview:large" />
@@ -103,7 +103,7 @@
 						"inLanguage": "en-US",
 						"author": { "@type": "Person", "name": "Azad Kichibayov" },
 						"datePublished": "2026-11-15",
-						"dateModified": "2026-11-15",
+						"dateModified": "2026-11-16",
 						"about": [
 							{ "@type": "Thing", "name": "International System of Units" },
 							{ "@type": "Thing", "name": "Ballistic Missile Trajectory" },
@@ -151,6 +151,14 @@
 									"text": "Thrust force is the mass flow rate times the exhaust velocity, F = ṁ · vₑ, in newtons (kg·m/s²). The simulator divides it by the current missile mass to get the acceleration from the engine in m/s²."
 								}
 							},
+							{
+								"@type": "Question",
+								"name": "Does the simulator model atmospheric drag?",
+								"acceptedAnswer": {
+									"@type": "Answer",
+									"text": "Yes. Drag is the quadratic drag equation a = ½ · ρ · v² · Cd · A / m, pointing against the velocity. The air density ρ depends on the altitude: 1.225 kg/m³ at sea level, falling exponentially, and zero above 1,000 km."
+								}
+							}
 						]
 					}
 				]
@@ -392,8 +400,26 @@
 								<td><span class="unit">m/s²</span></td>
 								<td>
 									Gravitational acceleration, acceleration produced by the
-									engine
+									engine, drag acceleration
 								</td>
+							</tr>
+							<tr>
+								<td>Area</td>
+								<td>square metre</td>
+								<td><span class="unit">m²</span></td>
+								<td>Missile cross-section area facing the airflow \((A)\)</td>
+							</tr>
+							<tr>
+								<td>Density</td>
+								<td>kilogram per cubic metre</td>
+								<td><span class="unit">kg/m³</span></td>
+								<td>Air density at the missile's altitude \((\rho)\)</td>
+							</tr>
+							<tr>
+								<td>Drag coefficient</td>
+								<td>— (dimensionless)</td>
+								<td><span class="unit">1</span></td>
+								<td>How streamlined the missile body is \((C_d)\)</td>
 							</tr>
 							<tr>
 								<td>Force</td>
@@ -458,8 +484,8 @@
 							<tr>
 								<td>Earth</td>
 								<td>
-									The Earth the missile flies around. It gives the gravity and
-									altitude at the missile's position (see
+									The Earth the missile flies around. It gives the gravity,
+									altitude and air density at the missile's position (see
 									<a href="#earth">Earth</a>).
 								</td>
 								<td>—</td>
@@ -513,6 +539,24 @@
 								<td>How fast the thrust tilts towards the target.</td>
 								<td><span class="unit">rad/s</span></td>
 							</tr>
+							<tr>
+								<td>Drag coefficient</td>
+								<td>
+									How strongly the body resists the airflow. Default
+									<span class="unit">0.3</span>, a typical value for a
+									slender rocket. <span class="unit">0</span> turns drag off.
+								</td>
+								<td>—</td>
+							</tr>
+							<tr>
+								<td>Cross-section area</td>
+								<td>
+									Frontal area of the missile facing the airflow. Default
+									\(\pi \cdot 0.9^2 \approx 2.54\) m², a body of 1.8 m
+									diameter.
+								</td>
+								<td><span class="unit">m²</span></td>
+							</tr>
 						</tbody>
 					</table>
 				</div>
@@ -545,7 +589,7 @@
 								<td>Fuel Combustion Time</td>
 								<td>Time until the fuel is burnt.</td>
 								<td>
-									\(\displaystyle\sum_\text{stages} \frac{\text{fuel mass}}{\text{mass flow rate}}\)
+									\(\displaystyle\frac{\text{fuel mass}}{\text{mass flow rate}}\)
 								</td>
 								<td><span class="unit">s</span></td>
 							</tr>
@@ -575,10 +619,32 @@
 								<td><span class="unit">rad</span></td>
 							</tr>
 							<tr>
+								<td>Air density</td>
+								<td>
+									Density of the air at the missile's altitude (see
+									<a href="#air-density">Air density</a>).
+								</td>
+								<td>\(\rho(\text{altitude})\) from the Earth's atmosphere model</td>
+								<td><span class="unit">kg/m³</span></td>
+							</tr>
+							<tr>
+								<td>Drag (as acceleration)</td>
+								<td>
+									Slowing from the air, pointing against the velocity. It grows
+									with the square of the speed and the air density, and is zero
+									above the atmosphere (see <a href="#drag">Air drag</a>).
+								</td>
+								<td>
+									\(\dfrac{\tfrac{1}{2} \times \text{air density} \times \text{speed}^2 \times \text{drag coefficient} \times \text{cross-section area}}{\text{total mass}}\)
+								</td>
+								<td><span class="unit">m/s²</span></td>
+							</tr>
+							<tr>
 								<td>Velocity</td>
 								<td>Speed and direction of the missile.</td>
 								<td>
-									\(\text{velocity} + (\text{gravity} + \text{thrust}) \times \text{time step}\)
+									\(\text{velocity} + (\text{gravity} + \text{thrust}) \times \text{time step}\),
+									then slowed by drag (see <a href="#integration">Motion</a>)
 								</td>
 								<td><span class="unit">m/s</span></td>
 							</tr>
@@ -732,8 +798,9 @@
 
 				<h2 id="earth">Earth</h2>
 				<p>
-					The Earth is a sphere at the centre of the scene. Its gravity is the
-					only external force acting on the missile. See the source code:
+					The Earth is a sphere at the centre of the scene, surrounded by an
+					atmosphere. Its gravity and the air drag of its atmosphere are the
+					external forces acting on the missile. See the source code:
 					<a
 						href="https://github.com/kichibayov/icbm-missile-simulator/blob/main/src/app/earth/Earth.ts"
 						rel="noopener"
@@ -810,9 +877,117 @@
 								</td>
 								<td><span class="unit">m</span></td>
 							</tr>
+							<tr>
+								<td>Sea level air density</td>
+								<td>Density of the air at the surface.</td>
+								<td>Constant</td>
+								<td><span class="unit">1.225 kg/m³</span></td>
+							</tr>
+							<tr>
+								<td>Top of the atmosphere</td>
+								<td>Altitude above which the air density is zero.</td>
+								<td>Constant</td>
+								<td><span class="unit">1,000,000 m</span></td>
+							</tr>
+							<tr>
+								<td>Air density</td>
+								<td>
+									Density of the air at a given altitude. It falls
+									exponentially with height (see
+									<a href="#air-density">Air density</a>).
+								</td>
+								<td>
+									\(\rho_0 \cdot e^{-(h - h_0)/H}\) for the table row with
+									base altitude \(h_0 \le h\)
+								</td>
+								<td><span class="unit">kg/m³</span></td>
+							</tr>
+							<tr>
+								<td>Drag acceleration</td>
+								<td>
+									Air drag on a body moving through the atmosphere, pointing
+									against its velocity. The air is at rest (the Earth does not
+									rotate).
+								</td>
+								<td>
+									\(-\dfrac{\rho\, C_d\, A}{2m}\, |\vec{v}|\, \vec{v}\)
+								</td>
+								<td><span class="unit">m/s²</span></td>
+							</tr>
 						</tbody>
 					</table>
 				</div>
+
+				<h3 id="air-density">Air density</h3>
+				<p>
+					The atmosphere is a piecewise exponential model. The altitude range
+					is split into bands; in each band the density falls exponentially
+					from the band's base density \(\rho_0\) with a scale height \(H\)
+					(the height over which the density drops by a factor of
+					\(e \approx 2.718\)):
+				</p>
+				<div class="formula">
+					\[ \rho(h) = \rho_0\, e^{-(h - h_0)/H} \qquad \left[\mathrm{\frac{kg}{m^3} \cdot e^{-m/m} = \frac{kg}{m^3}}\right] \]
+				</div>
+				<p>
+					Below 25 km the values come from the
+					<a
+						href="https://en.wikipedia.org/wiki/U.S._Standard_Atmosphere"
+						rel="noopener"
+						>U.S. Standard Atmosphere 1976</a
+					>, in 5 km bands. From 25 km to 1,000 km they follow the
+					exponential atmosphere table in Vallado's <em>Fundamentals of
+					Astrodynamics and Applications</em> (based on CIRA-72). Above
+					1,000 km the density is zero. A few sample values:
+				</p>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr>
+								<th>Altitude</th>
+								<th>Base density \(\rho_0\)</th>
+								<th>Scale height \(H\)</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td><span class="unit">0 km</span></td>
+								<td><span class="unit">1.225 kg/m³</span></td>
+								<td><span class="unit">9.8 km</span></td>
+							</tr>
+							<tr>
+								<td><span class="unit">10 km</span></td>
+								<td><span class="unit">0.4135 kg/m³</span></td>
+								<td><span class="unit">6.6 km</span></td>
+							</tr>
+							<tr>
+								<td><span class="unit">50 km</span></td>
+								<td><span class="unit">1.057 × 10⁻³ kg/m³</span></td>
+								<td><span class="unit">8.4 km</span></td>
+							</tr>
+							<tr>
+								<td><span class="unit">100 km</span></td>
+								<td><span class="unit">5.297 × 10⁻⁷ kg/m³</span></td>
+								<td><span class="unit">5.9 km</span></td>
+							</tr>
+							<tr>
+								<td><span class="unit">300 km</span></td>
+								<td><span class="unit">2.418 × 10⁻¹¹ kg/m³</span></td>
+								<td><span class="unit">53.6 km</span></td>
+							</tr>
+							<tr>
+								<td><span class="unit">1,000 km</span></td>
+								<td><span class="unit">3.019 × 10⁻¹⁵ kg/m³</span></td>
+								<td><span class="unit">268 km</span></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<p>
+					The air at 100 km is about two million times thinner than at sea
+					level, so drag matters mostly in the first few tens of kilometres of
+					ascent and during re-entry.
+				</p>
 
 
 				<h2 id="equations">Equations and how the units combine</h2>
@@ -867,14 +1042,50 @@
 				</p>
 				<div class="formula">\[ \theta = \omega\, t \qquad \left[\mathrm{\frac{rad}{s} \cdot s = rad}\right] \]</div>
 
-				<h3 id="integration">Motion</h3>
+				<h3 id="drag">Air drag</h3>
 				<p>
-					On each time step \(\Delta t\) (in seconds), the total acceleration updates
-					the velocity, and the velocity updates the position:
+					While the missile flies through the atmosphere, the air slows it
+					down. The simulator uses the drag equation: the drag force grows
+					with the air density \(\rho\), the square of the speed \(v\), the
+					drag coefficient \(C_d\) and the cross-section area \(A\) (see
+					<a
+						href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/drag-equation/"
+						rel="noopener"
+						>NASA Glenn Research Center: Drag Equation</a
+					>):
 				</p>
 				<div class="formula">
-					\[ \begin{aligned} \vec{v} &\leftarrow \vec{v} + (\vec{g} + \vec{a})\,\Delta t && \left[\mathrm{\tfrac{m}{s} + \tfrac{m}{s^2} \cdot s}\right] \\ \vec{x} &\leftarrow \vec{x} + \vec{v}\,\Delta t && \left[\mathrm{m + \tfrac{m}{s} \cdot s}\right] \end{aligned} \]
+					\[ F_d = \tfrac{1}{2}\, \rho\, v^2\, C_d\, A \qquad \left[\mathrm{\frac{kg}{m^3} \cdot \frac{m^2}{s^2} \cdot 1 \cdot m^2 = \frac{kg\,m}{s^2} = N}\right] \]
 				</div>
+				<p>
+					Divided by the current mass of the missile, it becomes an
+					acceleration that points against the velocity:
+				</p>
+				<div class="formula">
+					\[ \vec{a}_d = -k\, |\vec{v}|\, \vec{v}, \qquad k = \frac{\rho\, C_d\, A}{2\, m} \qquad \left[\mathrm{\frac{kg/m^3 \cdot m^2}{kg} = \frac{1}{m}}, \ \ \mathrm{\frac{1}{m} \cdot \frac{m}{s} \cdot \frac{m}{s} = \frac{m}{s^2}}\right] \]
+				</div>
+				<p>
+					A lighter missile is slowed more by the same air, so drag gets
+					stronger as fuel burns off, and the light payload feels the most drag
+					on re-entry.
+				</p>
+
+				<h3 id="integration">Motion</h3>
+				<p>
+					On each time step \(\Delta t\) (in seconds), gravity and thrust update
+					the velocity, drag then slows it, and the velocity updates the
+					position:
+				</p>
+				<div class="formula">
+					\[ \begin{aligned} \vec{v} &\leftarrow \vec{v} + (\vec{g} + \vec{a})\,\Delta t && \left[\mathrm{\tfrac{m}{s} + \tfrac{m}{s^2} \cdot s}\right] \\ \vec{v} &\leftarrow \frac{\vec{v}}{1 + k\, |\vec{v}|\, \Delta t} && \left[\mathrm{\tfrac{m/s}{1 + \frac{1}{m} \cdot \frac{m}{s} \cdot s}}\right] \\ \vec{x} &\leftarrow \vec{x} + \vec{v}\,\Delta t && \left[\mathrm{m + \tfrac{m}{s} \cdot s}\right] \end{aligned} \]
+				</div>
+				<p>
+					The drag step is implicit: it solves \(\dot{v} = -k v^2\) over the time
+					step instead of just subtracting \(\vec{a}_d\,\Delta t\). This keeps it
+					stable at large time steps, where a plain step could push the missile
+					backwards in dense air. For small \(k\,|\vec{v}|\,\Delta t\) both give
+					the same result.
+				</p>
 
 				<h2 id="not-considered">Not considered</h2>
 				<ul>
@@ -882,7 +1093,22 @@
 						The Earth is a perfect sphere with radius 6,378 km and does not
 						rotate.
 					</li>
-					<li>There is no air drag or lift.</li>
+					<li>
+						There is no aerodynamic lift and no wind. The atmosphere is at rest
+						and does not rotate with the Earth.
+					</li>
+					<li>
+						The drag coefficient is constant. In reality it changes with the
+						Mach number, peaking near the speed of sound.
+					</li>
+					<li>
+						The cross-section area stays the same for the whole flight, also for
+						the payload alone after burnout.
+					</li>
+					<li>
+						Air density depends only on altitude, not on the weather, the
+						season or solar activity.
+					</li>
 					<li>
 						Exhaust velocity and mass flow rate are constant within each stage.
 						Thrust does not change with altitude.
@@ -906,7 +1132,7 @@
 
 		<footer>
 			<a href="../">Ballistic Missile Trajectory Simulator</a> · An educational
-			physics simulation.
+			physics simulation. Author Azad Kichibayov.
 		</footer>
 	</body>
 </html>
