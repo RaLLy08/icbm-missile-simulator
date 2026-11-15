@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import Earth from 'app/earth/Earth';
-import RocketView from './RocketView';
+import MissileView from './MissileView';
 
 export type TrackingCameraMode = 'chase' | 'fpv';
 
@@ -8,7 +8,7 @@ export type TrackingCameraMode = 'chase' | 'fpv';
  * Small embedded viewport with its own camera that follows a missile in realtime.
  * Supports a third-person chase camera and a first-person (nose) camera.
  */
-export default class RocketTrackingView {
+export default class MissileTrackingView {
   // Remembered across GUI re-creation (e.g. switching focused missile)
   private static lastMode: TrackingCameraMode = 'chase';
 
@@ -18,7 +18,7 @@ export default class RocketTrackingView {
   private static sharedRenderer: THREE.WebGLRenderer | null = null;
 
   private static getRenderer() {
-    if (!RocketTrackingView.sharedRenderer) {
+    if (!MissileTrackingView.sharedRenderer) {
       const renderer = new THREE.WebGLRenderer({
         antialias: true,
         logarithmicDepthBuffer: true,
@@ -33,9 +33,9 @@ export default class RocketTrackingView {
         height: '100%',
         display: 'block',
       });
-      RocketTrackingView.sharedRenderer = renderer;
+      MissileTrackingView.sharedRenderer = renderer;
     }
-    return RocketTrackingView.sharedRenderer;
+    return MissileTrackingView.sharedRenderer;
   }
 
   /**
@@ -44,7 +44,7 @@ export default class RocketTrackingView {
    * Re-runs once all pending loader requests (e.g. Earth textures) finish.
    */
   static prewarm(scene: THREE.Scene, camera: THREE.Camera) {
-    const renderer = RocketTrackingView.getRenderer();
+    const renderer = MissileTrackingView.getRenderer();
     const warm = () => {
       renderer.setSize(1, 1, false);
       renderer.render(scene, camera);
@@ -63,7 +63,7 @@ export default class RocketTrackingView {
   private renderer: THREE.WebGLRenderer;
   private camera: THREE.PerspectiveCamera;
   private label: HTMLDivElement;
-  private _mode: TrackingCameraMode = RocketTrackingView.lastMode;
+  private _mode: TrackingCameraMode = MissileTrackingView.lastMode;
 
   get mode() {
     return this._mode;
@@ -72,7 +72,7 @@ export default class RocketTrackingView {
   set mode(mode: TrackingCameraMode) {
     if (mode === this._mode) return;
     this._mode = mode;
-    RocketTrackingView.lastMode = mode;
+    MissileTrackingView.lastMode = mode;
     // Snap instead of easing when re-entering chase mode
     this.initialized = false;
     this.fpvHeadingValid = false;
@@ -116,12 +116,12 @@ export default class RocketTrackingView {
   zoomBy(scale: number) {
     if (this._mode === 'fpv' || !Number.isFinite(scale) || scale <= 0) return;
     const maxMultiplier = Math.max(
-      RocketTrackingView.MIN_DISTANCE_MULTIPLIER,
-      Earth.RADIUS / this.rocketView.size
+      MissileTrackingView.MIN_DISTANCE_MULTIPLIER,
+      Earth.RADIUS / this.missileView.size
     );
     this.distanceMultiplier = THREE.MathUtils.clamp(
       this.distanceMultiplier * scale,
-      RocketTrackingView.MIN_DISTANCE_MULTIPLIER,
+      MissileTrackingView.MIN_DISTANCE_MULTIPLIER,
       maxMultiplier
     );
   }
@@ -134,7 +134,7 @@ export default class RocketTrackingView {
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    this.zoomBy(RocketTrackingView.wheelToZoomScale(e.deltaY));
+    this.zoomBy(MissileTrackingView.wheelToZoomScale(e.deltaY));
   };
 
   private onPointerDown = (e: PointerEvent) => {
@@ -187,7 +187,7 @@ export default class RocketTrackingView {
 
   constructor(
     private readonly scene: THREE.Scene,
-    private readonly rocketView: RocketView,
+    private readonly missileView: MissileView,
     height = 160
   ) {
     this.element = document.createElement('div');
@@ -231,14 +231,14 @@ export default class RocketTrackingView {
     });
     this.element.appendChild(label);
 
-    this.renderer = RocketTrackingView.getRenderer();
+    this.renderer = MissileTrackingView.getRenderer();
     // Moves the shared canvas out of the previous view (if any)
     this.element.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(
       50,
       1,
-      Math.max(this.rocketView.size * 0.01, 0.001),
+      Math.max(this.missileView.size * 0.01, 0.001),
       Earth.RADIUS * 100
     );
   }
@@ -263,7 +263,7 @@ export default class RocketTrackingView {
   }
 
   private computeDesiredPose() {
-    const { group, size, earthView } = this.rocketView;
+    const { group, size, earthView } = this.missileView;
     const earthCenter = earthView.mesh.position;
 
     // Aim at the middle of the missile body (group origin is its tail)
@@ -274,7 +274,7 @@ export default class RocketTrackingView {
 
     // Use the rendered (interpolated) orientation of the missile instead of the
     // raw physics velocity, which only changes on discrete physics steps.
-    // RocketView aligns the group's local +Y with the interpolated velocity.
+    // MissileView aligns the group's local +Y with the interpolated velocity.
     const forward = new THREE.Vector3(0, 1, 0)
       .applyQuaternion(group.quaternion)
       .normalize();
@@ -314,11 +314,11 @@ export default class RocketTrackingView {
   }
 
   private updateFirstPerson() {
-    const { group, size, earthView } = this.rocketView;
+    const { group, size, earthView } = this.missileView;
     const earthCenter = earthView.mesh.position;
 
     // Just ahead of the nose cone tip
-    this.camera.position.set(0, this.rocketView.length + size * 0.05, 0);
+    this.camera.position.set(0, this.missileView.length + size * 0.05, 0);
     group.localToWorld(this.camera.position);
 
     const forward = new THREE.Vector3(0, 1, 0)
@@ -392,9 +392,9 @@ export default class RocketTrackingView {
     // Force arrows start at the tail and pass through the nose – hide them
     // so they don't block the first-person view.
     const hideArrows = this._mode === 'fpv';
-    if (hideArrows) this.rocketView.setArrowsVisible(false);
+    if (hideArrows) this.missileView.setArrowsVisible(false);
     renderer.render(this.scene, camera);
-    if (hideArrows) this.rocketView.setArrowsVisible(true);
+    if (hideArrows) this.missileView.setArrowsVisible(true);
   }
 
   update(deltaTime = 0) {

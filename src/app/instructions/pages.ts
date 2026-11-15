@@ -3,7 +3,7 @@ export const INSTRUCTIONS_MENU = 'help';
 export const INSTRUCTIONS_PAGES = [
   {
     id: 'how-to-launch',
-    label: 'How to Launch a Rocket?',
+    label: 'How to Launch a Missile?',
     description: 'Step-by-step guide to setting up and firing launches',
   },
   {

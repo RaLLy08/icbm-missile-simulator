@@ -1,5 +1,5 @@
 import EarthView from 'app/earth/EarthView';
-import Rocket from './Rocket';
+import Missile from './Missile';
 import StageDebris from './StageDebris';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -81,7 +81,7 @@ const pickRandom = <T>(items: T[]): T =>
 /**
  * Engine sounds: plays `start` on ignition, then loops `flight` while the
  * engines keep burning. On cutoff, start/flight stop immediately and `end` plays.
- * Volume fades with camera distance to the rocket (silent when too far).
+ * Volume fades with camera distance to the missile (silent when too far).
  */
 export class EngineSound {
   private startAudio: HTMLAudioElement;
@@ -442,7 +442,7 @@ export class TrailView {
 
 export type CylinderDimensions = { height: number; radius: number };
 
-export type RocketDimensions = {
+export type MissileDimensions = {
   /** One cylinder per stage, ordered bottom (first stage) to top. */
   stages: CylinderDimensions[];
   /** Nose cone */
@@ -451,7 +451,7 @@ export type RocketDimensions = {
   fire: { height: number; topRadius: number; bottomRadius: number };
 };
 
-export default class RocketView {
+export default class MissileView {
   group: THREE.Group;
   private arrows: THREE.ArrowHelper[] = [];
   /** Force arrows are hidden by default; enabled from Missile Controls. */
@@ -469,11 +469,11 @@ export default class RocketView {
   prevThrust = new THREE.Vector3();
 
   /**
-   * Default rocket geometry in km (at size multiplier = 1). The body is
+   * Default missile geometry in km (at size multiplier = 1). The body is
    * split between `stageCount` cylinders, each upper stage shorter and
    * thinner than the one below; the total body height stays 1 km.
    */
-  static baseDimensions(stageCount = 1): RocketDimensions {
+  static baseDimensions(stageCount = 1): MissileDimensions {
     const n = Math.max(1, Math.floor(stageCount));
     // Height weights n, n-1, ..., 1 -> lower stages are taller
     const weightSum = (n * (n + 1)) / 2;
@@ -500,23 +500,23 @@ export default class RocketView {
   /** Size factor for a missile of `height` m; 1 when unknown (Custom). */
   static heightScale(height: number | null | undefined) {
     return height && height > 0
-      ? height / RocketView.REFERENCE_MISSILE_HEIGHT
+      ? height / MissileView.REFERENCE_MISSILE_HEIGHT
       : 1;
   }
 
-  dimensions: RocketDimensions = RocketView.baseDimensions();
+  dimensions: MissileDimensions = MissileView.baseDimensions();
 
   /** Total height of all stage cylinders. */
   get bodyHeight() {
     return this.dimensions.stages.reduce((sum, s) => sum + s.height, 0);
   }
 
-  /** Reference length of the rocket (body height), used for camera distances. */
+  /** Reference length of the missile (body height), used for camera distances. */
   get size() {
     return this.bodyHeight;
   }
 
-  /** Full length of the rocket, from the body bottom to the head tip. */
+  /** Full length of the missile, from the body bottom to the head tip. */
   get length() {
     return this.bodyHeight + this.dimensions.head.height;
   }
@@ -531,7 +531,7 @@ export default class RocketView {
 
   /**
    * Burn rate at which the flame has its full `fire` size. Unit: kg/s.
-   * Null = use the rocket's current mass flow rate (flame always 100%).
+   * Null = use the missile's current mass flow rate (flame always 100%).
    */
   private maxBurnRate: number | null = null;
 
@@ -547,7 +547,7 @@ export default class RocketView {
   }
 
   constructor(
-    readonly rocket: Rocket,
+    readonly missile: Missile,
     private readonly scene: THREE.Scene,
     readonly earthView: EarthView,
     /** Intended impact point; the "target reached" announcement needs it. */
@@ -564,17 +564,17 @@ export default class RocketView {
    */
   setSize(multiplier: number, stageCount = 1) {
     this.setDimensions(
-      RocketView.scaleDimensions(
-        RocketView.baseDimensions(stageCount),
+      MissileView.scaleDimensions(
+        MissileView.baseDimensions(stageCount),
         multiplier
       )
     );
   }
 
   /** Set explicit stage / head / fire dimensions (km). Call before `init()`. */
-  setDimensions(dimensions: RocketDimensions) {
+  setDimensions(dimensions: MissileDimensions) {
     if (dimensions.stages.length === 0) {
-      throw new Error('RocketView requires at least one stage cylinder.');
+      throw new Error('MissileView requires at least one stage cylinder.');
     }
     this.dimensions = dimensions;
     this.arrowLength = 2 * this.bodyHeight;
@@ -598,7 +598,7 @@ export default class RocketView {
     this.applyActiveStage();
   }
 
-  /** Backward push of a separating stage relative to the rocket. Unit: km/s */
+  /** Backward push of a separating stage relative to the missile. Unit: km/s */
   static STAGE_SEPARATION_SPEED = 0.01;
 
   private debris: StageDebris[] = [];
@@ -616,7 +616,7 @@ export default class RocketView {
         stageGroup,
         this.getVelocity(),
         forward,
-        RocketView.STAGE_SEPARATION_SPEED
+        MissileView.STAGE_SEPARATION_SPEED
       )
     );
   }
@@ -638,7 +638,7 @@ export default class RocketView {
     this.fireGroup.scale.setScalar(k);
   }
 
-  /** Y of the bottom of stage `index` in the rocket's local space. */
+  /** Y of the bottom of stage `index` in the missile's local space. */
   private stageBaseY(index: number) {
     let y = 0;
     for (let k = 0; k < index; k++) y += this.dimensions.stages[k].height;
@@ -646,9 +646,9 @@ export default class RocketView {
   }
 
   private static scaleDimensions(
-    d: RocketDimensions,
+    d: MissileDimensions,
     k: number
-  ): RocketDimensions {
+  ): MissileDimensions {
     return {
       stages: d.stages.map((s) => ({
         height: s.height * k,
@@ -664,12 +664,12 @@ export default class RocketView {
   }
 
   init() {
-    this.buildRocketMesh();
+    this.buildMissileMesh();
     this.initArrows();
     this.update();
   }
 
-  private buildRocketMesh() {
+  private buildMissileMesh() {
     const coneColor = 0xff0000;
     const bodyColor = 0xcccccc;
     const legColor = 0x888888;
@@ -707,7 +707,7 @@ export default class RocketView {
     const bodyHeight = stageBaseY;
 
     // ------------------------------------------------------------------------
-    // === Rocket Nose Cone (on top of the last stage) ===
+    // === Missile Nose Cone (on top of the last stage) ===
     const coneHeight = head.height;
     const coneRadius = head.radius;
     const coneGeometry = new THREE.ConeGeometry(coneRadius, coneHeight, 16);
@@ -752,7 +752,7 @@ export default class RocketView {
     this.fireGroup.name = 'fire';
     this.group.add(this.fireGroup);
 
-    // Main burning fire (follows rocket/velocity direction)
+    // Main burning fire (follows missile/velocity direction)
     const burningFireMaterial = new THREE.MeshBasicMaterial({
       color: 0xffa500,
       transparent: true,
@@ -801,7 +801,7 @@ export default class RocketView {
     this.applyActiveStage();
 
     // ------------------------------------------------------------------------
-    this.group.name = RocketView.name;
+    this.group.name = MissileView.name;
     this.scene.add(this.group);
   }
 
@@ -810,21 +810,21 @@ export default class RocketView {
       'velocity',
       0xff0000,
       this.group.position,
-      this.rocket.velocity
+      this.missile.velocity
     );
-    this.addArrow('thrust', 0x00ff00, this.group.position, this.rocket.thrust);
+    this.addArrow('thrust', 0x00ff00, this.group.position, this.missile.thrust);
     this.addArrow(
       'gravity',
       0x0000ff,
       this.group.position,
-      this.rocket.gravityForce
+      this.missile.gravityForce
     );
 
     this.addArrow(
       'targetIncline',
       0xcc00cc,
       this.group.position,
-      this.rocket.calcThrustDirectionToIncline()
+      this.missile.calcThrustDirectionToIncline()
     );
   }
 
@@ -835,8 +835,8 @@ export default class RocketView {
     this.updateArrow(
       'gravity',
       this.group.position,
-      this.rocket.gravityForce.clone().normalize(),
-      this.rocket.gravityForce.length()
+      this.missile.gravityForce.clone().normalize(),
+      this.missile.gravityForce.length()
     );
 
     this.updateArrow(
@@ -856,8 +856,8 @@ export default class RocketView {
     this.updateArrow(
       'targetIncline',
       this.group.position,
-      this.rocket.calcThrustDirectionToIncline().clone().normalize(),
-      this.rocket.calcThrustDirectionToIncline().length()
+      this.missile.calcThrustDirectionToIncline().clone().normalize(),
+      this.missile.calcThrustDirectionToIncline().length()
     );
   }
 
@@ -944,7 +944,7 @@ export default class RocketView {
     if (!this.trailView) return;
 
     const thrustPercentage =
-      this.rocket.thrust.length() / this.rocket.maxAcceleration;
+      this.missile.thrust.length() / this.missile.maxAcceleration;
 
     this.trailView.extendFromVectors(
       this.prevPosition.clone(),
@@ -953,11 +953,11 @@ export default class RocketView {
   }
 
   private alignRotation() {
-    if (this.rocket.hasLanded) {
+    if (this.missile.hasLanded) {
       return;
     }
 
-    if (this.rocket.velocity.length() === 0) {
+    if (this.missile.velocity.length() === 0) {
       this.rotateTowards(this.group, this.group.position);
     } else {
       this.rotateTowards(this.group, this.getVelocity().normalize());
@@ -991,40 +991,40 @@ export default class RocketView {
     this.alignRotation();
 
     this.engineSound?.update(
-      !this.rocket.hasLanded && this.rocket.thrust.lengthSq() > 0,
+      !this.missile.hasLanded && this.missile.thrust.lengthSq() > 0,
       this.group.position
     );
 
-    if (!this.rocket.hasLanded) {
+    if (!this.missile.hasLanded) {
       this.extendTrail();
     }
 
-    if (this.rocket.hasLanded && this.endPositionSkyMarker == null) {
+    if (this.missile.hasLanded && this.endPositionSkyMarker == null) {
       this.endPositionSkyMarker = this.earthView.createLineToSkyMarker(
-        this.rocket.position,
+        this.missile.position,
         0x00ff00,
-        this.rocket.maxAltitude
+        this.missile.maxAltitude
       );
 
       this.scene.add(this.endPositionSkyMarker);
     }
 
-    // Trigger explosion effect when rocket lands
+    // Trigger explosion effect when missile lands
     if (
-      this.rocket.hasLanded &&
+      this.missile.hasLanded &&
       !this.hasTriggeredExplosion &&
       this.explosionEffect
     ) {
-      const normal = this.rocket.position.clone().normalize();
-      this.explosionEffect.start(this.rocket.position.clone(), normal);
+      const normal = this.missile.position.clone().normalize();
+      this.explosionEffect.start(this.missile.position.clone(), normal);
       this.hasTriggeredExplosion = true;
 
       const missDistance = this.targetPosition
-        ? this.rocket.position.distanceTo(this.targetPosition)
+        ? this.missile.position.distanceTo(this.targetPosition)
         : Infinity;
       if (missDistance <= TARGET_HIT_MAX_MISS_KM) {
         // Same number as the "Missile N" label in the GUI
-        const missileId = this.rocket.id;
+        const missileId = this.missile.id;
         setTimeout(
           () => announceTargetReached(missileId),
           TARGET_REACHED_ANNOUNCE_DELAY_MS
@@ -1040,7 +1040,7 @@ export default class RocketView {
 
   /** Current burn rate as a fraction of `maxBurnRate` (0..1). */
   private get burnRatio() {
-    const rate = this.rocket.massFlowRate;
+    const rate = this.missile.massFlowRate;
     const max = this.maxBurnRate ?? rate;
     if (!(max > 0)) return 0;
     return THREE.MathUtils.clamp(rate / max, 0, 1);
@@ -1049,8 +1049,8 @@ export default class RocketView {
   private updateBurningFireScale() {
     if (!this.burningFireMesh) return;
 
-    // Hide the exhaust flame once all fuel is burnt (or the rocket landed)
-    const burning = !this.rocket.isEngineCutoff && !this.rocket.hasLanded;
+    // Hide the exhaust flame once all fuel is burnt (or the missile landed)
+    const burning = !this.missile.isEngineCutoff && !this.missile.hasLanded;
     const ratio = burning ? this.burnRatio : 0;
     this.burningFireMesh.visible = ratio > 0;
     if (ratio === 0) return;
@@ -1065,8 +1065,8 @@ export default class RocketView {
   private updateThrustDirectionFire() {
     if (
       !this.thrustDirectionFireMesh ||
-      this.rocket.thrust.length() === 0 ||
-      !this.rocket.isGravityTurnActive
+      this.missile.thrust.length() === 0 ||
+      !this.missile.isGravityTurnActive
     ) {
       // Hide when no thrust or outside the gravity turn
       if (this.thrustDirectionFireMesh) {
@@ -1111,7 +1111,7 @@ export default class RocketView {
         this.thrustDirectionFireMesh.quaternion.identity();
       }
     } else {
-      // No velocity yet, keep aligned with rocket
+      // No velocity yet, keep aligned with missile
       this.thrustDirectionFireMesh.quaternion.identity();
     }
 
@@ -1124,7 +1124,7 @@ export default class RocketView {
   private updatePosition() {
     const position = new THREE.Vector3().lerpVectors(
       this.prevPosition,
-      this.rocket.position,
+      this.missile.position,
       this.lerpAlpha
     );
 
@@ -1134,7 +1134,7 @@ export default class RocketView {
   private getVelocity() {
     return new THREE.Vector3().lerpVectors(
       this.prevVelocity,
-      this.rocket.velocity,
+      this.missile.velocity,
       this.lerpAlpha
     );
   }
@@ -1142,15 +1142,15 @@ export default class RocketView {
   private getThrust() {
     return new THREE.Vector3().lerpVectors(
       this.prevThrust,
-      this.rocket.thrust,
+      this.missile.thrust,
       this.lerpAlpha
     );
   }
 
-  updatePrevFromRocket() {
-    this.prevPosition.copy(this.rocket.position.clone());
-    this.prevVelocity.copy(this.rocket.velocity.clone());
-    this.prevThrust.copy(this.rocket.thrust.clone());
+  updatePrevFromMissile() {
+    this.prevPosition.copy(this.missile.position.clone());
+    this.prevVelocity.copy(this.missile.velocity.clone());
+    this.prevThrust.copy(this.missile.thrust.clone());
   }
 
   /** Toggle force arrows on/off (user setting). */

@@ -7,7 +7,7 @@ export type AudioFalloff = {
   maxDistance: number;
 };
 
-/** Rocket engines: loud up close, inaudible after a few tens of km. */
+/** Missile engines: loud up close, inaudible after a few tens of km. */
 export const ENGINE_FALLOFF: AudioFalloff = {
   refDistance: 5,
   maxDistance: 50,

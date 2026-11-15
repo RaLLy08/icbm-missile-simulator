@@ -13,7 +13,7 @@ const noop = () => {};
 
 const defaultCommands: SimulatorCommands = {
   calculateTrajectory: noop,
-  launchRocket: noop,
+  launchMissile: noop,
   focusOnEarth: noop,
   setTimeMultiplier: noop,
   toggleTime: noop,
@@ -40,7 +40,7 @@ export type SimulatorState = {
   calculationProgress: number | null;
   isCalculateTrajectoryDisabled: boolean;
   isLaunchDisabled: boolean;
-  rocketCount: number;
+  missileCount: number;
   toggleStartPositionActive: () => void;
   toggleTargetPositionActive: () => void;
   resetActivePosition: () => void;
@@ -51,7 +51,7 @@ export type SimulatorState = {
   startCalculation: () => void;
   setCalculationProgress: (progress: number) => void;
   finishCalculation: () => void;
-  setRocketCount: (count: number) => void;
+  setMissileCount: (count: number) => void;
 
   // Launch queue
   launchQueue: LaunchQueueItem[];
@@ -78,7 +78,7 @@ export type SimulatorState = {
   instructionsPage: InstructionsPage | null;
   areSidePanelsStacked: boolean;
   focusEarthView: () => void;
-  focusRocketView: () => void;
+  focusMissileView: () => void;
   toggleMiniWindowFolded: () => void;
   setInstructionsPage: (page: InstructionsPage | null) => void;
   setAreSidePanelsStacked: (stacked: boolean) => void;
@@ -149,7 +149,7 @@ const createStore = (
   calculationProgress: null,
   isCalculateTrajectoryDisabled: true,
   isLaunchDisabled: true,
-  rocketCount: 0,
+  missileCount: 0,
   toggleStartPositionActive: () =>
     set((s) => ({ startPositionActive: !s.startPositionActive })),
   toggleTargetPositionActive: () =>
@@ -167,7 +167,7 @@ const createStore = (
   setCalculationProgress: (calculationProgress) => set({ calculationProgress }),
   finishCalculation: () =>
     set({ isLaunchDisabled: false, calculationProgress: null }),
-  setRocketCount: (rocketCount) => set({ rocketCount }),
+  setMissileCount: (missileCount) => set({ missileCount }),
 
   // Launch queue
   launchQueue: [],
@@ -228,7 +228,7 @@ const createStore = (
   areSidePanelsStacked: false,
   focusEarthView: () =>
     set({ isFocusedOnEarth: true, isMiniWindowOpen: false }),
-  focusRocketView: () =>
+  focusMissileView: () =>
     set({ isFocusedOnEarth: false, isMiniWindowOpen: true }),
   toggleMiniWindowFolded: () =>
     set((s) => ({ isMiniWindowFolded: !s.isMiniWindowFolded })),

@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import type { ListBladeApi } from 'tweakpane';
-import RocketView from '../rocket/RocketView';
-import RocketGui from '../rocket/Rocket.gui';
+import MissileView from '../missile/MissileView';
+import MissileGui from '../missile/Missile.gui';
 import FrameTimeManager from '../helpers/FrameTimeManager';
 import { announceEstimatedFlightTime, announceLaunch } from '../helpers/Speech';
 import { useSimulatorStore } from '../store/useSimulatorStore';
@@ -13,8 +13,8 @@ const applyQueueItemToLauncher = (
   item: LaunchQueueItem
 ) => {
   const p = item.trajectoryParams;
-  launcher.rocketStartPosition = item.startPosition;
-  launcher.rocketTargetPosition = item.targetPosition;
+  launcher.missileStartPosition = item.startPosition;
+  launcher.missileTargetPosition = item.targetPosition;
   launcher.startInclineAfterAltitude = p.startInclineAfterAltitude;
   launcher.thrustInclineMaxDuration = p.thrustInclineMaxDuration;
   launcher.thrustInclineVelocity = p.thrustInclineVelocity;
@@ -22,18 +22,18 @@ const applyQueueItemToLauncher = (
 };
 
 /** Everything one launch adds to the scene, so it can be removed again. */
-type LaunchedRocket = {
-  rocketView: RocketView;
+type LaunchedMissile = {
+  missileView: MissileView;
   frameTimeManager: FrameTimeManager;
   markers: THREE.Mesh[];
 };
 
 /**
- * Launches the next queued item and can clear every launched rocket. Owns
- * the "Missile Controls" pane: one RocketGui at a time, switched with the
+ * Launches the next queued item and can clear every launched missile. Owns
+ * the "Missile Controls" pane: one MissileGui at a time, switched with the
  * missile selector.
  */
-export const createRocketLauncher = (ctx: SimulationContext) => {
+export const createMissileLauncher = (ctx: SimulationContext) => {
   const {
     scene,
     updateTriggers,
@@ -43,16 +43,16 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     launcherGui,
     launcherView,
     worldGui,
-    rocketGuiPane,
-    rocketGuiContainer,
+    missileGuiPane,
+    missileGuiContainer,
   } = ctx;
   const store = useSimulatorStore.getState;
 
-  let activeRocketGui: RocketGui | null = null;
-  let activeRocketId: number | null = null;
+  let activeMissileGui: MissileGui | null = null;
+  let activeMissileId: number | null = null;
   const missileActivators = new Map<number, () => void>();
   let missileSelector: ListBladeApi<number> | null = null;
-  const launchedRockets: LaunchedRocket[] = [];
+  const launchedMissiles: LaunchedMissile[] = [];
 
   const updateMissileSelector = (selectedId: number) => {
     const options = [...missileActivators.keys()].map((id) => ({
@@ -61,7 +61,7 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     }));
 
     if (!missileSelector) {
-      missileSelector = rocketGuiPane.addBlade({
+      missileSelector = missileGuiPane.addBlade({
         view: 'list',
         label: 'Missile',
         options,
@@ -70,7 +70,7 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
       }) as ListBladeApi<number>;
 
       missileSelector.on('change', (ev) => {
-        if (ev.value === activeRocketId) return;
+        if (ev.value === activeMissileId) return;
         missileActivators.get(ev.value)?.();
       });
       return;
@@ -80,28 +80,28 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     missileSelector.value = selectedId;
   };
 
-  const showRocketGui = (
-    multiStageRocket: NonNullable<ReturnType<typeof launcher.createRocket>>,
-    rocketView: RocketView
+  const showMissileGui = (
+    multiStageMissile: NonNullable<ReturnType<typeof launcher.createMissile>>,
+    missileView: MissileView
   ) => {
-    const { rocket } = multiStageRocket;
-    if (activeRocketGui) {
-      activeRocketGui.remove();
-      removeTrigger(updateTriggers, activeRocketGui);
+    const { missile } = multiStageMissile;
+    if (activeMissileGui) {
+      activeMissileGui.remove();
+      removeTrigger(updateTriggers, activeMissileGui);
     }
 
-    const rocketGui = new RocketGui(
-      rocketGuiPane,
-      rocketGuiContainer,
-      multiStageRocket,
-      rocketView,
+    const missileGui = new MissileGui(
+      missileGuiPane,
+      missileGuiContainer,
+      multiStageMissile,
+      missileView,
       scene
     );
-    activeRocketGui = rocketGui;
+    activeMissileGui = missileGui;
 
-    rocketGui.onFocusCameraClick = () => {
-      cameraManager.setRocketCamera(rocketGui.trackingView);
-      store().focusRocketView();
+    missileGui.onFocusCameraClick = () => {
+      cameraManager.setMissileCamera(missileGui.trackingView);
+      store().focusMissileView();
     };
 
     // The main view mirrors the Missile Controls viewport, so while
@@ -109,12 +109,12 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     if (cameraManager.isChasing) {
       // Compute the new view's pose now: the main view renders before
       // the GUI updates, and would otherwise show one empty frame.
-      rocketGui.update(0);
-      cameraManager.setRocketCamera(rocketGui.trackingView);
+      missileGui.update(0);
+      cameraManager.setMissileCamera(missileGui.trackingView);
     }
 
-    updateTriggers.push(rocketGui);
-    activeRocketId = rocket.id;
+    updateTriggers.push(missileGui);
+    activeMissileId = missile.id;
   };
 
   const launch = () => {
@@ -125,31 +125,31 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     }
 
     applyQueueItemToLauncher(launcher, nextLaunch);
-    const multiStageRocket = launcher.createRocket();
-    if (!multiStageRocket) {
+    const multiStageMissile = launcher.createMissile();
+    if (!multiStageMissile) {
       // Keep the item queued so the user can retry
-      console.error('Rocket could not be created. Check launcher settings.');
+      console.error('Missile could not be created. Check launcher settings.');
       return;
     }
-    const { rocket } = multiStageRocket;
+    const { missile } = multiStageMissile;
     store().dequeueLaunch();
 
-    const rocketView = new RocketView(
-      rocket,
+    const missileView = new MissileView(
+      missile,
       scene,
       earthView,
       nextLaunch.targetPosition.clone()
     );
-    rocketView.setSize(
-      launcherGui.rocketSizeMultiplier *
-        RocketView.heightScale(nextLaunch.missileHeight),
-      multiStageRocket.stages.length
+    missileView.setSize(
+      launcherGui.missileSizeMultiplier *
+        MissileView.heightScale(nextLaunch.missileHeight),
+      multiStageMissile.stages.length
     );
-    rocketView.setMaxBurnRate(
-      Math.max(...multiStageRocket.stages.map((s) => s.massFlowRate))
+    missileView.setMaxBurnRate(
+      Math.max(...multiStageMissile.stages.map((s) => s.massFlowRate))
     );
-    rocketView.init();
-    rocketView.updatePrevFromRocket();
+    missileView.init();
+    missileView.updatePrevFromMissile();
 
     const markers = [
       earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40, 4),
@@ -157,60 +157,60 @@ export const createRocketLauncher = (ctx: SimulationContext) => {
     ];
     launcherView.remove();
 
-    store().setRocketCount(launcher.rocketCount);
+    store().setMissileCount(launcher.missileCount);
 
     // Same number as the "Missile N" label in the GUI
-    announceLaunch(rocket.id);
+    announceLaunch(missile.id);
     // From the trajectory calculation this launch was queued with
     announceEstimatedFlightTime(nextLaunch.candidate?.flightTime);
 
     // Physics/view must update before the GUI so the tracking camera
     // renders the current frame's missile position.
     const frameTimeManager = new FrameTimeManager(
-      multiStageRocket,
-      rocketView,
+      multiStageMissile,
+      missileView,
       worldGui
     );
     updateTriggers.push(frameTimeManager);
-    launchedRockets.push({ rocketView, frameTimeManager, markers });
+    launchedMissiles.push({ missileView, frameTimeManager, markers });
 
-    missileActivators.set(rocket.id, () =>
-      showRocketGui(multiStageRocket, rocketView)
+    missileActivators.set(missile.id, () =>
+      showMissileGui(multiStageMissile, missileView)
     );
-    showRocketGui(multiStageRocket, rocketView);
-    updateMissileSelector(rocket.id);
+    showMissileGui(multiStageMissile, missileView);
+    updateMissileSelector(missile.id);
   };
 
-  /** Removes every launched rocket, its trail, markers and GUI. */
+  /** Removes every launched missile, its trail, markers and GUI. */
   const clear = () => {
     // The chase camera renders the active missile's tracking view, which is
     // disposed below
     if (cameraManager.isChasing) store().commands.focusOnEarth();
 
-    if (activeRocketGui) {
-      activeRocketGui.remove();
-      removeTrigger(updateTriggers, activeRocketGui);
-      activeRocketGui = null;
+    if (activeMissileGui) {
+      activeMissileGui.remove();
+      removeTrigger(updateTriggers, activeMissileGui);
+      activeMissileGui = null;
     }
-    activeRocketId = null;
+    activeMissileId = null;
 
     missileSelector?.dispose();
     missileSelector = null;
     missileActivators.clear();
 
-    launchedRockets.forEach(({ rocketView, frameTimeManager, markers }) => {
+    launchedMissiles.forEach(({ missileView, frameTimeManager, markers }) => {
       removeTrigger(updateTriggers, frameTimeManager);
-      rocketView.remove();
+      missileView.remove();
       markers.forEach((marker) => {
         scene.remove(marker);
         marker.geometry.dispose();
         (marker.material as THREE.Material).dispose();
       });
     });
-    launchedRockets.length = 0;
+    launchedMissiles.length = 0;
 
-    launcher.resetRockets();
-    store().setRocketCount(0);
+    launcher.resetMissiles();
+    store().setMissileCount(0);
   };
 
   return { launch, clear };

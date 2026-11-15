@@ -85,16 +85,16 @@ const InstructionsModal = () => {
               <div className={s.instructions}>
                 <div className={s.step}>
                   <div className={s.stepContent}>
-                    <h3>Rocket Equation &amp; Thrust</h3>
+                    <h3>Missile Equation &amp; Thrust</h3>
                     <p>
-                      Rocket motion during fuel burn is described by the{' '}
+                      Missile motion during fuel burn is described by the{' '}
                       <a
                         className={s.modalLink}
-                        href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/ideal-rocket-equation/"
+                        href="https://www1.grc.nasa.gov/beginners-guide-to-aeronautics/ideal-missile-equation/"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Ideal Rocket Equation
+                        Ideal Missile Equation
                       </a>
                       . At every time step the simulation uses the{' '}
                       <a
@@ -103,7 +103,7 @@ const InstructionsModal = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Rocket Thrust Equation
+                        Missile Thrust Equation
                       </a>{' '}
                       <strong>F = ṁ · vₑ</strong> to compute the instantaneous
                       force from the exhaust velocity <strong>vₑ</strong> and
@@ -116,9 +116,9 @@ const InstructionsModal = () => {
                   <div className={s.stepContent}>
                     <h3>Thrust vs. Gravity</h3>
                     <p>
-                      The rocket's movement is shaped by two forces: the thrust
+                      The missile's movement is shaped by two forces: the thrust
                       from burning fuel and Earth's gravity. As fuel burns the
-                      rocket gets lighter, so it accelerates faster until
+                      missile gets lighter, so it accelerates faster until
                       burnout, then coasts on gravity alone.
                     </p>
                   </div>
@@ -128,10 +128,10 @@ const InstructionsModal = () => {
                   <div className={s.stepContent}>
                     <h3>Gravity Turn</h3>
                     <p>
-                      To steer the rocket toward its target, the simulator
+                      To steer the missile toward its target, the simulator
                       performs a gravity turn: once a set altitude is reached,
                       the angle of attack changes by <strong>X rad/s</strong>{' '}
-                      for <strong>N seconds</strong>. In real rockets this is
+                      for <strong>N seconds</strong>. In real missiles this is
                       done with mechanisms like gimbaled nozzles.
                     </p>
                   </div>
@@ -176,7 +176,7 @@ const InstructionsModal = () => {
                       </a>{' '}
                       algorithm runs the simulation over and over, searching for
                       the parameter set that minimizes the distance between the
-                      rocket's final position and the target.
+                      missile's final position and the target.
                     </p>
                   </div>
                 </div>
@@ -191,7 +191,7 @@ const InstructionsModal = () => {
 
           {instructionsPage === 'how-to-launch' && (
             <>
-              <h2 className={s.modalTitle}>How to Launch a Rocket</h2>
+              <h2 className={s.modalTitle}>How to Launch a Missile</h2>
               <div className={s.instructions}>
                 <div className={s.step}>
                   <div className={s.stepNumber}>1</div>
@@ -246,7 +246,7 @@ const InstructionsModal = () => {
                     <h3>Launch!</h3>
                     <p>
                       Click the <strong>"Launch 🚀"</strong> button to fire the
-                      next rocket in your queue. Each click launches one rocket
+                      next missile in your queue. Each click launches one missile
                       and removes it from the queue. You can launch them one by
                       one, even while time is running!
                     </p>

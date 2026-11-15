@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import Earth from '../earth/Earth';
 
-class Rocket {
+class Missile {
   id = 0;
 
   /**
@@ -51,7 +51,7 @@ class Rocket {
   flightTime = 0;
 
   /**
-   * Indicates whether the rocket has finished its flight. (has displacement > 0.5 and altitude < 0)
+   * Indicates whether the missile has finished its flight. (has displacement > 0.5 and altitude < 0)
    */
   hasLanded = false;
 
@@ -64,23 +64,23 @@ class Rocket {
 
   /**
    * Fuel burnt since launch. Tracked incrementally, so the engine
-   * parameters may change during the flight (see MultiStageRocket).
+   * parameters may change during the flight (see MultiStageMissile).
    * Unit: kg
    */
   burntFuel = 0;
 
   /**
-   * Creates a new Rocket instance.
-   * @param earth The Earth instance to which the rocket is associated.
-   * @param initialPosition The initial position of the rocket in 3D space.
+   * Creates a new Missile instance.
+   * @param earth The Earth instance to which the missile is associated.
+   * @param initialPosition The initial position of the missile in 3D space.
    * @param targetInclineVector Thrust straight-line direction (Euclidean) towards the target.
-   * @param startInclineAfterAltitude The distance after which the rocket starts to incline
+   * @param startInclineAfterAltitude The distance after which the missile starts to incline
    * @param thrustInclineMaxDuration The maximum duration for the thrust incline
    * @param thrustInclineVelocity The velocity of the thrust incline in radians per second
-   * @param fuelMass The mass of the rocket fuel in kilograms
-   * @param exhaustVelocity The exhaust velocity of the rocket in kilometers per second
-   * @param massFlowRate The mass flow rate of the rocket in kilograms per second
-   * @param payloadMass The mass of the rocket payload in kilograms
+   * @param fuelMass The mass of the missile fuel in kilograms
+   * @param exhaustVelocity The exhaust velocity of the missile in kilometers per second
+   * @param massFlowRate The mass flow rate of the missile in kilograms per second
+   * @param payloadMass The mass of the missile payload in kilograms
    */
   constructor(
     private earth: Earth,
@@ -148,7 +148,7 @@ class Rocket {
     const dmdt = this.massFlowRate; // Mass flow rate (kg/s)
     const F = dmdt * ve; // Thrust (kg*(km/s²))
     const remainingFuel = this.remainingFuel;
-    const mT = this.payloadMass + remainingFuel; // Current mass of the rocket (kg)
+    const mT = this.payloadMass + remainingFuel; // Current mass of the missile (kg)
 
     this.currentTotalMass = mT;
 
@@ -276,12 +276,12 @@ class Rocket {
   // }
 
   // private lookAtSky(target: THREE.Mesh): void {
-  //   if (this.rocket) {
+  //   if (this.missile) {
   //     const gravityForce = this.gravityForce(target.position);
 
-  //     this.rocket.mesh.quaternion.setFromUnitVectors(
+  //     this.missile.mesh.quaternion.setFromUnitVectors(
   //       new THREE.Vector3(0, 1, 0), // current axis (Y-axis)
-  //       gravityForce.clone().sub(this.rocket.position).normalize() // desired direction
+  //       gravityForce.clone().sub(this.missile.position).normalize() // desired direction
   //     );
   //   }
   // }
@@ -293,4 +293,4 @@ class Rocket {
   }
 }
 
-export default Rocket;
+export default Missile;

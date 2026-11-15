@@ -1,15 +1,15 @@
 import { FolderApi, Pane } from 'tweakpane';
-import Rocket from './Rocket';
-import MultiStageRocket from './MultiStageRocket';
-import RocketView from './RocketView';
+import Missile from './Missile';
+import MultiStageMissile from './MultiStageMissile';
+import MissileView from './MissileView';
 import * as THREE from 'three';
 import { formatSeconds } from 'app/utils';
-import RocketTrackingView from './RocketTrackingView';
+import MissileTrackingView from './MissileTrackingView';
 
-export default class RocketGui {
+export default class MissileGui {
   private folder: FolderApi;
   // Public: the main view mirrors this camera while chasing the missile
-  readonly trackingView: RocketTrackingView;
+  readonly trackingView: MissileTrackingView;
   velocity = 0;
   thrust = 0;
   displacement = 0;
@@ -23,7 +23,7 @@ export default class RocketGui {
 
   onFocusCameraClick: () => void = () => {};
 
-  private readonly rocket: Rocket;
+  private readonly missile: Missile;
 
   // The tracking camera's smoothing runs on wall-clock time, also while
   // time is paused (its delta is only used for the camera).
@@ -32,19 +32,19 @@ export default class RocketGui {
   constructor(
     private readonly pane: Pane,
     private readonly paneContainer: HTMLElement,
-    private readonly multiStageRocket: MultiStageRocket,
-    private readonly rocketView: RocketView,
+    private readonly multiStageMissile: MultiStageMissile,
+    private readonly missileView: MissileView,
     scene: THREE.Scene
   ) {
-    this.rocket = multiStageRocket.rocket;
+    this.missile = multiStageMissile.missile;
 
     this.folder = this.pane.addFolder({
-      title: `Missile ${this.rocket.id}`,
+      title: `Missile ${this.missile.id}`,
       expanded: true,
     });
 
     // Live camera viewport tracking the missile
-    this.trackingView = new RocketTrackingView(scene, this.rocketView);
+    this.trackingView = new MissileTrackingView(scene, this.missileView);
 
     // First blade in the folder -> stays on top
     const cameraViewBinding = this.folder.addBinding(
@@ -78,7 +78,7 @@ export default class RocketGui {
       readonly: true,
       view: 'graph',
       min: 0,
-      max: this.rocket.maxAcceleration,
+      max: this.missile.maxAcceleration,
       format: (v) => (v * 1000).toFixed(5) + ' kg*(m/s²)',
     });
 
@@ -94,11 +94,11 @@ export default class RocketGui {
       format: (v) => v.toFixed(2) + '%',
     });
 
-    this.folder.addBinding(this.multiStageRocket, 'currentStageIndex', {
+    this.folder.addBinding(this.multiStageMissile, 'currentStageIndex', {
       label: 'Stage',
       readonly: true,
       format: (v) => {
-        const count = this.multiStageRocket.stages.length;
+        const count = this.multiStageMissile.stages.length;
         return v >= count
           ? `burnt out (${count} stages)`
           : `${v + 1} / ${count}`;
@@ -123,19 +123,19 @@ export default class RocketGui {
       format: (v: number) => v.toFixed(2) + '°',
     });
 
-    this.folder.addBinding(this.rocket, 'fuelCombustionTime', {
+    this.folder.addBinding(this.missile, 'fuelCombustionTime', {
       label: 'Fuel Combustion Time',
       readonly: true,
       format: (v) => formatSeconds(v),
     });
 
-    this.folder.addBinding(this.rocket, 'currentTotalMass', {
+    this.folder.addBinding(this.missile, 'currentTotalMass', {
       label: 'Fuel Mass',
       readonly: true,
-      format: (v) => (v - this.rocket.payloadMass).toFixed(1) + ' kg',
+      format: (v) => (v - this.missile.payloadMass).toFixed(1) + ' kg',
     });
 
-    this.folder.addBinding(this.rocket, 'payloadMass', {
+    this.folder.addBinding(this.missile, 'payloadMass', {
       label: 'Payload Mass',
       readonly: true,
       format: (v) => v.toFixed(1) + ' kg',
@@ -147,7 +147,7 @@ export default class RocketGui {
       format: (v) => v.toFixed(1) + ' km',
     });
 
-    this.folder.addBinding(this.rocket, 'altitude', {
+    this.folder.addBinding(this.missile, 'altitude', {
       label: 'Altitude',
       readonly: true,
       format: (v) => v.toFixed(1) + ' km',
@@ -159,13 +159,13 @@ export default class RocketGui {
       format: (v) => v.toExponential(5) + ' km/s²',
     });
 
-    this.folder.addBinding(this.rocket, 'currentThrustInclineDuration', {
+    this.folder.addBinding(this.missile, 'currentThrustInclineDuration', {
       label: 'Thrust Gravity Turn Duration',
       readonly: true,
       format: (v) => v.toFixed(1) + ' s',
     });
 
-    this.folder.addBinding(this.rocket, 'flightTime', {
+    this.folder.addBinding(this.missile, 'flightTime', {
       label: 'Flight Time',
       readonly: true,
       format: (v) => formatSeconds(v),
@@ -182,7 +182,7 @@ export default class RocketGui {
         label: 'Show Forces Arrows',
       })
       .on('change', () => {
-        this.rocketView.setArrowsEnabled(this.showForcesArrows);
+        this.missileView.setArrowsEnabled(this.showForcesArrows);
       });
 
     this.folder
@@ -193,7 +193,7 @@ export default class RocketGui {
         step: 1,
       })
       .on('change', () => {
-        this.rocketView.applyScaleToArrows(this.forcesArrowViewScale);
+        this.missileView.applyScaleToArrows(this.forcesArrowViewScale);
       });
 
     // Insert the viewport into the DOM only after all blades are added:
@@ -209,26 +209,26 @@ export default class RocketGui {
   update(deltaTime = 0) {
     this.trackingView.update(deltaTime);
 
-    this.velocity = this.rocket.velocity.length();
-    this.thrust = this.rocket.thrust.length();
+    this.velocity = this.missile.velocity.length();
+    this.thrust = this.missile.thrust.length();
 
-    this.displacement = this.rocket.displacement.length();
-    this.gravityForce = this.rocket.gravityForce.length();
-    this.travelledDistance = this.rocket.travelledDistance.length();
+    this.displacement = this.missile.displacement.length();
+    this.gravityForce = this.missile.gravityForce.length();
+    this.travelledDistance = this.missile.travelledDistance.length();
     this.percentOfFuel =
-      this.rocket.fuelMass > 0
-        ? (this.rocket.remainingFuel / this.rocket.fuelMass) * 100
+      this.missile.fuelMass > 0
+        ? (this.missile.remainingFuel / this.missile.fuelMass) * 100
         : 0;
 
     this.velocityToGravityAngle =
-      this.rocket.velocity.length() > 0
+      this.missile.velocity.length() > 0
         ? THREE.MathUtils.radToDeg(
-            this.rocket.velocity.clone().angleTo(this.rocket.gravityForce)
+            this.missile.velocity.clone().angleTo(this.missile.gravityForce)
           )
         : 0;
 
     this.thrustInclineAngleDeg = THREE.MathUtils.radToDeg(
-      this.rocket.thrustInclineAngle
+      this.missile.thrustInclineAngle
     );
 
     this.folder.refresh();

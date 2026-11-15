@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { RocketStage } from '../rocket/MultiStageRocket';
+import type { MissileStage } from '../missile/MultiStageMissile';
 
 export type GeoPosition = {
   latitude: number;
@@ -13,7 +13,7 @@ export type BestCandidate = {
   startInclineAfterAltitude: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
-  stages: RocketStage[];
+  stages: MissileStage[];
   /** Total fuel mass of all stages */
   fuelMass: number;
   payloadMass: number;
@@ -27,7 +27,7 @@ export type TrajectoryParams = {
   startInclineAfterAltitude: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
-  stages: RocketStage[];
+  stages: MissileStage[];
 };
 
 export type LaunchQueueItem = {
@@ -48,11 +48,11 @@ export type LaunchQueueItem = {
 /** Imperative entry points into the three.js engine, registered on mount. */
 export type SimulatorCommands = {
   calculateTrajectory: () => void;
-  launchRocket: () => void;
+  launchMissile: () => void;
   focusOnEarth: () => void;
   setTimeMultiplier: (value: number) => void;
   toggleTime: () => void;
   setMuted: (muted: boolean) => void;
-  /** Removes every launched rocket with its trail and markers. */
+  /** Removes every launched missile with its trail and markers. */
   clearWorld: () => void;
 };

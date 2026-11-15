@@ -1,7 +1,7 @@
 import type Earth from './earth/Earth';
 import DE from './ga/DE';
-import Rocket from './rocket/Rocket';
-import MultiStageRocket, { type RocketStage } from './rocket/MultiStageRocket';
+import Missile from './missile/Missile';
+import MultiStageMissile, { type MissileStage } from './missile/MultiStageMissile';
 import * as THREE from 'three';
 
 const randFloat = (min: number, max: number) => {
@@ -21,12 +21,12 @@ export type StageConstraint = {
   fuelMass: ParamConstrain;
 };
 
-export type RocketConstraints = {
+export type MissileConstraints = {
   startInclineAfterAltitude: ParamConstrain;
   thrustInclineMaxDuration: ParamConstrain;
   thrustInclineVelocity: ParamConstrain;
   stages: StageConstraint[];
-  /** Fixed payload mass, kg (Rocket default when omitted) */
+  /** Fixed payload mass, kg (Missile default when omitted) */
   payloadMass?: number;
 };
 
@@ -39,7 +39,7 @@ export type DecodedGenome = {
   startInclineAfterAltitude: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
-  stages: RocketStage[];
+  stages: MissileStage[];
 };
 
 /**
@@ -49,7 +49,7 @@ export type DecodedGenome = {
  */
 export const decodeGenome = (genome: ArrayLike<number>): DecodedGenome => {
   const stageCount = Math.floor((genome.length - GUIDANCE_GENES) / STAGE_GENES);
-  const stages: RocketStage[] = [];
+  const stages: MissileStage[] = [];
 
   for (let i = 0; i < stageCount; i++) {
     const offset = GUIDANCE_GENES + i * STAGE_GENES;
@@ -96,7 +96,7 @@ export class FlightTrajectory {
     private earth: Earth,
     private start: THREE.Vector3,
     private target: THREE.Vector3,
-    private rocketConstrains: RocketConstraints,
+    private missileConstrains: MissileConstraints,
     private flightConstraints: {
       maxDistanceThreshold?: number; // minimize
       maxFlightTimeSeconds: number;
@@ -114,8 +114,8 @@ export class FlightTrajectory {
       );
     }
 
-    if (this.rocketConstrains.stages.length === 0) {
-      throw new Error('At least one rocket stage constraint is required.');
+    if (this.missileConstrains.stages.length === 0) {
+      throw new Error('At least one missile stage constraint is required.');
     }
 
     this.elapsedTime = 0;
@@ -149,7 +149,7 @@ export class FlightTrajectory {
   /** Flattens the constraints in the genome layout of `decodeGenome`. */
   private genomeConstraints = (): ParamConstrain[] => {
     const { startInclineAfterAltitude, thrustInclineMaxDuration, stages } =
-      this.rocketConstrains;
+      this.missileConstrains;
 
     const stageConstraints: ParamConstrain[] = [];
     [...stages]
@@ -161,7 +161,7 @@ export class FlightTrajectory {
     return [
       startInclineAfterAltitude,
       thrustInclineMaxDuration,
-      this.rocketConstrains.thrustInclineVelocity,
+      this.missileConstrains.thrustInclineVelocity,
       ...stageConstraints,
     ];
   };
@@ -220,7 +220,7 @@ export class FlightTrajectory {
     });
   };
 
-  private createMultistageRocket = (genome: any) => {
+  private createMultistageMissile = (genome: any) => {
     const {
       startInclineAfterAltitude,
       thrustInclineMaxDuration,
@@ -228,91 +228,91 @@ export class FlightTrajectory {
       stages,
     } = decodeGenome(genome);
 
-    const rocket = new Rocket(
+    const missile = new Missile(
       this.earth,
       this.start,
       this.target,
       startInclineAfterAltitude,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
-      undefined, // fuel and engine are set per stage by MultiStageRocket
+      undefined, // fuel and engine are set per stage by MultiStageMissile
       undefined,
       undefined,
-      this.rocketConstrains.payloadMass
+      this.missileConstrains.payloadMass
     );
 
-    return new MultiStageRocket(rocket, stages);
+    return new MultiStageMissile(missile, stages);
   };
 
   /**
    * Re-simulates a genome exactly as the fitness function does and records
-   * the rocket position after every step, for visualizing the flight path.
+   * the missile position after every step, for visualizing the flight path.
    */
   traceTrajectory = (genome: any) => {
-    const multiStageRocket = this.createMultistageRocket(genome);
-    const { rocket } = multiStageRocket;
-    const points: THREE.Vector3[] = [rocket.position.clone()];
+    const multiStageMissile = this.createMultistageMissile(genome);
+    const { missile } = multiStageMissile;
+    const points: THREE.Vector3[] = [missile.position.clone()];
 
-    this.simulateFlight(multiStageRocket, 1, () =>
-      points.push(rocket.position.clone())
+    this.simulateFlight(multiStageMissile, 1, () =>
+      points.push(missile.position.clone())
     );
 
     return points;
   };
 
   private fitnessFunction = (genome: any) => {
-    const multiStageRocket = this.createMultistageRocket(genome);
-    const { rocket } = multiStageRocket;
+    const multiStageMissile = this.createMultistageMissile(genome);
+    const { missile } = multiStageMissile;
 
-    this.simulateFlight(multiStageRocket);
+    this.simulateFlight(multiStageMissile);
 
-    genome.rocket = rocket;
-    genome.multiStageRocket = multiStageRocket;
+    genome.missile = missile;
+    genome.multiStageMissile = multiStageMissile;
 
     // Use cached vector for distance calculation to avoid allocation
     let fitness = this._tempDistanceVec
-      .copy(rocket.position)
+      .copy(missile.position)
       .distanceTo(this.target);
 
     if (this.minimizeFlightTime) {
-      fitness += rocket.flightTime;
+      fitness += missile.flightTime;
     }
 
     return fitness;
   };
 
   private simulateFlight = (
-    multiStageRocket: MultiStageRocket,
+    multiStageMissile: MultiStageMissile,
     stepInSeconds = 1,
     onStep?: () => void
   ) => {
     const { maxFlightTimeSeconds, maxDistanceThreshold, maxAltitude } =
       this.flightConstraints;
-    const { rocket } = multiStageRocket;
+    const { missile } = multiStageMissile;
 
     for (let i = 0; i < maxFlightTimeSeconds / stepInSeconds; i++) {
-      multiStageRocket.update(stepInSeconds);
+      multiStageMissile.update(stepInSeconds);
       onStep?.();
 
-      const traveledDistance = rocket.travelledDistance.length();
+      const traveledDistance = missile.travelledDistance.length();
 
       if (
         maxDistanceThreshold != null &&
         traveledDistance > maxDistanceThreshold
       ) {
         // console.log(
-        //   `Rocket traveled too far: ${traveledDistance} > ${constraints.maxDistanceThreshold}`
+        //   `Missile traveled too far: ${traveledDistance} > ${constraints.maxDistanceThreshold}`
         // );
         break;
       }
 
-      if (maxAltitude != null && rocket.altitude > maxAltitude) {
-        // console.log(`Rocket reached too high altitude: ${rocket.altitude} > ${maxAltitude}`);
+      if (maxAltitude != null && missile.altitude > maxAltitude) {
+        // console.log(`Missile reached too high altitude: ${missile.altitude} > ${maxAltitude}`);
         break;
       }
 
-      if (rocket.hasLanded) {
-        // console.log(`Rocket landed after ${i} iterations.`);
+      if (missile.hasLanded) {
+        // console.log(`Missile landed after ${i} iterations.`);
         break;
       }
     }

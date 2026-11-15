@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import Earth from '../earth/Earth';
-import type MultiStageRocket from '../rocket/MultiStageRocket';
+import type MultiStageMissile from '../missile/MultiStageMissile';
 import { announceCalculatingTrajectory } from '../helpers/Speech';
 import { useSimulatorStore } from '../store/useSimulatorStore';
 import type { BestCandidate } from '../store/types';
@@ -13,27 +13,27 @@ const toCandidate = (
   generation: number,
   targetPos: THREE.Vector3
 ): BestCandidate | null => {
-  const multiStageRocket: MultiStageRocket | undefined =
-    bestGenome?.multiStageRocket;
-  if (!multiStageRocket) return null;
-  const { rocket } = multiStageRocket;
+  const multiStageMissile: MultiStageMissile | undefined =
+    bestGenome?.multiStageMissile;
+  if (!multiStageMissile) return null;
+  const { missile } = multiStageMissile;
 
   return {
     generation,
     fitness: bestGenome.fitness,
     // Real impact distance, unlike fitness which may also include
     // flight time when "minimize flight time" is enabled
-    missDistance: rocket.position.distanceTo(targetPos),
-    startInclineAfterAltitude: rocket.startInclineAfterAltitude,
-    thrustInclineMaxDuration: rocket.thrustInclineMaxDuration,
-    thrustInclineVelocity: rocket.thrustInclineVelocity,
-    stages: multiStageRocket.stages.map((s) => ({ ...s })),
-    fuelMass: rocket.fuelMass,
-    payloadMass: rocket.payloadMass,
-    fuelCombustionTime: rocket.fuelCombustionTime,
-    maxAltitude: rocket.maxAltitude,
-    travelledDistance: rocket.travelledDistance.length(),
-    flightTime: rocket.flightTime,
+    missDistance: missile.position.distanceTo(targetPos),
+    startInclineAfterAltitude: missile.startInclineAfterAltitude,
+    thrustInclineMaxDuration: missile.thrustInclineMaxDuration,
+    thrustInclineVelocity: missile.thrustInclineVelocity,
+    stages: multiStageMissile.stages.map((s) => ({ ...s })),
+    fuelMass: missile.fuelMass,
+    payloadMass: missile.payloadMass,
+    fuelCombustionTime: missile.fuelCombustionTime,
+    maxAltitude: missile.maxAltitude,
+    travelledDistance: missile.travelledDistance.length(),
+    flightTime: missile.flightTime,
   };
 };
 
@@ -41,7 +41,7 @@ const toCandidate = (
 export const createTrajectoryCalculator =
   ({ launcher, launcherGui }: SimulationContext, preview: TrajectoryPreview) =>
   () => {
-    if (!launcher.rocketStartPosition || !launcher.rocketTargetPosition) {
+    if (!launcher.missileStartPosition || !launcher.missileTargetPosition) {
       console.error('Start or target position is not set.');
       return;
     }
@@ -50,8 +50,8 @@ export const createTrajectoryCalculator =
     store().startCalculation();
     announceCalculatingTrajectory();
 
-    const startPos = launcher.rocketStartPosition.clone();
-    const targetPos = launcher.rocketTargetPosition.clone();
+    const startPos = launcher.missileStartPosition.clone();
+    const targetPos = launcher.missileTargetPosition.clone();
     // Snapshot now: the preset may change before this item is launched
     const missileHeight = launcherGui.missileHeight;
 

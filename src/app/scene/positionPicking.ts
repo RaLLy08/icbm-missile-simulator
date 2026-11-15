@@ -44,7 +44,7 @@ export const setupPositionPicking = (
     }
 
     store().setIsCalculateTrajectoryDisabled(
-      !(launcher.rocketStartPosition && launcher.rocketTargetPosition)
+      !(launcher.missileStartPosition && launcher.missileTargetPosition)
     );
   };
 

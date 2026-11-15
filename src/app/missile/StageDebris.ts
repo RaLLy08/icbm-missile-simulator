@@ -7,7 +7,7 @@ const EARTH_MU = Earth.G * Earth.MASS * 1e-9;
 const MAX_STEP_S = 1;
 
 /**
- * A spent stage that separated from the rocket. It keeps the rocket's
+ * A spent stage that separated from the missile. It keeps the missile's
  * velocity plus a small backward push, tumbles, and falls under gravity
  * until it hits the ground, then fades out.
  *
@@ -32,9 +32,9 @@ export default class StageDebris {
 
   /**
    * @param source The stage group to copy (its world transform is used).
-   * @param velocity Rocket velocity at separation. Unit: km/s
-   * @param forward Rocket forward direction (world space).
-   * @param separationSpeed Backward push relative to the rocket. Unit: km/s
+   * @param velocity Missile velocity at separation. Unit: km/s
+   * @param forward Missile forward direction (world space).
+   * @param separationSpeed Backward push relative to the missile. Unit: km/s
    */
   constructor(
     private readonly scene: THREE.Scene,
@@ -45,7 +45,7 @@ export default class StageDebris {
   ) {
     source.updateWorldMatrix(true, false);
 
-    // Clone with own materials, so fading does not touch the rocket
+    // Clone with own materials, so fading does not touch the missile
     this.object = source.clone(true);
     this.object.visible = true;
     this.object.traverse((child) => {
@@ -124,8 +124,8 @@ export default class StageDebris {
     if (this.finished) return;
     this.finished = true;
     this.scene.remove(this.object);
-    // Geometry is shared with the rocket's own stage meshes, which
-    // dispose it in RocketView.remove(); only the cloned materials are ours.
+    // Geometry is shared with the missile's own stage meshes, which
+    // dispose it in MissileView.remove(); only the cloned materials are ours.
     this.materials.forEach((m) => m.dispose());
   }
 }

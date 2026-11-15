@@ -11,7 +11,7 @@ import WorldGui from '../WorldGui';
 import Launcher from '../launcher/Launcher';
 import LauncherView from '../launcher/LauncherView';
 import LauncherGui from '../launcher/Launcher.gui';
-import RocketTrackingView from '../rocket/RocketTrackingView';
+import MissileTrackingView from '../missile/MissileTrackingView';
 import MouseTracker from '../helpers/MouseTracker';
 import MouseTrackerGui from '../helpers/MouseTracker.gui';
 import CameraManager from '../helpers/CameraManager';
@@ -26,7 +26,7 @@ import {
 } from './renderers';
 import { createTrajectoryPreview } from './trajectoryPreview';
 import { createTrajectoryCalculator } from './trajectoryCalculation';
-import { createRocketLauncher } from './rocketLaunching';
+import { createMissileLauncher } from './missileLaunching';
 import { addConfirmButton } from './confirmButton';
 import { setupPositionPicking } from './positionPicking';
 import { syncSceneWithStore } from './storeSync';
@@ -35,7 +35,7 @@ import type { SimulationContext, Updatable } from './types';
 export type SimulationElements = {
   sceneContainer: HTMLElement;
   mainGuiContainer: HTMLElement;
-  rocketGuiContainer: HTMLElement;
+  missileGuiContainer: HTMLElement;
   miniWindow: HTMLElement;
   mouseFollower: HTMLElement | null;
 };
@@ -79,14 +79,14 @@ export const createSimulation = (
   mainPane.registerPlugin(EssentialsPlugin);
   mainPane.registerPlugin(TitlePluginBundle);
   mainPane.registerPlugin(NoticePluginBundle);
-  const rocketGuiPane = new Pane({
+  const missileGuiPane = new Pane({
     title: 'Missile Controls',
-    container: elements.rocketGuiContainer,
+    container: elements.missileGuiContainer,
     expanded: !isMobile,
   });
-  rocketGuiPane.registerPlugin(CamerakitPlugin);
-  rocketGuiPane.registerPlugin(TitlePluginBundle);
-  rocketGuiPane.registerPlugin(NoticePluginBundle);
+  missileGuiPane.registerPlugin(CamerakitPlugin);
+  missileGuiPane.registerPlugin(TitlePluginBundle);
+  missileGuiPane.registerPlugin(NoticePluginBundle);
 
   const fullScreenRenderer = createFullScreenRenderer(elements.sceneContainer);
   const miniWindowRenderer = createMiniWindowRenderer(
@@ -129,7 +129,7 @@ export const createSimulation = (
   const camera = cameraManager.getCamera();
   if (camera) {
     // Warm up the missile camera's GL context so launch doesn't stall
-    RocketTrackingView.prewarm(scene, camera);
+    MissileTrackingView.prewarm(scene, camera);
     earthView.setCamera(camera);
   }
 
@@ -150,8 +150,8 @@ export const createSimulation = (
     launcherGui,
     launcherView,
     worldGui,
-    rocketGuiPane,
-    rocketGuiContainer: elements.rocketGuiContainer,
+    missileGuiPane,
+    missileGuiContainer: elements.missileGuiContainer,
   };
 
   const focusOnEarth = () => {
@@ -160,10 +160,10 @@ export const createSimulation = (
   };
   earthGui.onFocusCameraClick = focusOnEarth;
 
-  const rocketLauncher = createRocketLauncher(ctx);
+  const missileLauncher = createMissileLauncher(ctx);
   addConfirmButton(mainPane, {
     title: 'Clear World',
-    confirmTitle: 'Click again to clear all rockets',
+    confirmTitle: 'Click again to clear all missiles',
     index: 0,
     onConfirm: () => store().commands.clearWorld(),
   });
@@ -173,8 +173,8 @@ export const createSimulation = (
       ctx,
       createTrajectoryPreview(scene)
     ),
-    launchRocket: rocketLauncher.launch,
-    clearWorld: rocketLauncher.clear,
+    launchMissile: missileLauncher.launch,
+    clearWorld: missileLauncher.clear,
     focusOnEarth,
     setTimeMultiplier: (value) => worldGui.setTimeMultiplier(value),
     toggleTime: () => worldGui.toggleTime(),

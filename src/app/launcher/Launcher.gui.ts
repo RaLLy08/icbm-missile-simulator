@@ -49,8 +49,8 @@ export default class LauncherGui {
   startLongitude: number | string = 'N/A';
   startLatitude: number | string = 'N/A';
 
-  rocketCount = 0;
-  rocketSizeMultiplier = 1;
+  missileCount = 0;
+  missileSizeMultiplier = 1;
 
   /** Payload of the selected missile, kg */
   payloadMass = 800;
@@ -142,7 +142,7 @@ export default class LauncherGui {
         this.showCalculationPreview = ev.value;
       });
 
-    this.folder.addBinding(this, 'rocketCount', {
+    this.folder.addBinding(this, 'missileCount', {
       label: 'Launched Missile Count',
       readonly: true,
       format: (v) => {

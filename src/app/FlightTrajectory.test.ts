@@ -41,16 +41,16 @@ describe('FlightTrajectory', () => {
       }
     );
 
-  it('launches a rocket that lands close to the target', async () => {
+  it('launches a missile that lands close to the target', async () => {
     const trajectory = createTrajectory();
     const bestGenome = await trajectory.calcTrajectory(0);
 
-    const rocket = bestGenome.rocket;
-    const missDistance = rocket.position.distanceTo(target); // km
+    const missile = bestGenome.missile;
+    const missDistance = missile.position.distanceTo(target); // km
 
-    expect(rocket.hasLanded).toBe(true);
+    expect(missile.hasLanded).toBe(true);
     expect(missDistance).toBeLessThan(50);
-    expect(bestGenome.multiStageRocket.stages).toHaveLength(2);
+    expect(bestGenome.multiStageMissile.stages).toHaveLength(2);
   }, 120_000);
 
   it('decodes per-stage genes in stage order', () => {

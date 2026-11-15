@@ -90,7 +90,7 @@ const LaunchPad = () => {
           e.stopPropagation();
           openInstructionsPage(INSTRUCTIONS_MENU, 'push');
         }}
-        title="How to launch a rocket"
+        title="How to launch a missile"
       >
         ℹ️
       </button>
@@ -154,7 +154,7 @@ const LaunchPad = () => {
             disabled={queueLength === 0}
             onClick={(e) => {
               e.stopPropagation();
-              getCommands().launchRocket();
+              getCommands().launchMissile();
             }}
           >
             Launch 🚀 {queueLength > 0 && `(${queueLength})`}

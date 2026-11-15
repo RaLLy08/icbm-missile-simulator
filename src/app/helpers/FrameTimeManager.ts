@@ -1,5 +1,5 @@
-import MultiStageRocket from '../rocket/MultiStageRocket';
-import RocketView from '../rocket/RocketView';
+import MultiStageMissile from '../missile/MultiStageMissile';
+import MissileView from '../missile/MissileView';
 import WorldGui from '../WorldGui';
 
 export default class FrameTimeManager {
@@ -12,8 +12,8 @@ export default class FrameTimeManager {
   stepProgress = 0;
 
   constructor(
-    private rocket: MultiStageRocket,
-    private rocketView: RocketView,
+    private missile: MultiStageMissile,
+    private missileView: MissileView,
     private worldGui: WorldGui
   ) {}
 
@@ -25,19 +25,19 @@ export default class FrameTimeManager {
 
     this.stepProgress += delta / updateEachS;
 
-    this.rocketView.setLerpAlpha(this.stepProgress);
-    this.rocketView.setActiveStage(this.rocket.currentStageIndex);
+    this.missileView.setLerpAlpha(this.stepProgress);
+    this.missileView.setActiveStage(this.missile.currentStageIndex);
     // Game-clock delta is already 0 while paused
-    this.rocketView.update(delta * this.worldGui.timeMultiplier);
+    this.missileView.update(delta * this.worldGui.timeMultiplier);
 
     if (this.stepProgress >= 1) {
-      this.rocketView.updatePrevFromRocket();
-      this.rocket.update();
+      this.missileView.updatePrevFromMissile();
+      this.missile.update();
 
       this.missedUpdateCalls += this.stepProgress - 1;
 
       while (this.missedUpdateCalls > 1) {
-        this.rocket.update();
+        this.missile.update();
         this.missedUpdateCalls -= 1;
       }
 

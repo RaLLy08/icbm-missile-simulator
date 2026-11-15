@@ -3,7 +3,7 @@ import { normalizeBetween, toExponentGrowth } from 'app/utils';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import MouseTracker from './MouseTracker';
-import RocketTrackingView from 'app/rocket/RocketTrackingView';
+import MissileTrackingView from 'app/missile/MissileTrackingView';
 
 const WIDTH = window.innerWidth;
 const HEIGHT = window.innerHeight;
@@ -22,8 +22,8 @@ export default class CameraManager {
     );
   }
 
-  cameraController: EarthCamera | RocketCamera | null = null;
-  rocketCameraController: RocketCamera | null = null;
+  cameraController: EarthCamera | MissileCamera | null = null;
+  missileCameraController: MissileCamera | null = null;
   earthCameraController: EarthCamera | null = null;
 
   getCamera() {
@@ -47,8 +47,8 @@ export default class CameraManager {
   miniWindowEnabled = true;
 
   setEarthCamera(earth: Earth) {
-    if (this.rocketCameraController) {
-      this.rocketCameraController.disable();
+    if (this.missileCameraController) {
+      this.missileCameraController.disable();
     }
 
     if (this.earthCameraController == null) {
@@ -72,12 +72,12 @@ export default class CameraManager {
   get isChasing() {
     return (
       this.cameraController !== null &&
-      this.cameraController === this.rocketCameraController
+      this.cameraController === this.missileCameraController
     );
   }
 
   /** Chase a missile: the main view mirrors its tracking view. */
-  setRocketCamera(trackingView: RocketTrackingView) {
+  setMissileCamera(trackingView: MissileTrackingView) {
     if (this.earthCameraController) {
       this.earthCameraController.disable();
       // Use the drawing size, not clientWidth/Height: those are 0 while the
@@ -87,25 +87,25 @@ export default class CameraManager {
       this.earthCameraController.camera.updateProjectionMatrix();
     }
 
-    if (this.rocketCameraController == null) {
-      this.rocketCameraController = new RocketCamera(
+    if (this.missileCameraController == null) {
+      this.missileCameraController = new MissileCamera(
         this.createCamera(window.innerWidth / window.innerHeight),
         trackingView,
         this.fullScreenRenderer.domElement
       );
     } else {
-      this.rocketCameraController.enable();
-      this.rocketCameraController.setSource(trackingView);
+      this.missileCameraController.enable();
+      this.missileCameraController.setSource(trackingView);
     }
 
-    this.cameraController = this.rocketCameraController;
+    this.cameraController = this.missileCameraController;
   }
 
   update(delta: number) {
     if (!this.cameraController) return;
 
     this.cameraController.update(delta);
-    if (this.cameraController instanceof RocketCamera) {
+    if (this.cameraController instanceof MissileCamera) {
       this.cameraController.render(this.fullScreenRenderer);
     } else {
       this.fullScreenRenderer.render(this.scene, this.cameraController.camera);
@@ -114,7 +114,7 @@ export default class CameraManager {
     if (
       this.miniWindowEnabled &&
       this.earthCameraController &&
-      this.cameraController === this.rocketCameraController
+      this.cameraController === this.missileCameraController
     ) {
       this.miniWindowRenderer.render(
         this.scene,
@@ -376,7 +376,7 @@ class EarthCamera {
  * on the main canvas drives that same tracking view, so both screens always
  * show exactly the same thing (mode, rotation, zoom).
  */
-class RocketCamera {
+class MissileCamera {
   camera: THREE.PerspectiveCamera;
 
   // Per-pixel drag sensitivity on the full-screen canvas
@@ -390,7 +390,7 @@ class RocketCamera {
 
   constructor(
     camera: THREE.PerspectiveCamera,
-    private source: RocketTrackingView,
+    private source: MissileTrackingView,
     domElement: HTMLElement
   ) {
     this.camera = camera;
@@ -410,7 +410,7 @@ class RocketCamera {
 
   disabled = false;
 
-  setSource(source: RocketTrackingView) {
+  setSource(source: MissileTrackingView) {
     this.source = source;
   }
 
@@ -483,7 +483,7 @@ class RocketCamera {
   private onMouseWheel = (event: WheelEvent) => {
     if (this.disabled) return;
     event.preventDefault();
-    this.source.zoomBy(RocketTrackingView.wheelToZoomScale(event.deltaY));
+    this.source.zoomBy(MissileTrackingView.wheelToZoomScale(event.deltaY));
   };
 
   /** Copy the tracking view's pose; the source updates it every frame. */

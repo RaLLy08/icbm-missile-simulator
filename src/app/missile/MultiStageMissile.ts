@@ -1,10 +1,10 @@
-import Rocket from './Rocket';
+import Missile from './Missile';
 
 /**
  * One engine stage. Stages burn in order; when a stage runs out of fuel
  * the next one ignites.
  */
-export type RocketStage = {
+export type MissileStage = {
   /** Unit: km/s */
   exhaustVelocity: number;
   /** Unit: kg/s */
@@ -17,15 +17,15 @@ export type RocketStage = {
 const EPSILON_S = 1e-9;
 
 /**
- * Drives a Rocket through several engine stages. The rocket carries the
+ * Drives a Missile through several engine stages. The missile carries the
  * fuel of all stages; once the fuel of the burning stage is used up, the
- * rocket's exhaust velocity and mass flow rate switch to the next stage.
+ * missile's exhaust velocity and mass flow rate switch to the next stage.
  *
- * Use `update` instead of `rocket.update`, so stage switches happen.
+ * Use `update` instead of `missile.update`, so stage switches happen.
  */
-export default class MultiStageRocket {
+export default class MultiStageMissile {
   /** Stages that can actually burn (positive fuel and flow rate). */
-  readonly stages: RocketStage[];
+  readonly stages: MissileStage[];
 
   /**
    * Index of the burning stage; equals `stages.length` after the last
@@ -37,15 +37,15 @@ export default class MultiStageRocket {
   private readonly stageFuelEnds: number[] = [];
 
   constructor(
-    readonly rocket: Rocket,
-    stages: RocketStage[]
+    readonly missile: Missile,
+    stages: MissileStage[]
   ) {
     this.stages = stages
       .filter((s) => s.fuelMass > 0 && s.massFlowRate > 0)
       .map((s) => ({ ...s }));
 
     if (this.stages.length === 0) {
-      throw new Error('MultiStageRocket requires at least one stage.');
+      throw new Error('MultiStageMissile requires at least one stage.');
     }
 
     let fuel = 0;
@@ -56,26 +56,26 @@ export default class MultiStageRocket {
       this.stageFuelEnds.push(fuel);
     }
 
-    rocket.fuelMass = fuel;
-    rocket.fuelCombustionTime = burnTime;
-    rocket.currentTotalMass = rocket.payloadMass + rocket.remainingFuel;
+    missile.fuelMass = fuel;
+    missile.fuelCombustionTime = burnTime;
+    missile.currentTotalMass = missile.payloadMass + missile.remainingFuel;
 
     this.syncStage();
   }
 
   /** The stage burning right now, or null after engine cutoff. */
-  get currentStage(): RocketStage | null {
+  get currentStage(): MissileStage | null {
     return this.stages[this.currentStageIndex] ?? null;
   }
 
   /** Fuel left in the burning stage. Unit: kg */
   get currentStageRemainingFuel() {
     const end = this.stageFuelEnds[this.currentStageIndex];
-    return end == null ? 0 : Math.max(end - this.rocket.burntFuel, 0);
+    return end == null ? 0 : Math.max(end - this.missile.burntFuel, 0);
   }
 
   /**
-   * Advances the rocket by `tick` seconds. A step that crosses a stage
+   * Advances the missile by `tick` seconds. A step that crosses a stage
    * boundary is split there, so each stage burns exactly its own fuel.
    */
   update(tick = 1) {
@@ -88,17 +88,17 @@ export default class MultiStageRocket {
       const stageTimeLeft = stage
         ? this.currentStageRemainingFuel / stage.massFlowRate
         : Infinity;
-      // Do not split a step on the last stage: the rocket stops by itself
+      // Do not split a step on the last stage: the missile stops by itself
       const isLastStage = this.currentStageIndex >= this.stages.length - 1;
       const step =
         !isLastStage && stageTimeLeft < remaining - EPSILON_S
           ? stageTimeLeft
           : remaining;
 
-      this.rocket.update(step);
+      this.missile.update(step);
       remaining -= step;
 
-      if (this.rocket.hasLanded) break;
+      if (this.missile.hasLanded) break;
     }
 
     this.syncStage();
@@ -106,7 +106,7 @@ export default class MultiStageRocket {
 
   /** Selects the stage matching the burnt fuel and applies its engine. */
   private syncStage() {
-    const burntFuel = this.rocket.burntFuel;
+    const burntFuel = this.missile.burntFuel;
     let i = this.currentStageIndex;
     // Small tolerance for floating point error at the stage boundary
     while (
@@ -119,8 +119,8 @@ export default class MultiStageRocket {
 
     const stage = this.currentStage;
     if (stage) {
-      this.rocket.exhaustVelocity = stage.exhaustVelocity;
-      this.rocket.massFlowRate = stage.massFlowRate;
+      this.missile.exhaustVelocity = stage.exhaustVelocity;
+      this.missile.massFlowRate = stage.massFlowRate;
     }
   }
 }

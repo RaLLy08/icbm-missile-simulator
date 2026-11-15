@@ -177,7 +177,7 @@ $mobile_breakpoint: 640px;
     gap: 6px;
     pointer-events: none;
 
-    > .rocketGui {
+    > .missileGui {
       pointer-events: auto;
     }
 
@@ -187,7 +187,7 @@ $mobile_breakpoint: 640px;
     }
   }
 
-  .rocketGui {
+  .missileGui {
     padding: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     max-height: 100%;
@@ -235,7 +235,7 @@ $mobile_breakpoint: 640px;
   // folded from the bottom of a long pane. Tweakpane's header color is
   // translucent, so layer it over the opaque pane background to keep the
   // scrolled content from showing through.
-  .rocketGui,
+  .missileGui,
   .mainGui {
     :global(.tp-rotv_b) {
       $layer: linear-gradient(var(--cnt-bg), var(--cnt-bg));
@@ -1146,7 +1146,7 @@ $mobile_breakpoint: 640px;
       display: contents;
     }
 
-    .rocketGui {
+    .missileGui {
       position: absolute;
       top: 36px;
       left: $gutter;
@@ -1165,7 +1165,7 @@ $mobile_breakpoint: 640px;
 
     // an expanded pane is unreadable at half width: let it span the screen
     // (covering the other pane's header) until it is collapsed again
-    .rocketGui:has(> :global(.tp-rotv-expanded)),
+    .missileGui:has(> :global(.tp-rotv-expanded)),
     .topRightPanel:has(:global(.tp-rotv-expanded)) {
       width: calc(100% - #{$gutter * 2});
       z-index: 2;
@@ -1193,7 +1193,7 @@ $mobile_breakpoint: 640px;
       max-height: 55vh;
     }
 
-    .rocketGui,
+    .missileGui,
     .mainGui {
       overflow-x: hidden;
 

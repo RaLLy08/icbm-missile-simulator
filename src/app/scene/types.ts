@@ -27,8 +27,8 @@ export type SimulationContext = {
   launcherGui: LauncherGui;
   launcherView: LauncherView;
   worldGui: WorldGui;
-  rocketGuiPane: Pane;
-  rocketGuiContainer: HTMLElement;
+  missileGuiPane: Pane;
+  missileGuiContainer: HTMLElement;
 };
 
 /** Removes an item from the update loop (no-op if it isn't there). */

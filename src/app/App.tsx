@@ -46,7 +46,7 @@ const App = () => {
 
   const sceneContainerId = useId();
   const mainGuiContainerId = useId();
-  const rocketGuiContainerId = useId();
+  const missileGuiContainerId = useId();
   const mouseFollowerId = useId();
   const miniWindowId = useId();
 
@@ -56,12 +56,12 @@ const App = () => {
     const byId = (id: string) => document.getElementById(id);
     const sceneContainer = byId(sceneContainerId);
     const mainGuiContainer = byId(mainGuiContainerId);
-    const rocketGuiContainer = byId(rocketGuiContainerId);
+    const missileGuiContainer = byId(missileGuiContainerId);
     const miniWindow = byId(miniWindowId);
     if (
       !sceneContainer ||
       !mainGuiContainer ||
-      !rocketGuiContainer ||
+      !missileGuiContainer ||
       !miniWindow
     ) {
       return;
@@ -71,7 +71,7 @@ const App = () => {
       {
         sceneContainer,
         mainGuiContainer,
-        rocketGuiContainer,
+        missileGuiContainer,
         miniWindow,
         mouseFollower: byId(mouseFollowerId),
       },
@@ -101,7 +101,7 @@ const App = () => {
         className={clsx(s.container, { [s.hide]: isPositionSelectionActive })}
       >
         <div className={s.topLeftPanel}>
-          <div id={rocketGuiContainerId} className={s.rocketGui}></div>
+          <div id={missileGuiContainerId} className={s.missileGui}></div>
           <div
             className={clsx(s.infoChip, s.altitudeChip)}
             title="Camera altitude above the Earth's surface"

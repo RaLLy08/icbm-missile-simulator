@@ -41,14 +41,14 @@ class Earth {
 
   gravityForce(target: THREE.Vector3): THREE.Vector3 {
     const earthGravityVector = new THREE.Vector3()
-      .subVectors(this.position, target) // Earth - Rocket
+      .subVectors(this.position, target) // Earth - Missile
       .normalize();
 
-    const distanceToRocketMeters = this.position.distanceTo(target) * 1000; // Convert km to meters
+    const distanceToMissileMeters = this.position.distanceTo(target) * 1000; // Convert km to meters
 
     // Calculate gravitational force
     const gravityForceMagnitude =
-      (Earth.G * Earth.MASS) / distanceToRocketMeters ** 2;
+      (Earth.G * Earth.MASS) / distanceToMissileMeters ** 2;
 
     return earthGravityVector.multiplyScalar(gravityForceMagnitude * 0.001); // Convert to km/s^2
   }
