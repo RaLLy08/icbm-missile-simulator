@@ -53,8 +53,8 @@ const getCandidateRows = (c: BestCandidate) => [
   { key: 'd1', label: null, value: null },
   {
     key: 'incline',
-    label: 'Turn Start Altitude',
-    value: `${c.startInclineAfterDistance.toFixed(2)} km`,
+    label: 'Gravity Turn Start Altitude',
+    value: `${c.startInclineAfterAltitude.toFixed(2)} km`,
   },
   {
     key: 'turnDuration',

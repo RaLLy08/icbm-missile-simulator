@@ -15,7 +15,7 @@ const applyQueueItemToLauncher = (
   const p = item.trajectoryParams;
   launcher.rocketStartPosition = item.startPosition;
   launcher.rocketTargetPosition = item.targetPosition;
-  launcher.startInclineAfterDistance = p.startInclineAfterDistance;
+  launcher.startInclineAfterAltitude = p.startInclineAfterAltitude;
   launcher.thrustInclineMaxDuration = p.thrustInclineMaxDuration;
   launcher.thrustInclineVelocity = p.thrustInclineVelocity;
   launcher.stages = p.stages.map((s) => ({ ...s }));

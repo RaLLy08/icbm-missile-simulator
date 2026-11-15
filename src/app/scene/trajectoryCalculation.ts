@@ -24,7 +24,7 @@ const toCandidate = (
     // Real impact distance, unlike fitness which may also include
     // flight time when "minimize flight time" is enabled
     missDistance: rocket.position.distanceTo(targetPos),
-    startInclineAfterDistance: rocket.startInclineAfterDistance,
+    startInclineAfterAltitude: rocket.startInclineAfterAltitude,
     thrustInclineMaxDuration: rocket.thrustInclineMaxDuration,
     thrustInclineVelocity: rocket.thrustInclineVelocity,
     stages: multiStageRocket.stages.map((s) => ({ ...s })),
@@ -76,7 +76,7 @@ export const createTrajectoryCalculator =
         startGeo: Earth.positionToGeoCoordinates(startPos),
         targetGeo: Earth.positionToGeoCoordinates(targetPos),
         trajectoryParams: {
-          startInclineAfterDistance: launcher.startInclineAfterDistance,
+          startInclineAfterAltitude: launcher.startInclineAfterAltitude,
           thrustInclineMaxDuration: launcher.thrustInclineMaxDuration,
           thrustInclineVelocity: launcher.thrustInclineVelocity,
           stages: launcher.stages.map((s) => ({ ...s })),

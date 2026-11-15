@@ -10,7 +10,7 @@ export default class Launcher {
 
   rocketStartPosition: THREE.Vector3 | null = null;
   rocketTargetPosition: THREE.Vector3 | null = null;
-  startInclineAfterDistance = 8; // km
+  startInclineAfterAltitude = 8; // km
   thrustInclineMaxDuration = 160; // seconds
   thrustInclineVelocity = THREE.MathUtils.degToRad(0.5); // radians per second
   stages: RocketStage[] = [
@@ -56,7 +56,7 @@ export default class Launcher {
       this.rocketStartPosition,
       this.rocketTargetPosition,
       {
-        startInclineAfterDistance: { ...bounds.startInclineAfterDistance },
+        startInclineAfterAltitude: { ...bounds.startInclineAfterAltitude },
         thrustInclineMaxDuration: { ...bounds.thrustInclineMaxDuration },
         thrustInclineVelocity: {
           min: THREE.MathUtils.degToRad(bounds.thrustInclineVelocityDeg.min),
@@ -91,7 +91,7 @@ export default class Launcher {
     const multiStageRocket: MultiStageRocket = genome.multiStageRocket;
     const { rocket } = multiStageRocket;
 
-    this.startInclineAfterDistance = rocket.startInclineAfterDistance;
+    this.startInclineAfterAltitude = rocket.startInclineAfterAltitude;
     this.thrustInclineMaxDuration = rocket.thrustInclineMaxDuration;
     this.thrustInclineVelocity = rocket.thrustInclineVelocity;
     this.stages = multiStageRocket.stages.map((s) => ({ ...s }));
@@ -116,7 +116,7 @@ export default class Launcher {
       this.earth,
       this.rocketStartPosition,
       targetInclineVector,
-      this.startInclineAfterDistance,
+      this.startInclineAfterAltitude,
       this.thrustInclineMaxDuration,
       this.thrustInclineVelocity,
       undefined, // fuel and engine are set per stage by MultiStageRocket

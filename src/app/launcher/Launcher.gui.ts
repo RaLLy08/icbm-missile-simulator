@@ -18,7 +18,7 @@ export interface StageCalculationBounds {
 }
 
 export interface CalculationBounds {
-  startInclineAfterDistance: CalculationRange; // km
+  startInclineAfterAltitude: CalculationRange; // km
   thrustInclineMaxDuration: CalculationRange; // seconds
   thrustInclineVelocityDeg: CalculationRange; // degrees per second
   /** Burnt in ascending `stage` order */
@@ -59,7 +59,7 @@ export default class LauncherGui {
   missileHeight: number | null = null;
 
   calculationBounds: CalculationBounds = {
-    startInclineAfterDistance: { min: 1, max: 4 },
+    startInclineAfterAltitude: { min: 1, max: 4 },
     thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
     thrustInclineVelocityDeg: { min: 0, max: 20 },
     stages: [
@@ -168,7 +168,7 @@ export default class LauncherGui {
     this.guidanceBindings = [
       ...this.addRangeBindings(
         calculationFolder,
-        bounds.startInclineAfterDistance,
+        bounds.startInclineAfterAltitude,
         'Gravity Turn Start Altitude',
         'km',
         { min: 0, step: 0.1 }
@@ -256,8 +256,8 @@ export default class LauncherGui {
     const bounds = this.calculationBounds;
 
     Object.assign(
-      bounds.startInclineAfterDistance,
-      missile.startInclineAfterDistance
+      bounds.startInclineAfterAltitude,
+      missile.startInclineAfterAltitude
     );
     Object.assign(
       bounds.thrustInclineMaxDuration,

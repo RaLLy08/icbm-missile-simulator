@@ -13,7 +13,7 @@ describe('FlightTrajectory', () => {
       start,
       target,
       {
-        startInclineAfterDistance: { min: 1, max: 4 },
+        startInclineAfterAltitude: { min: 1, max: 4 },
         thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
         thrustInclineVelocity: {
           min: THREE.MathUtils.degToRad(0),
@@ -56,7 +56,7 @@ describe('FlightTrajectory', () => {
   it('decodes per-stage genes in stage order', () => {
     const decoded = decodeGenome([1, 2, 3, 3.5, 300, 20000, 2.5, 150, 2000]);
 
-    expect(decoded.startInclineAfterDistance).toBe(1);
+    expect(decoded.startInclineAfterAltitude).toBe(1);
     expect(decoded.thrustInclineMaxDuration).toBe(2);
     expect(decoded.thrustInclineVelocity).toBe(3);
     expect(decoded.stages).toEqual([

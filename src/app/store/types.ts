@@ -10,7 +10,7 @@ export type BestCandidate = {
   generation: number;
   fitness: number;
   missDistance: number;
-  startInclineAfterDistance: number;
+  startInclineAfterAltitude: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
   stages: RocketStage[];
@@ -24,7 +24,7 @@ export type BestCandidate = {
 };
 
 export type TrajectoryParams = {
-  startInclineAfterDistance: number;
+  startInclineAfterAltitude: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
   stages: RocketStage[];

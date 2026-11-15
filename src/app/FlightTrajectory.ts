@@ -22,7 +22,7 @@ export type StageConstraint = {
 };
 
 export type RocketConstraints = {
-  startInclineAfterDistance: ParamConstrain;
+  startInclineAfterAltitude: ParamConstrain;
   thrustInclineMaxDuration: ParamConstrain;
   thrustInclineVelocity: ParamConstrain;
   stages: StageConstraint[];
@@ -36,7 +36,7 @@ const GUIDANCE_GENES = 3;
 const STAGE_GENES = 3;
 
 export type DecodedGenome = {
-  startInclineAfterDistance: number;
+  startInclineAfterAltitude: number;
   thrustInclineMaxDuration: number;
   thrustInclineVelocity: number;
   stages: RocketStage[];
@@ -44,7 +44,7 @@ export type DecodedGenome = {
 
 /**
  * Genome layout:
- * [startInclineAfterDistance, thrustInclineMaxDuration, thrustInclineVelocity,
+ * [startInclineAfterAltitude, thrustInclineMaxDuration, thrustInclineVelocity,
  *  ...per stage: exhaustVelocity, massFlowRate, fuelMass]
  */
 export const decodeGenome = (genome: ArrayLike<number>): DecodedGenome => {
@@ -61,7 +61,7 @@ export const decodeGenome = (genome: ArrayLike<number>): DecodedGenome => {
   }
 
   return {
-    startInclineAfterDistance: genome[0],
+    startInclineAfterAltitude: genome[0],
     thrustInclineMaxDuration: genome[1],
     thrustInclineVelocity: genome[2],
     stages,
@@ -148,7 +148,7 @@ export class FlightTrajectory {
 
   /** Flattens the constraints in the genome layout of `decodeGenome`. */
   private genomeConstraints = (): ParamConstrain[] => {
-    const { startInclineAfterDistance, thrustInclineMaxDuration, stages } =
+    const { startInclineAfterAltitude, thrustInclineMaxDuration, stages } =
       this.rocketConstrains;
 
     const stageConstraints: ParamConstrain[] = [];
@@ -159,7 +159,7 @@ export class FlightTrajectory {
       });
 
     return [
-      startInclineAfterDistance,
+      startInclineAfterAltitude,
       thrustInclineMaxDuration,
       this.rocketConstrains.thrustInclineVelocity,
       ...stageConstraints,
@@ -222,7 +222,7 @@ export class FlightTrajectory {
 
   private createMultistageRocket = (genome: any) => {
     const {
-      startInclineAfterDistance,
+      startInclineAfterAltitude,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
       stages,
@@ -232,7 +232,7 @@ export class FlightTrajectory {
       this.earth,
       this.start,
       this.target,
-      startInclineAfterDistance,
+      startInclineAfterAltitude,
       thrustInclineMaxDuration,
       thrustInclineVelocity,
       undefined, // fuel and engine are set per stage by MultiStageRocket

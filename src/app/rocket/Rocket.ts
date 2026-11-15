@@ -74,7 +74,7 @@ class Rocket {
    * @param earth The Earth instance to which the rocket is associated.
    * @param initialPosition The initial position of the rocket in 3D space.
    * @param targetInclineVector Thrust straight-line direction (Euclidean) towards the target.
-   * @param startInclineAfterDistance The distance after which the rocket starts to incline
+   * @param startInclineAfterAltitude The distance after which the rocket starts to incline
    * @param thrustInclineMaxDuration The maximum duration for the thrust incline
    * @param thrustInclineVelocity The velocity of the thrust incline in radians per second
    * @param fuelMass The mass of the rocket fuel in kilograms
@@ -86,7 +86,7 @@ class Rocket {
     private earth: Earth,
     public readonly initialPosition: THREE.Vector3,
     public readonly targetInclineVector: THREE.Vector3,
-    public readonly startInclineAfterDistance: number = 8,
+    public readonly startInclineAfterAltitude: number = 8,
     public readonly thrustInclineMaxDuration: number = 160,
     public readonly thrustInclineVelocity: number = THREE.MathUtils.degToRad(
       0.5
@@ -170,7 +170,7 @@ class Rocket {
 
     // --- 3. Gradual interpolation between gravity-opposite and toTarget ---
     if (
-      this.altitude > this.startInclineAfterDistance &&
+      this.altitude > this.startInclineAfterAltitude &&
       this.currentThrustInclineDuration <= this.thrustInclineMaxDuration
     ) {
       this.currentThrustInclineDuration += tick;
