@@ -3,7 +3,7 @@ import Missile from './Missile';
 import MultiStageMissile from './MultiStageMissile';
 import MissileView, { ForceArrowKey } from './missile-view/MissileView';
 import * as THREE from 'three';
-import { formatKm, formatSeconds, formatUnit } from 'app/utils';
+import { formatKm, formatKmPerS, formatSeconds } from 'app/utils';
 import MissileTrackingView from './missile-view/MissileTrackingView';
 
 export default class MissileGui {
@@ -125,7 +125,7 @@ export default class MissileGui {
     this.folder.addBinding(this, 'velocity', {
       label: 'Velocity',
       readonly: true,
-      format: (v) => formatUnit(v, 'm/s', 2),
+      format: (v) => formatKmPerS(v, 5),
     });
 
     this.folder.addBinding(this, 'thrust', {

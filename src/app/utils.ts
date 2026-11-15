@@ -77,6 +77,15 @@ export const formatMeters = (meters: number, fractionDigits = 0): string =>
 export const formatKm = (meters: number, fractionDigits = 1): string =>
   formatUnit(meters / 1000, 'km', fractionDigits);
 
+/**
+ * Formats a speed given in m/s as km/s, e.g. formatKmPerS(7123.4) -> "7.123 km/s".
+ * Display only: all internal values stay in m/s.
+ */
+export const formatKmPerS = (
+  metersPerSecond: number,
+  fractionDigits = 3
+): string => formatUnit(metersPerSecond / 1000, 'km/s', fractionDigits);
+
 export const toExponentGrowth = (
   percentage: number,
   exponentBase = 2

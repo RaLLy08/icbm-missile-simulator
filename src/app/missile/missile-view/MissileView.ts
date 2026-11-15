@@ -42,6 +42,7 @@ import {
     releaseAudio,
 } from 'app/helpers/SpatialAudio';
 import { announceTargetReached } from 'app/helpers/Speech';
+import { formatKmPerS } from 'app/utils';
 
 const TARGET_REACHED_ANNOUNCE_DELAY_MS = 1000;
 /** "Target reached" is only announced if the impact is within this distance (m). */
@@ -888,7 +889,7 @@ export default class MissileView {
       this.group.position,
       velocity.clone().normalize(),
       velocity.length(),
-      `${velocity.length().toFixed(1)} m/s` + this.angleToGravityText(velocity)
+      formatKmPerS(velocity.length()) + this.angleToGravityText(velocity)
     );
 
     this.updateArrow(
