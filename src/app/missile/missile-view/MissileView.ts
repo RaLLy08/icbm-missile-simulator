@@ -755,8 +755,6 @@ export default class MissileView {
   private flameCoreMesh: THREE.Mesh | null = null;
   /** Wide translucent bell the exhaust balloons into at high altitude. */
   private vacuumPlumeMesh: THREE.Mesh | null = null;
-  /** Bright glow at the nozzle exit (reads as bloom from far away). */
-  private flameGlow: THREE.Sprite | null = null;
   /** Smoke column left in the lower atmosphere. */
   private exhaustSmoke: ExhaustSmoke | null = null;
   /** Simulation seconds elapsed (advanced by `stepDebris`). */
@@ -1453,23 +1451,6 @@ export default class MissileView {
     this.vacuumPlumeMesh = vacuumPlumeMesh;
     this.nozzleGimbal.add(vacuumPlumeMesh);
 
-    // Glare around the nozzle exit
-    const flameGlow = new THREE.Sprite(
-      new THREE.SpriteMaterial({
-        color: 0xffb060,
-        map: getPlasmaHaloTexture(),
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      })
-    );
-    flameGlow.name = 'flame-glow';
-    flameGlow.position.y = -nozzleHeight - fire.height * 0.08;
-    flameGlow.visible = false;
-    this.flameGlow = flameGlow;
-    this.nozzleGimbal.add(flameGlow);
-
     this.applyActiveStage();
 
     // ------------------------------------------------------------------------
@@ -1826,7 +1807,6 @@ export default class MissileView {
 
     this.burningFireMesh.visible = on;
     if (this.flameCoreMesh) this.flameCoreMesh.visible = on;
-    if (this.flameGlow) this.flameGlow.visible = on;
     if (this.vacuumPlumeMesh) this.vacuumPlumeMesh.visible = on && e > 0.02;
     if (!on) return;
 
@@ -1861,16 +1841,6 @@ export default class MissileView {
       bell.rotation.y = Math.random() * Math.PI * 2;
       (bell.material as THREE.MeshBasicMaterial).opacity =
         0.5 * Math.pow(e, 1.3) * jitter(0.1);
-    }
-
-    // Nozzle glare: big and hot in dense air (lit exhaust and smoke),
-    // dimmer but wider in thin air
-    if (this.flameGlow) {
-      const size =
-        this.dimensions.fire.bottomRadius * (6 + 4 * e) * ratio * flicker;
-      this.flameGlow.scale.set(size, size, 1);
-      (this.flameGlow.material as THREE.SpriteMaterial).opacity =
-        (0.85 - 0.35 * e) * ratio * jitter(0.15);
     }
   }
 
@@ -2173,8 +2143,6 @@ export default class MissileView {
     // Sprites are not Meshes; their geometry is shared, only the material is ours
     this.plasmaHalo?.material.dispose();
     this.plasmaHalo = null;
-    this.flameGlow?.material.dispose();
-    this.flameGlow = null;
     this.flameCoreMesh = null;
     this.vacuumPlumeMesh = null;
     this.exhaustSmoke?.remove();
