@@ -235,7 +235,7 @@ export default class MissileGui {
     });
 
     this.folder.addBinding(this, 'thrustInclineVelocity', {
-      label: ' Velocity Angular Velocity (ω) of Thrust',
+      label: ' Angular Velocity (ω) of Thrust during Gravity Turn',
       readonly: true,
       format: (v) => v.toFixed(3) + ' rad/s',
     });
