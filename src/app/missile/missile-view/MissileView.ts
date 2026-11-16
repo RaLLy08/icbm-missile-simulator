@@ -6,6 +6,10 @@ import { getCanvasTexture } from './canvasTexture';
 import ArrowLabel from './ArrowLabel';
 import TrailView from './TrailView';
 import ExhaustSmoke from './ExhaustSmoke';
+import NuclearExplosion, {
+  estimateYieldKt,
+  type NuclearExplosionOptions,
+} from './NuclearExplosion';
 import Earth from '../../earth/Earth';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
@@ -188,9 +192,13 @@ export class EngineSound {
 }
 
 export class ExplosionEffect {
-  private rings: THREE.Mesh[] = [];
-  private startTime: number = 0;
-  private duration: number = 2000; // 2 seconds
+  private visual: NuclearExplosion | null = null;
+  /** Simulation time of the detonation. Unit: s */
+  private startSimTime = 0;
+  /** Real time of the detonation. Unit: ms */
+  private startRealTime = 0;
+  /** Unit: s (simulation time) */
+  private duration = 0;
   private isActive: boolean = false;
   /** Close-range blast; volume follows camera distance while playing. */
   private audio: HTMLAudioElement | null = null;
@@ -199,7 +207,8 @@ export class ExplosionEffect {
 
   constructor(
     private readonly scene: THREE.Scene,
-    private readonly ringCount: number = 3
+    /** Yield, burst height, size and length of the detonation. */
+    public options: NuclearExplosionOptions = {}
   ) {}
 
   private updateVolume() {
@@ -208,8 +217,18 @@ export class ExplosionEffect {
       this.baseVolume * getDistanceVolume(this.position, EXPLOSION_FALLOFF);
   }
 
-  start(position: THREE.Vector3, normal: THREE.Vector3) {
-    this.startTime = Date.now();
+  /**
+   * @param simTime Current simulation time. Unit: s
+   * @param options Overrides the effect's `options` for this detonation.
+   */
+  start(
+    position: THREE.Vector3,
+    normal: THREE.Vector3,
+    simTime: number,
+    options: NuclearExplosionOptions = this.options
+  ) {
+    this.startSimTime = simTime;
+    this.startRealTime = performance.now();
     this.isActive = true;
     this.position = position.clone();
 
@@ -236,75 +255,37 @@ export class ExplosionEffect {
       console.warn('Failed to play explosion sound:', error);
     });
 
-    // Create expanding rings
-    for (let i = 0; i < this.ringCount; i++) {
-      const ringGeometry = new THREE.RingGeometry(1000, 2000, 32);
-      const ringMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff4500,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.8,
-      });
-      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-
-      // Position ring at explosion point
-      ring.position.copy(position);
-
-      // Align ring perpendicular to the surface normal
-      ring.lookAt(position.clone().add(normal));
-
-      this.rings.push(ring);
-      this.scene.add(ring);
-    }
+    this.visual?.remove();
+    this.visual = new NuclearExplosion(this.scene, options);
+    this.duration = this.visual.durationS;
+    this.visual.start(position, normal);
   }
 
-  update() {
+  /**
+   * Advance the effect. It runs on simulation time, so it follows the time
+   * multiplier and freezes while paused.
+   * @param simTime Current simulation time. Unit: s
+   */
+  update(simTime: number) {
     // Keep adjusting while the sound plays (it may outlast the visual effect)
     if (this.audio && !this.audio.paused) this.updateVolume();
 
     if (!this.isActive) return;
 
-    const elapsed = Date.now() - this.startTime;
-    const progress = Math.min(elapsed / this.duration, 1);
-
-    if (progress >= 1) {
+    const elapsed = Math.max(0, simTime - this.startSimTime);
+    if (elapsed >= this.duration) {
       this.remove();
       return;
     }
 
-    this.rings.forEach((ring, index) => {
-      // Stagger the start of each ring
-      const ringDelay = (index / this.ringCount) * 0.3;
-      const ringProgress = Math.max(
-        0,
-        (progress - ringDelay) / (1 - ringDelay)
-      );
-
-      // Expand the ring
-      const maxScale = 100 + index * 10;
-      const scale = 1 + ringProgress * maxScale;
-      ring.scale.set(scale, scale, 1);
-
-      // Fade out with damping
-      const opacity = (1 - ringProgress) * 0.8 * Math.exp(-ringProgress * 2);
-      (ring.material as THREE.MeshBasicMaterial).opacity = opacity;
-
-      // Change color from orange to red to dark
-      const r = 1;
-      const g = Math.max(0, 0.5 - ringProgress * 0.5);
-      const b = 0;
-      (ring.material as THREE.MeshBasicMaterial).color.setRGB(r, g, b);
-    });
+    const realElapsed = (performance.now() - this.startRealTime) / 1000;
+    this.visual?.update(elapsed, realElapsed);
   }
 
   remove() {
     this.isActive = false;
-    this.rings.forEach((ring) => {
-      this.scene.remove(ring);
-      ring.geometry.dispose();
-      (ring.material as THREE.MeshBasicMaterial).dispose();
-    });
-    this.rings = [];
+    this.visual?.remove();
+    this.visual = null;
   }
 
   get active(): boolean {
@@ -780,6 +761,10 @@ export default class MissileView {
   private exhaustSmoke: ExhaustSmoke | null = null;
   /** Simulation seconds elapsed (advanced by `stepDebris`). */
   private simTime = 0;
+  /** Simulation time of the frame being drawn (between physics steps). Unit: s */
+  private get renderSimTime() {
+    return this.simTime + THREE.MathUtils.clamp(this.lerpAlpha, 0, 1);
+  }
   /** Smoothed plume expansion (0 = sea level .. 1 = vacuum). */
   private plumeExpansion = 0;
   private readonly nozzleWorld = new THREE.Vector3();
@@ -892,6 +877,29 @@ export default class MissileView {
     this.maxBurnRate = rate > 0 ? rate : null;
   }
 
+  /**
+   * Detonation parameters (yield, burst height, size, length) used when
+   * this missile reaches the ground. Without `yieldKt`, the yield is
+   * estimated from the missile's payload mass.
+   */
+  setExplosionOptions(options: NuclearExplosionOptions) {
+    if (this.explosionEffect) this.explosionEffect.options = { ...options };
+  }
+
+  /** Estimated warhead yield from the payload mass. Unit: kt */
+  get estimatedYieldKt() {
+    return estimateYieldKt(this.missile.payloadMass);
+  }
+
+  /** Options of the coming detonation; explicit ones override the estimate. */
+  private get explosionOptions(): NuclearExplosionOptions {
+    const options = this.explosionEffect?.options ?? {};
+    return {
+      ...options,
+      yieldKt: options.yieldKt ?? this.estimatedYieldKt,
+    };
+  }
+
   private lerpAlpha = 1;
 
   setLerpAlpha(alpha: number) {
@@ -908,7 +916,7 @@ export default class MissileView {
     this.group = new THREE.Group();
     this.trailView = new TrailView(this.scene);
     this.exhaustSmoke = new ExhaustSmoke(this.scene);
-    this.explosionEffect = new ExplosionEffect(this.scene, 5);
+    this.explosionEffect = new ExplosionEffect(this.scene);
   }
 
   /**
@@ -1751,7 +1759,12 @@ export default class MissileView {
       this.explosionEffect
     ) {
       const normal = this.missile.position.clone().normalize();
-      this.explosionEffect.start(this.missile.position.clone(), normal);
+      this.explosionEffect.start(
+        this.missile.position.clone(),
+        normal,
+        this.renderSimTime,
+        this.explosionOptions
+      );
       this.hasTriggeredExplosion = true;
 
       const missDistance = this.targetPosition
@@ -1769,7 +1782,7 @@ export default class MissileView {
 
     // Update explosion effect animation
     if (this.explosionEffect) {
-      this.explosionEffect.update();
+      this.explosionEffect.update(this.renderSimTime);
     }
   }
 
@@ -1872,7 +1885,7 @@ export default class MissileView {
   private updateExhaustSmoke() {
     const smoke = this.exhaustSmoke;
     if (!smoke) return;
-    const time = this.simTime + Math.min(this.lerpAlpha, 1);
+    const time = this.renderSimTime;
     smoke.update(time);
 
     const ratio = this.currentBurnRatio;

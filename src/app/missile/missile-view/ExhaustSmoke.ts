@@ -5,7 +5,7 @@ import { getCanvasTexture } from './canvasTexture';
  * Soft, lumpy smoke puff: several overlapping blobs inside a round falloff,
  * so neighbouring puffs merge into a billowing column.
  */
-const getSmokePuffTexture = () =>
+export const getSmokePuffTexture = () =>
   getCanvasTexture('smoke-puff', 128, 128, (ctx, w, h) => {
     const blob = (x: number, y: number, r: number, a: number) => {
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
