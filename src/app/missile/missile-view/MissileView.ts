@@ -1700,8 +1700,6 @@ export default class MissileView {
     );
   }
 
-  endPositionSkyMarker: null | THREE.Line = null;
-
   update(): void {
     this.updatePosition();
     this.renderDebris();
@@ -1721,16 +1719,6 @@ export default class MissileView {
 
     if (!this.missile.hasLanded) {
       this.extendTrail();
-    }
-
-    if (this.missile.hasLanded && this.endPositionSkyMarker == null) {
-      this.endPositionSkyMarker = this.earthView.createLineToSkyMarker(
-        this.missile.position,
-        0x00ff00,
-        this.missile.maxAltitude
-      );
-
-      this.scene.add(this.endPositionSkyMarker);
     }
 
     // Trigger explosion effect when missile lands
@@ -2126,12 +2114,6 @@ export default class MissileView {
 
     this.debris.forEach((d) => d.remove());
     this.debris = [];
-
-    if (this.endPositionSkyMarker) {
-      this.scene.remove(this.endPositionSkyMarker);
-      this.endPositionSkyMarker.geometry.dispose();
-      this.endPositionSkyMarker = null;
-    }
 
     this.group.traverse((child) => {
       if (child instanceof THREE.Mesh) {

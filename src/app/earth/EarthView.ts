@@ -382,24 +382,6 @@ export default class EarthView {
     this.scene.add(cross);
   };
 
-  createLineToSkyMarker(
-    position: THREE.Vector3,
-    color: number = 0x00ff00,
-    length: number = 1_000_000 // m
-  ) {
-    const material = new THREE.LineBasicMaterial({ color: color });
-
-    const points: THREE.Vector3[] = [
-      position.clone(),
-      position.clone().addScaledVector(position.clone().normalize(), length),
-    ];
-
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const line = new THREE.Line(geometry, material);
-
-    return line;
-  }
-
   removeMarker(marker: THREE.Mesh) {
     this.scene.remove(marker);
   }
