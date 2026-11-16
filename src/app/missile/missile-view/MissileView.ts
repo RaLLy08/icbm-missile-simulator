@@ -41,6 +41,7 @@ import distantVariant12 from 'public/audio/distant_explosion_variants/distant_ex
 import engineStartAudio from 'public/audio/start.mp3';
 import engineFlightAudio from 'public/audio/flight.mp3';
 import engineEndAudio from 'public/audio/end.mp3';
+import atmosphericDragAudio from 'public/audio/atmospheric_drag_effect.mp3';
 import detachVariant0 from 'public/audio/detach/detach_0.wav';
 import detachVariant1 from 'public/audio/detach/detach_1.wav';
 import detachVariant2 from 'public/audio/detach/detach_2.wav';
@@ -191,6 +192,56 @@ export class EngineSound {
   }
 }
 
+/** Below this volume the loop is paused instead of playing silently. */
+const DRAG_SOUND_MIN_VOLUME = 0.005;
+/** Per-frame smoothing of the volume, so it never jumps or clicks. */
+const DRAG_SOUND_SMOOTHING = 0.15;
+
+/**
+ * Air rushing past the body: a looped sound whose volume follows the same
+ * aerodynamic intensity (0..1) as the nose glow / plasma animation, so sound
+ * and visual start, peak and fade together. Times the camera distance falloff.
+ * Silent in vacuum and after impact.
+ */
+export class DragSound {
+  private audio: HTMLAudioElement;
+  private volume = 0;
+
+  constructor(private readonly baseVolume = 0.6) {
+    this.audio = createAudio(atmosphericDragAudio);
+    this.audio.loop = true;
+    this.audio.volume = 0;
+  }
+
+  /** @param intensity Aerodynamic effect strength, 0..1 (same as the animation). */
+  update(intensity: number, position: THREE.Vector3) {
+    const target =
+      this.baseVolume *
+      THREE.MathUtils.clamp(intensity, 0, 1) *
+      getDistanceVolume(position, ENGINE_FALLOFF);
+
+    this.volume += (target - this.volume) * DRAG_SOUND_SMOOTHING;
+    if (target === 0 && this.volume < DRAG_SOUND_MIN_VOLUME) this.volume = 0;
+    this.audio.volume = THREE.MathUtils.clamp(this.volume, 0, 1);
+
+    if (this.volume >= DRAG_SOUND_MIN_VOLUME) {
+      if (this.audio.paused) {
+        this.audio.play().catch((error) => {
+          console.warn('Failed to play drag sound:', error);
+        });
+      }
+    } else if (!this.audio.paused) {
+      this.audio.pause();
+    }
+  }
+
+  remove() {
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    releaseAudio(this.audio);
+  }
+}
+
 export class ExplosionEffect {
   private visual: NuclearExplosion | null = null;
   /** Simulation time of the detonation. Unit: s */
@@ -202,7 +253,7 @@ export class ExplosionEffect {
   private isActive: boolean = false;
   /** Close-range blast; volume follows camera distance while playing. */
   private audio: HTMLAudioElement | null = null;
-  private readonly baseVolume = 0.5;
+  private readonly baseVolume = 1;
   private position: THREE.Vector3 | null = null;
 
   constructor(
@@ -795,7 +846,8 @@ export default class MissileView {
   private nozzleHeight = 0;
   private explosionEffect: ExplosionEffect | null = null;
   private hasTriggeredExplosion: boolean = false;
-  private engineSound: EngineSound | null = new EngineSound();
+  private engineSound: EngineSound | null = new EngineSound(0.8);
+  private dragSound: DragSound | null = new DragSound(0.1);
 
   prevPosition = new THREE.Vector3();
   prevVelocity = new THREE.Vector3();
@@ -1717,6 +1769,9 @@ export default class MissileView {
       this.group.position
     );
 
+    // Same intensity that drives the nose glow / plasma (set in updateAeroHeating)
+    this.dragSound?.update(this.heatingIntensity, this.group.position);
+
     if (!this.missile.hasLanded) {
       this.extendTrail();
     }
@@ -2157,6 +2212,11 @@ export default class MissileView {
     if (this.engineSound) {
       this.engineSound.remove();
       this.engineSound = null;
+    }
+
+    if (this.dragSound) {
+      this.dragSound.remove();
+      this.dragSound = null;
     }
   }
 }
