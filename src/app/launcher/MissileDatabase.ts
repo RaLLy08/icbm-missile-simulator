@@ -50,7 +50,7 @@ export const MISSILES: MissileSpec[] = [
     category: MissileCategories.ICBM,
     // = MissileView.REFERENCE_MISSILE_HEIGHT -> default model size
     height: 20,
-    payloadMass: 800,
+    payloadMass: 400,
     startInclineAfterAltitude: { min: 300, max: 4000 },
     thrustInclineMaxDuration: { min: 10, max: 40 * 60 },
     thrustInclineVelocityDeg: { min: 0, max: 20 },
