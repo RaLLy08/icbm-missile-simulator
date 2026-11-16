@@ -19,6 +19,12 @@ export default class EarthView {
   public atmosphereLayers = new Map<atmosphereLayerKeys, THREE.Mesh>();
   public atmosphereBorders = new Map<atmosphereLayerKeys, THREE.LineSegments>();
   markers: THREE.Mesh[] = [];
+  /**
+   * Parent of every ring marker (picked start/target, selected queue item,
+   * launched missiles), so "Show Rings" can hide them all at once regardless
+   * of each ring's own visibility.
+   */
+  readonly ringMarkers = new THREE.Group();
 
   constructor(
     private readonly earth: Earth,
@@ -47,6 +53,10 @@ export default class EarthView {
 
     this.scene.add(this.mesh);
 
+    this.ringMarkers.name = 'ringMarkers';
+    this.ringMarkers.visible = earthGui.showRings;
+    this.scene.add(this.ringMarkers);
+
     // Add atmospheric glow
     this.createAtmosphericGlow();
 
@@ -71,6 +81,9 @@ export default class EarthView {
     };
     earthGui.onToggleCountryBordersClicked = (show) => {
       this.toggleCountryBorders(show);
+    };
+    earthGui.onShowRingsClicked = (show) => {
+      this.ringMarkers.visible = show;
     };
   }
 
@@ -328,7 +341,7 @@ export default class EarthView {
     position: THREE.Vector3,
     color: number = 0x0000ff,
     radius: number = 80_000, // m
-    tube: number = 16_000 // m
+    tube: number = 4_000 // m
   ) => {
     const normal = position.clone().sub(this.earth.position).normalize();
 
@@ -342,7 +355,7 @@ export default class EarthView {
     marker.castShadow = true;
     marker.receiveShadow = true;
 
-    this.scene.add(marker);
+    this.ringMarkers.add(marker);
     return marker;
   };
 

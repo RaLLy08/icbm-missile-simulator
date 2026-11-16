@@ -159,8 +159,8 @@ export const createMissileLauncher = (ctx: SimulationContext) => {
     missileView.updatePrevFromMissile();
 
     const markers = [
-      earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40_000, 4_000),
-      earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40_000, 4_000),
+      earthView.addTorusMarker(nextLaunch.startPosition, 0x0000ff, 40_000, 5_500),
+      earthView.addTorusMarker(nextLaunch.targetPosition, 0x00ff00, 40_000, 5_500),
     ];
     launcherView.remove();
 
@@ -209,7 +209,7 @@ export const createMissileLauncher = (ctx: SimulationContext) => {
       removeTrigger(updateTriggers, frameTimeManager);
       missileView.remove();
       markers.forEach((marker) => {
-        scene.remove(marker);
+        marker.removeFromParent();
         marker.geometry.dispose();
         (marker.material as THREE.Material).dispose();
       });

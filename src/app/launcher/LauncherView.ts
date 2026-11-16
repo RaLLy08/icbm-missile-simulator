@@ -7,7 +7,7 @@ const createMarker = (
   color: number = 0x0000ff
 ) => {
   const radius = 80_000; // torus radius, m
-  const tube = 16_000; // torus thickness, m
+  const tube = 8_000; // torus thickness, m
 
   const normal = position.clone().sub(earth.position).normalize();
 
@@ -31,7 +31,8 @@ export default class LauncherView {
 
   constructor(
     private earth: Earth,
-    private scene: THREE.Scene
+    /** Rings are added here (EarthView.ringMarkers), not to the scene. */
+    private scene: THREE.Object3D
   ) {}
 
   setStartPosition(position: THREE.Vector3) {

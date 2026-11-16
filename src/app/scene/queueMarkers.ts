@@ -10,7 +10,7 @@ const faceOutward = (object: THREE.Object3D, position: THREE.Vector3) => {
 };
 
 export const createHighlightRing = (position: THREE.Vector3, color: number) => {
-  const geometry = new THREE.TorusGeometry(150_000, 14_000, 16, 100);
+  const geometry = new THREE.TorusGeometry(150_000, 4_000, 16, 100);
   const material = new THREE.MeshBasicMaterial({
     color,
     transparent: true,
@@ -65,31 +65,40 @@ const START_COLOR = 0x00ffff;
 const TARGET_COLOR = 0xffff00;
 
 /**
- * Replaces `prevMarkers` in the scene with markers for every queued launch,
- * plus highlight rings around the selected one. Returns the new markers.
+ * Replaces `prevMarkers` with markers for every queued launch (added to
+ * `scene`), plus highlight rings around the selected one (added to
+ * `ringParent`, so they follow the "Show Position Rings" toggle).
+ * Returns the new markers.
  */
 export const syncQueueMarkers = (
   scene: THREE.Scene,
+  ringParent: THREE.Object3D,
   queue: LaunchQueueItem[],
   selectedId: number | null,
   prevMarkers: Marker[]
 ): Marker[] => {
-  prevMarkers.forEach((marker) => scene.remove(marker));
+  prevMarkers.forEach((marker) => marker.removeFromParent());
 
   const markers: Marker[] = [];
   queue.forEach((item) => {
-    markers.push(
-      createQueueMarker(item.startPosition, START_COLOR, 'start'),
-      createQueueMarker(item.targetPosition, TARGET_COLOR, 'target')
+    const start = createQueueMarker(item.startPosition, START_COLOR, 'start');
+    const target = createQueueMarker(
+      item.targetPosition,
+      TARGET_COLOR,
+      'target'
     );
+    scene.add(start, target);
+    markers.push(start, target);
+
     if (item.id === selectedId) {
-      markers.push(
+      const rings = [
         createHighlightRing(item.startPosition, START_COLOR),
-        createHighlightRing(item.targetPosition, TARGET_COLOR)
-      );
+        createHighlightRing(item.targetPosition, TARGET_COLOR),
+      ];
+      ringParent.add(...rings);
+      markers.push(...rings);
     }
   });
 
-  markers.forEach((marker) => scene.add(marker));
   return markers;
 };

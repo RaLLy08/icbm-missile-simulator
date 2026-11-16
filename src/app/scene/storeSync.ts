@@ -10,11 +10,13 @@ export const syncSceneWithStore = ({
   scene,
   cameraManager,
   launcherView,
+  earthView,
 }: SimulationContext) => {
   const initial = useSimulatorStore.getState();
   cameraManager.miniWindowEnabled = !initial.isMiniWindowFolded;
   let queueMarkers = syncQueueMarkers(
     scene,
+    earthView.ringMarkers,
     initial.launchQueue,
     initial.selectedQueueItemId,
     []
@@ -27,6 +29,7 @@ export const syncSceneWithStore = ({
     ) {
       queueMarkers = syncQueueMarkers(
         scene,
+        earthView.ringMarkers,
         state.launchQueue,
         state.selectedQueueItemId,
         queueMarkers
@@ -47,6 +50,6 @@ export const syncSceneWithStore = ({
 
   return () => {
     unsubscribe();
-    queueMarkers.forEach((marker) => scene.remove(marker));
+    queueMarkers.forEach((marker) => marker.removeFromParent());
   };
 };

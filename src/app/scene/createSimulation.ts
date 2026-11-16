@@ -137,7 +137,7 @@ export const createSimulation = (
     earthView.setCamera(camera);
   }
 
-  const launcherView = new LauncherView(earth, scene);
+  const launcherView = new LauncherView(earth, earthView.ringMarkers);
   const launcher = new Launcher(launcherGui, earth);
 
   updateTriggers.push(worldGui);

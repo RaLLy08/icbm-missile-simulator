@@ -9,6 +9,7 @@ export default class EarthGui {
 
   showEarth = true;
   showCountryBorders = true;
+  showRings = true;
   atmosphericDrag = true;
   massKg = Earth.MASS;
   gravityConst = Earth.G;
@@ -53,6 +54,7 @@ export default class EarthGui {
     () => {};
   onShowEarthClicked: (show: boolean) => void = () => {};
   onToggleCountryBordersClicked: (show: boolean) => void = () => {};
+  onShowRingsClicked: (show: boolean) => void = () => {};
   onAtmosphericDragToggled: (enabled: boolean) => void = () => {};
 
   onFocusCameraClick: () => void = () => {};
@@ -149,6 +151,16 @@ export default class EarthGui {
       })
       .on('change', (ev) => {
         this.onToggleCountryBordersClicked(ev.value);
+      });
+
+    this.folder
+      .addBinding(this, 'showRings', {
+        label: 'Show Position Rings',
+        input: 'checkbox',
+        view: 'checkbox',
+      })
+      .on('change', (ev) => {
+        this.onShowRingsClicked(ev.value);
       });
 
     this.folder
