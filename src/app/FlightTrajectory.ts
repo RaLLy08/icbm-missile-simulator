@@ -125,11 +125,12 @@ export class FlightTrajectory {
     const startTime = performance.now();
 
     const populationSize = this.increaseCalculationAccuracy ? 200 : 80;
+    const maxGenerations = this.increaseCalculationAccuracy ? 80 : 60;
     const genomeConstraints = this.genomeConstraints();
 
     const bestGenome = await this.runDe(
       {
-        maxGenerations: 80,
+        maxGenerations,
         populationSize,
         mutationRate: 0.96,
         bestSurvivePercent: 0.8,
@@ -174,11 +175,12 @@ export class FlightTrajectory {
     delayBetweenGenerationsMs?: number | null
   ) => {
     this.de = new DE(deParams);
+    const convergenceThreshold = this.increaseCalculationAccuracy ? 0.1 : 50;
 
     return new Promise<any>((resolve) => {
       let lastBestFitness = Infinity;
       let noImprovementCount = 0;
-      const convergenceThreshold = 1; // m
+
       const maxNoImprovementGenerations = 20;
       let tracedGenome: any = null;
       let bestTrajectory: THREE.Vector3[] = [];

@@ -47,7 +47,6 @@ const getCandidateRows = (c: BestCandidate) => [
     value: formatMissDistance(c.missDistance),
     highlight: true,
   },
-  { key: 'fitness', label: 'Fitness', value: c.fitness.toFixed(3) },
   { key: 'd1', label: null, value: null },
   {
     key: 'incline',
