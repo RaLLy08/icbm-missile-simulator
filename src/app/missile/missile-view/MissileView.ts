@@ -5,6 +5,8 @@ import Warhead from './Warhead';
 import { getCanvasTexture } from './canvasTexture';
 import ArrowLabel from './ArrowLabel';
 import TrailView from './TrailView';
+import ExhaustSmoke from './ExhaustSmoke';
+import Earth from '../../earth/Earth';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
@@ -361,49 +363,170 @@ const getNozzleGlowTexture = () =>
   });
 
 /**
- * Exhaust plume: white-hot core at the nozzle exit fading through orange to
- * transparent red, with streaks and shock diamonds.
+ * Main (sea-level) exhaust plume: yellow-white at the nozzle exit, burning
+ * through orange into a ragged, fading red tail, with turbulent streaks.
  * Canvas top = flame top (attached to the nozzle).
  */
 const getFireTexture = () =>
   getCanvasTexture('burning-fire', 128, 512, (ctx, w, h) => {
     const plume = ctx.createLinearGradient(0, 0, 0, h);
-    plume.addColorStop(0, 'rgba(255, 255, 235, 1)');
-    plume.addColorStop(0.12, 'rgba(255, 235, 140, 0.95)');
-    plume.addColorStop(0.4, 'rgba(255, 160, 45, 0.75)');
-    plume.addColorStop(0.75, 'rgba(255, 80, 15, 0.35)');
-    plume.addColorStop(1, 'rgba(200, 30, 0, 0)');
+    plume.addColorStop(0, 'rgba(255, 250, 225, 1)');
+    plume.addColorStop(0.1, 'rgba(255, 228, 150, 0.95)');
+    plume.addColorStop(0.32, 'rgba(255, 170, 60, 0.8)');
+    plume.addColorStop(0.6, 'rgba(255, 105, 25, 0.45)');
+    plume.addColorStop(0.85, 'rgba(210, 50, 10, 0.15)');
+    plume.addColorStop(1, 'rgba(160, 20, 0, 0)');
     ctx.fillStyle = plume;
     ctx.fillRect(0, 0, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
 
-    // Turbulent streaks
-    for (let i = 0; i < 60; i++) {
+    // Turbulent streaks of hotter gas
+    for (let i = 0; i < 90; i++) {
       const x = Math.random() * w;
-      const length = h * (0.3 + Math.random() * 0.6);
-      const streak = ctx.createLinearGradient(0, 0, 0, length);
-      const alpha = 0.04 + Math.random() * 0.12;
-      streak.addColorStop(0, `rgba(255, 220, 150, ${alpha})`);
-      streak.addColorStop(1, 'rgba(255, 120, 30, 0)');
+      const start = Math.random() * h * 0.25;
+      const length = h * (0.25 + Math.random() * 0.65);
+      const streak = ctx.createLinearGradient(0, start, 0, start + length);
+      const alpha = 0.04 + Math.random() * 0.14;
+      streak.addColorStop(0, `rgba(255, 225, 160, ${alpha})`);
+      streak.addColorStop(1, 'rgba(255, 110, 30, 0)');
       ctx.fillStyle = streak;
-      ctx.fillRect(x, 0, 1 + Math.random() * 3, length);
+      ctx.fillRect(x, start, 1 + Math.random() * 4, length);
     }
 
-    // Shock diamonds (bright bands close to the nozzle)
-    for (let i = 0; i < 4; i++) {
-      const y = h * (0.06 + i * 0.09);
-      const band = ctx.createLinearGradient(0, y - 6, 0, y + 6);
-      const alpha = 0.35 * (1 - i / 4);
-      band.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      band.addColorStop(0.5, `rgba(255, 255, 255, ${alpha})`);
-      band.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = band;
-      ctx.fillRect(0, y - 6, w, 12);
+    // Ragged tail: dark gaps eat into the fading end of the flame
+    ctx.globalCompositeOperation = 'destination-out';
+    for (let i = 0; i < 70; i++) {
+      const x = Math.random() * w;
+      const y = h * (0.55 + Math.random() * 0.45);
+      const r = 4 + Math.random() * 14;
+      const hole = ctx.createRadialGradient(x, y, 0, x, y, r);
+      hole.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
+      hole.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = hole;
+      ctx.fillRect(x - r, y - r, 2 * r, 2 * r);
     }
 
     ctx.globalCompositeOperation = 'source-over';
   });
+
+/** Number of Mach diamonds drawn in the flame core. */
+const SHOCK_DIAMOND_COUNT = 6;
+
+/**
+ * Flame core: white-hot supersonic jet with a train of Mach diamonds
+ * (bright shock disks separated by darker expansion regions), dimming
+ * further from the nozzle. Canvas top = nozzle exit.
+ */
+const getFlameCoreTexture = () =>
+  getCanvasTexture('flame-core', 64, 512, (ctx, w, h) => {
+    const base = ctx.createLinearGradient(0, 0, 0, h);
+    base.addColorStop(0, 'rgba(255, 255, 250, 0.95)');
+    base.addColorStop(0.5, 'rgba(255, 235, 185, 0.55)');
+    base.addColorStop(1, 'rgba(255, 190, 110, 0)');
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, w, h);
+
+    const cell = h / (SHOCK_DIAMOND_COUNT + 0.5);
+    for (let i = 0; i < SHOCK_DIAMOND_COUNT; i++) {
+      const fade = 1 - i / SHOCK_DIAMOND_COUNT;
+      const top = i * cell;
+
+      // Expansion region right after the nozzle / each disk: darker
+      ctx.globalCompositeOperation = 'destination-out';
+      const gap = ctx.createLinearGradient(0, top, 0, top + cell * 0.7);
+      gap.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      gap.addColorStop(0.5, `rgba(0, 0, 0, ${0.55 * fade + 0.15})`);
+      gap.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gap;
+      ctx.fillRect(0, top, w, cell * 0.7);
+
+      // Mach disk: sharp bright band at the end of each cell
+      ctx.globalCompositeOperation = 'lighter';
+      const y = top + cell * 0.82;
+      const half = cell * 0.16;
+      const disk = ctx.createLinearGradient(0, y - half, 0, y + half);
+      disk.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      disk.addColorStop(0.45, `rgba(255, 255, 245, ${0.9 * fade})`);
+      disk.addColorStop(0.6, `rgba(255, 240, 200, ${0.6 * fade})`);
+      disk.addColorStop(1, 'rgba(255, 220, 160, 0)');
+      ctx.fillStyle = disk;
+      ctx.fillRect(0, y - half, w, 2 * half);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  });
+
+/**
+ * High-altitude plume: in thin air the under-expanded exhaust balloons into
+ * a huge, faint, translucent bell. Canvas top = nozzle exit.
+ */
+const getVacuumPlumeTexture = () =>
+  getCanvasTexture('vacuum-plume', 64, 256, (ctx, w, h) => {
+    const plume = ctx.createLinearGradient(0, 0, 0, h);
+    plume.addColorStop(0, 'rgba(255, 240, 215, 0.9)');
+    plume.addColorStop(0.15, 'rgba(255, 200, 150, 0.55)');
+    plume.addColorStop(0.5, 'rgba(255, 150, 110, 0.22)');
+    plume.addColorStop(1, 'rgba(200, 120, 160, 0)');
+    ctx.fillStyle = plume;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 30; i++) {
+      const length = h * (0.3 + Math.random() * 0.6);
+      const streak = ctx.createLinearGradient(0, 0, 0, length);
+      streak.addColorStop(0, `rgba(255, 230, 200, ${0.03 + Math.random() * 0.07})`);
+      streak.addColorStop(1, 'rgba(255, 180, 150, 0)');
+      ctx.fillStyle = streak;
+      ctx.fillRect(Math.random() * w, 0, 1 + Math.random() * 3, length);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  });
+
+/**
+ * LatheGeometry profile hanging down from y = 0 (nozzle exit) to
+ * y = -length. `radiusAt(t)` gives the radius at t = 0 (exit) .. 1 (tail).
+ * Points are listed tail first, so texture v = 1 is at the nozzle, matching
+ * canvas textures drawn with the nozzle at the top.
+ */
+function createPlumeProfile(
+  length: number,
+  radiusAt: (t: number) => number,
+  segments = 32
+): THREE.Vector2[] {
+  const points: THREE.Vector2[] = [];
+  for (let s = 0; s <= segments; s++) {
+    const t = 1 - s / segments;
+    points.push(new THREE.Vector2(Math.max(0, radiusAt(t)), -t * length));
+  }
+  return points;
+}
+
+const smoothstep = (edge0: number, edge1: number, x: number) =>
+  THREE.MathUtils.smoothstep(x, edge0, edge1);
+
+/** Sea-level air density. Unit: kg/m³ */
+const SEA_LEVEL_DENSITY = 1.225;
+/**
+ * Decades of air-density drop over which the plume goes from sea-level
+ * (tight column) to vacuum (fully expanded bell). 1e-4.5 of sea level is
+ * reached at ~65 km.
+ */
+const PLUME_EXPANSION_DECADES = 4.5;
+
+/**
+ * How far the plume has expanded (0 = sea level, 1 = near vacuum). Ambient
+ * pressure squeezes the exhaust into a narrow column near the ground; as it
+ * drops, the plume widens and grows into a faint bell.
+ * @param density Air density. Unit: kg/m³
+ */
+export function plumeExpansion(density: number) {
+  if (!(density > 0)) return 1;
+  return THREE.MathUtils.clamp(
+    Math.log10(SEA_LEVEL_DENSITY / density) / PLUME_EXPANSION_DECADES,
+    0,
+    1
+  );
+}
 
 /** Nose profile sampling: ogive body points + blunt-tip arc points. */
 const NOSE_OGIVE_SEGMENTS = 40;
@@ -645,7 +768,21 @@ export default class MissileView {
   private arrowsTemporarilyHidden = false;
   // private arrowsLabels: THREE.Mesh[] = []; //TODO: add on small screen only
   private trailView: TrailView | null = null;
+  /** Main exhaust flame (tight column in dense air). */
   private burningFireMesh: THREE.Mesh | null = null;
+  /** White-hot supersonic core with Mach diamonds. */
+  private flameCoreMesh: THREE.Mesh | null = null;
+  /** Wide translucent bell the exhaust balloons into at high altitude. */
+  private vacuumPlumeMesh: THREE.Mesh | null = null;
+  /** Bright glow at the nozzle exit (reads as bloom from far away). */
+  private flameGlow: THREE.Sprite | null = null;
+  /** Smoke column left in the lower atmosphere. */
+  private exhaustSmoke: ExhaustSmoke | null = null;
+  /** Simulation seconds elapsed (advanced by `stepDebris`). */
+  private simTime = 0;
+  /** Smoothed plume expansion (0 = sea level .. 1 = vacuum). */
+  private plumeExpansion = 0;
+  private readonly nozzleWorld = new THREE.Vector3();
   /** Pivot at the top of the nozzle; rotates the nozzle + flame with thrust. */
   private nozzleGimbal: THREE.Group | null = null;
   private nozzleMaterial: THREE.MeshStandardMaterial | null = null;
@@ -770,6 +907,7 @@ export default class MissileView {
   ) {
     this.group = new THREE.Group();
     this.trailView = new TrailView(this.scene);
+    this.exhaustSmoke = new ExhaustSmoke(this.scene);
     this.explosionEffect = new ExplosionEffect(this.scene, 5);
   }
 
@@ -918,6 +1056,7 @@ export default class MissileView {
    * @param dt Simulation seconds of the step.
    */
   stepDebris(dt: number) {
+    this.simTime += dt;
     if (this.debris.length === 0) return;
     this.debris.forEach((d) => d.step(dt));
     this.debris = this.debris.filter((d) => !d.finished);
@@ -1231,35 +1370,97 @@ export default class MissileView {
     this.nozzleGimbal.add(nozzleMesh);
 
     // ------------------------------------------------------------------------
-    // === Burning fire (hangs from the nozzle exit, gimbals with it) ===
-    const fireTexture = getFireTexture();
-    const burningFireMaterial = new THREE.MeshBasicMaterial({
-      color: fireTexture ? 0xffffff : 0xffa500,
-      map: fireTexture,
-      transparent: true,
-      opacity: fireTexture ? 0.95 : 0.6,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-    const burningFireGeometry = new THREE.CylinderGeometry(
-      fire.topRadius,
-      fire.bottomRadius,
-      fire.height,
-      24,
-      1,
-      true
-    );
+    // === Exhaust plume (hangs from the nozzle exit, gimbals with it) ===
+    // Every plume layer's geometry starts at y = 0 and hangs downwards, so
+    // scaling it keeps the top attached to the nozzle exit.
+    const flameMaterial = (
+      map: THREE.Texture | null,
+      fallbackColor: number,
+      opacity: number
+    ) =>
+      new THREE.MeshBasicMaterial({
+        color: map ? 0xffffff : fallbackColor,
+        map,
+        transparent: true,
+        opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      });
+
+    // Main flame: contracts slightly after the exit (ambient pressure
+    // squeezes it), swells into a column, then tapers into a ragged tail
+    const columnRadius = fire.bottomRadius * 0.72;
     const burningFireMesh = new THREE.Mesh(
-      burningFireGeometry,
-      burningFireMaterial
+      new THREE.LatheGeometry(
+        createPlumeProfile(fire.height, (t) => {
+          const neck = 1 - 0.12 * Math.sin(Math.PI * Math.min(t / 0.12, 1));
+          const swell =
+            exitRadius + (columnRadius - exitRadius) * smoothstep(0.06, 0.45, t);
+          const taper = 1 - 0.75 * Math.pow(smoothstep(0.5, 1, t), 1.4);
+          return swell * neck * taper;
+        }),
+        32
+      ),
+      flameMaterial(getFireTexture(), 0xffa500, 0.95)
     );
-
-    // Top of the flame touches the nozzle exit
-    burningFireMesh.position.y = -nozzleHeight - fire.height / 2;
-
+    burningFireMesh.name = 'flame';
+    burningFireMesh.position.y = -nozzleHeight;
     this.burningFireMesh = burningFireMesh;
-    this.nozzleGimbal.add(this.burningFireMesh);
+    this.nozzleGimbal.add(burningFireMesh);
+
+    // White-hot core with Mach diamonds, inside the main flame
+    const flameCoreMesh = new THREE.Mesh(
+      new THREE.LatheGeometry(
+        createPlumeProfile(
+          fire.height * 0.38,
+          (t) => exitRadius * 0.8 * Math.pow(1 - t, 0.55)
+        ),
+        24
+      ),
+      flameMaterial(getFlameCoreTexture(), 0xfff4d0, 0.9)
+    );
+    flameCoreMesh.name = 'flame-core';
+    flameCoreMesh.position.y = -nozzleHeight;
+    this.flameCoreMesh = flameCoreMesh;
+    this.nozzleGimbal.add(flameCoreMesh);
+
+    // High-altitude bell: flares out right after the exit, many times wider
+    // than the missile, closing slightly at the end
+    const bellRadius = fire.bottomRadius * 3.5;
+    const vacuumPlumeMesh = new THREE.Mesh(
+      new THREE.LatheGeometry(
+        createPlumeProfile(fire.height * 1.4, (t) => {
+          const flare = 1 - Math.pow(1 - t, 3);
+          const close = 1 - 0.35 * smoothstep(0.75, 1, t);
+          return (exitRadius + (bellRadius - exitRadius) * flare) * close;
+        }),
+        32
+      ),
+      flameMaterial(getVacuumPlumeTexture(), 0xffc8a0, 0)
+    );
+    vacuumPlumeMesh.name = 'vacuum-plume';
+    vacuumPlumeMesh.position.y = -nozzleHeight;
+    vacuumPlumeMesh.visible = false;
+    this.vacuumPlumeMesh = vacuumPlumeMesh;
+    this.nozzleGimbal.add(vacuumPlumeMesh);
+
+    // Glare around the nozzle exit
+    const flameGlow = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        color: 0xffb060,
+        map: getPlasmaHaloTexture(),
+        transparent: true,
+        opacity: 0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      })
+    );
+    flameGlow.name = 'flame-glow';
+    flameGlow.position.y = -nozzleHeight - fire.height * 0.08;
+    flameGlow.visible = false;
+    this.flameGlow = flameGlow;
+    this.nozzleGimbal.add(flameGlow);
 
     this.applyActiveStage();
 
@@ -1522,6 +1723,7 @@ export default class MissileView {
 
     this.alignRotation();
     this.updateNozzleGimbal();
+    this.updateExhaustSmoke();
 
     this.engineSound?.update(
       !this.missile.hasLanded && this.missile.thrust.lengthSq() > 0,
@@ -1579,31 +1781,137 @@ export default class MissileView {
     return THREE.MathUtils.clamp(rate / max, 0, 1);
   }
 
+  /** Burn ratio of the current frame (0 when the engine is off). */
+  private currentBurnRatio = 0;
+
+  /**
+   * Exhaust plume driven by burn rate and ambient pressure. Near the
+   * ground the exhaust is a tight, bright column with Mach diamonds; as the
+   * air thins it grows longer and fainter and balloons into a wide bell.
+   */
   private updateBurningFireScale() {
     if (!this.burningFireMesh) return;
 
     // Hide the exhaust flame once all fuel is burnt (or the missile landed)
     const burning = !this.missile.isEngineCutoff && !this.missile.hasLanded;
     const ratio = burning ? this.burnRatio : 0;
-    this.burningFireMesh.visible = ratio > 0;
+    this.currentBurnRatio = ratio;
+    const on = ratio > 0;
 
     // Nozzle glows while firing and cools down after cutoff
     if (this.nozzleMaterial) {
       const glow = this.nozzleMaterial.emissiveIntensity;
-      this.nozzleMaterial.emissiveIntensity =
-        ratio > 0 ? 0.4 + 0.6 * ratio : glow * 0.97;
+      this.nozzleMaterial.emissiveIntensity = on
+        ? 0.4 + 0.6 * ratio
+        : glow * 0.97;
     }
 
-    if (ratio === 0) return;
+    // Visual density ignores the "atmospheric drag" toggle on purpose
+    const target = plumeExpansion(Earth.airDensity(this.missile.altitude));
+    this.plumeExpansion += (target - this.plumeExpansion) * 0.1;
+    const e = this.plumeExpansion;
 
-    // 100% size at the maximum burn rate, proportionally smaller below it,
-    // with a slight flicker. The top of the flame stays on the nozzle exit.
-    const flicker = 1 + (Math.random() - 0.5) * 0.08;
-    const width = ratio * (1 + (Math.random() - 0.5) * 0.05);
-    const length = ratio * flicker;
+    this.burningFireMesh.visible = on;
+    if (this.flameCoreMesh) this.flameCoreMesh.visible = on;
+    if (this.flameGlow) this.flameGlow.visible = on;
+    if (this.vacuumPlumeMesh) this.vacuumPlumeMesh.visible = on && e > 0.02;
+    if (!on) return;
+
+    const jitter = (amount: number) => 1 + (Math.random() - 0.5) * amount;
+    const flicker = jitter(0.1);
+
+    // Main flame: 100% size at the max burn rate; grows longer and slightly
+    // wider but dimmer as the ambient pressure drops
+    const mainMaterial = this.burningFireMesh.material as THREE.MeshBasicMaterial;
+    const length = ratio * (1 + 0.7 * e) * flicker;
+    const width = ratio * (1 + 0.35 * e) * jitter(0.05);
     this.burningFireMesh.scale.set(width, length, width);
-    this.burningFireMesh.position.y =
-      -this.nozzleHeight - (this.dimensions.fire.height * length) / 2;
+    this.burningFireMesh.rotation.y = Math.random() * Math.PI * 2;
+    mainMaterial.opacity = 0.95 * (1 - 0.5 * e) * jitter(0.08);
+    // Shift the turbulent streaks around the flame every frame
+    if (mainMaterial.map) mainMaterial.map.offset.x = Math.random();
+
+    // Core: Mach diamonds are sharp in dense air, spread out and fade higher up
+    if (this.flameCoreMesh) {
+      const core = this.flameCoreMesh;
+      const coreLength = ratio * (1 + 1.2 * e) * jitter(0.04);
+      core.scale.set(ratio, coreLength, ratio);
+      (core.material as THREE.MeshBasicMaterial).opacity =
+        0.9 * (1 - 0.75 * e) * jitter(0.06);
+    }
+
+    // High-altitude bell fades in as the plume expands
+    if (this.vacuumPlumeMesh) {
+      const bell = this.vacuumPlumeMesh;
+      const spread = ratio * (0.3 + 0.7 * e);
+      bell.scale.set(spread, ratio * (0.4 + 0.6 * e) * flicker, spread);
+      bell.rotation.y = Math.random() * Math.PI * 2;
+      (bell.material as THREE.MeshBasicMaterial).opacity =
+        0.5 * Math.pow(e, 1.3) * jitter(0.1);
+    }
+
+    // Nozzle glare: big and hot in dense air (lit exhaust and smoke),
+    // dimmer but wider in thin air
+    if (this.flameGlow) {
+      const size =
+        this.dimensions.fire.bottomRadius * (6 + 4 * e) * ratio * flicker;
+      this.flameGlow.scale.set(size, size, 1);
+      (this.flameGlow.material as THREE.SpriteMaterial).opacity =
+        (0.85 - 0.35 * e) * ratio * jitter(0.15);
+    }
+  }
+
+  /** Air density ratio (expansion) above which no smoke trail is left. */
+  private static SMOKE_FADE: [number, number] = [0.3, 0.7];
+
+  /**
+   * Leave a smoke column behind the nozzle while burning in the lower
+   * atmosphere (solid motors leave thick white trails; in thin air the
+   * exhaust disperses into nothing visible).
+   */
+  private updateExhaustSmoke() {
+    const smoke = this.exhaustSmoke;
+    if (!smoke) return;
+    const time = this.simTime + Math.min(this.lerpAlpha, 1);
+    smoke.update(time);
+
+    const ratio = this.currentBurnRatio;
+    const stage = this.dimensions.stages[this.activeStageIndex];
+    if (ratio <= 0 || !stage || !this.fireGroup.visible) {
+      smoke.cut();
+      return;
+    }
+
+    const e = this.plumeExpansion;
+    const [fadeStart, fadeEnd] = MissileView.SMOKE_FADE;
+    // Thickest right after liftoff: dense air keeps the exhaust from
+    // dispersing, so the low part of the column is opaque and wide
+    const groundBoost = 1 + 1.2 * (1 - smoothstep(0, 0.25, e));
+    const strength =
+      (1 - smoothstep(fadeStart, fadeEnd, e)) *
+      Math.min(1, ratio * 1.5) *
+      groundBoost;
+
+    // Spawn just behind the bright part of the flame
+    const k = this.fireGroup.scale.x;
+    const fire = this.dimensions.fire;
+    const offset =
+      this.fireGroup.position.y -
+      (this.nozzleHeight + fire.height * 0.3 * ratio) * k;
+    this.nozzleWorld
+      .set(0, offset, 0)
+      .applyQuaternion(this.group.quaternion)
+      .add(this.group.position);
+
+    smoke.emit(this.nozzleWorld, time, {
+      size:
+        fire.bottomRadius * k * (0.9 + 1.5 * e) * (1 + 0.5 * (groundBoost - 1)),
+      // Puffs swell more in thinner air
+      growth: 3 + 8 * e,
+      strength,
+      // Near the ground, keep billowing even while the missile is still slow
+      interval: e < 0.25 ? 0.12 : undefined,
+    });
   }
 
   /**
@@ -1852,6 +2160,12 @@ export default class MissileView {
     // Sprites are not Meshes; their geometry is shared, only the material is ours
     this.plasmaHalo?.material.dispose();
     this.plasmaHalo = null;
+    this.flameGlow?.material.dispose();
+    this.flameGlow = null;
+    this.flameCoreMesh = null;
+    this.vacuumPlumeMesh = null;
+    this.exhaustSmoke?.remove();
+    this.exhaustSmoke = null;
     // Shroud halves share one material; the traversal above disposed it
     this.shroudGroup = null;
     this.shroudHalves = [];
