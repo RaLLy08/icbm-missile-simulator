@@ -6,52 +6,25 @@ import { getCanvasTexture } from './canvasTexture';
 import ArrowLabel from './ArrowLabel';
 import TrailView from './TrailView';
 import ExhaustSmoke from './ExhaustSmoke';
-import NuclearExplosion, {
+import {
   estimateYieldKt,
   type NuclearExplosionOptions,
 } from './NuclearExplosion';
+import ExplosionEffect from './explosion-effect/ExplosionEffect';
+import EngineSound from './engine-sound/EngineSound';
+import DragSound from './drag-sound/DragSound';
 import Earth from '../../earth/Earth';
 import * as THREE from 'three';
 // import { FontLoader } from 'three/examples/jsm/loaders/FontLoader.js';
 // import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
-import nukeVariant00 from 'public/audio/nuke_explosion_variants/explosion_00.mp3';
-import nukeVariant01 from 'public/audio/nuke_explosion_variants/explosion_01.mp3';
-import nukeVariant02 from 'public/audio/nuke_explosion_variants/explosion_02.mp3';
-import nukeVariant03 from 'public/audio/nuke_explosion_variants/explosion_03.mp3';
-import nukeVariant04 from 'public/audio/nuke_explosion_variants/explosion_04.mp3';
-import nukeVariant05 from 'public/audio/nuke_explosion_variants/explosion_05.mp3';
-import nukeVariant06 from 'public/audio/nuke_explosion_variants/explosion_06.mp3';
-import nukeVariant07 from 'public/audio/nuke_explosion_variants/explosion_07.mp3';
-import nukeVariant08 from 'public/audio/nuke_explosion_variants/explosion_08.mp3';
-import nukeVariant09 from 'public/audio/nuke_explosion_variants/explosion_09.mp3';
-import nukeVariant10 from 'public/audio/nuke_explosion_variants/explosion_10.mp3';
-import distantVariant00 from 'public/audio/distant_explosion_variants/distant_explosion_00.mp3';
-import distantVariant01 from 'public/audio/distant_explosion_variants/distant_explosion_01.mp3';
-import distantVariant02 from 'public/audio/distant_explosion_variants/distant_explosion_02.mp3';
-import distantVariant03 from 'public/audio/distant_explosion_variants/distant_explosion_03.mp3';
-import distantVariant04 from 'public/audio/distant_explosion_variants/distant_explosion_04.mp3';
-import distantVariant05 from 'public/audio/distant_explosion_variants/distant_explosion_05.mp3';
-import distantVariant06 from 'public/audio/distant_explosion_variants/distant_explosion_06.mp3';
-import distantVariant07 from 'public/audio/distant_explosion_variants/distant_explosion_07.mp3';
-import distantVariant08 from 'public/audio/distant_explosion_variants/distant_explosion_08.mp3';
-import distantVariant09 from 'public/audio/distant_explosion_variants/distant_explosion_09.mp3';
-import distantVariant10 from 'public/audio/distant_explosion_variants/distant_explosion_10.mp3';
-import distantVariant11 from 'public/audio/distant_explosion_variants/distant_explosion_11.mp3';
-import distantVariant12 from 'public/audio/distant_explosion_variants/distant_explosion_12.mp3';
-import engineStartAudio from 'public/audio/start.mp3';
-import engineFlightAudio from 'public/audio/flight.mp3';
-import engineEndAudio from 'public/audio/end.mp3';
-import atmosphericDragAudio from 'public/audio/atmospheric_drag_effect.mp3';
 import detachVariant0 from 'public/audio/detach/detach_0.wav';
 import detachVariant1 from 'public/audio/detach/detach_1.wav';
 import detachVariant2 from 'public/audio/detach/detach_2.wav';
 import detachVariant3 from 'public/audio/detach/detach_3.wav';
 import {
     ENGINE_FALLOFF,
-    EXPLOSION_FALLOFF,
     createAudio,
     getDistanceVolume,
-    getListenerDistance,
     releaseAudio,
 } from 'app/helpers/SpatialAudio';
 import { announceTargetReached } from 'app/helpers/Speech';
@@ -60,36 +33,6 @@ import { formatKmPerS } from 'app/utils';
 const TARGET_REACHED_ANNOUNCE_DELAY_MS = 1000;
 /** "Target reached" is only announced if the impact is within this distance (m). */
 const TARGET_HIT_MAX_MISS_M = 20_000;
-
-const NUKE_EXPLOSION_VARIANTS: string[] = [
-  nukeVariant00,
-  nukeVariant01,
-  nukeVariant02,
-  nukeVariant03,
-  nukeVariant04,
-  nukeVariant05,
-  nukeVariant06,
-  nukeVariant07,
-  nukeVariant08,
-  nukeVariant09,
-  nukeVariant10,
-];
-
-const DISTANT_EXPLOSION_VARIANTS: string[] = [
-  distantVariant00,
-  distantVariant01,
-  distantVariant02,
-  distantVariant03,
-  distantVariant04,
-  distantVariant05,
-  distantVariant06,
-  distantVariant07,
-  distantVariant08,
-  distantVariant09,
-  distantVariant10,
-  distantVariant11,
-  distantVariant12,
-];
 
 const DETACH_VARIANTS: string[] = [
   detachVariant0,
@@ -118,230 +61,6 @@ function playDetachSound(position: THREE.Vector3) {
     releaseAudio(sound);
     console.warn('Failed to play detach sound:', error);
   });
-}
-
-/**
- * Engine sounds: plays `start` on ignition, then loops `flight` while the
- * engines keep burning. On cutoff, start/flight stop immediately and `end` plays.
- * Volume fades with camera distance to the missile (silent when too far).
- */
-export class EngineSound {
-  private startAudio: HTMLAudioElement;
-  private flightAudio: HTMLAudioElement;
-  private endAudio: HTMLAudioElement;
-  private state: 'idle' | 'running' | 'finished' = 'idle';
-
-  constructor(private readonly baseVolume = 0.5) {
-    this.startAudio = createAudio(engineStartAudio);
-    this.flightAudio = createAudio(engineFlightAudio);
-    this.endAudio = createAudio(engineEndAudio);
-
-    this.flightAudio.loop = true;
-    this.setVolume(0);
-
-    // Flight loop kicks in once the ignition sound is over
-    this.startAudio.addEventListener('ended', () => {
-      if (this.state === 'running') {
-        this.play(this.flightAudio);
-      }
-    });
-  }
-
-  private play(audio: HTMLAudioElement) {
-    audio.currentTime = 0;
-    audio.play().catch((error) => {
-      console.warn('Failed to play engine sound:', error);
-    });
-  }
-
-  private stop(audio: HTMLAudioElement) {
-    audio.pause();
-    audio.currentTime = 0;
-  }
-
-  private setVolume(multiplier: number) {
-    const volume = this.baseVolume * multiplier;
-    [this.startAudio, this.flightAudio, this.endAudio].forEach((a) => {
-      a.volume = volume;
-    });
-  }
-
-  update(enginesRunning: boolean, position: THREE.Vector3) {
-    this.setVolume(getDistanceVolume(position, ENGINE_FALLOFF));
-
-    if (this.state === 'idle' && enginesRunning) {
-      this.state = 'running';
-      this.play(this.startAudio);
-      return;
-    }
-
-    if (this.state === 'running' && !enginesRunning) {
-      this.state = 'finished';
-      this.stop(this.startAudio);
-      this.stop(this.flightAudio);
-      this.play(this.endAudio);
-    }
-  }
-
-  remove() {
-    this.state = 'finished';
-    this.stop(this.startAudio);
-    this.stop(this.flightAudio);
-    this.stop(this.endAudio);
-    [this.startAudio, this.flightAudio, this.endAudio].forEach(releaseAudio);
-  }
-}
-
-/** Below this volume the loop is paused instead of playing silently. */
-const DRAG_SOUND_MIN_VOLUME = 0.005;
-/** Per-frame smoothing of the volume, so it never jumps or clicks. */
-const DRAG_SOUND_SMOOTHING = 0.15;
-
-/**
- * Air rushing past the body: a looped sound whose volume follows the same
- * aerodynamic intensity (0..1) as the nose glow / plasma animation, so sound
- * and visual start, peak and fade together. Times the camera distance falloff.
- * Silent in vacuum and after impact.
- */
-export class DragSound {
-  private audio: HTMLAudioElement;
-  private volume = 0;
-
-  constructor(private readonly baseVolume = 0.6) {
-    this.audio = createAudio(atmosphericDragAudio);
-    this.audio.loop = true;
-    this.audio.volume = 0;
-  }
-
-  /** @param intensity Aerodynamic effect strength, 0..1 (same as the animation). */
-  update(intensity: number, position: THREE.Vector3) {
-    const target =
-      this.baseVolume *
-      THREE.MathUtils.clamp(intensity, 0, 1) *
-      getDistanceVolume(position, ENGINE_FALLOFF);
-
-    this.volume += (target - this.volume) * DRAG_SOUND_SMOOTHING;
-    if (target === 0 && this.volume < DRAG_SOUND_MIN_VOLUME) this.volume = 0;
-    this.audio.volume = THREE.MathUtils.clamp(this.volume, 0, 1);
-
-    if (this.volume >= DRAG_SOUND_MIN_VOLUME) {
-      if (this.audio.paused) {
-        this.audio.play().catch((error) => {
-          console.warn('Failed to play drag sound:', error);
-        });
-      }
-    } else if (!this.audio.paused) {
-      this.audio.pause();
-    }
-  }
-
-  remove() {
-    this.audio.pause();
-    this.audio.currentTime = 0;
-    releaseAudio(this.audio);
-  }
-}
-
-export class ExplosionEffect {
-  private visual: NuclearExplosion | null = null;
-  /** Simulation time of the detonation. Unit: s */
-  private startSimTime = 0;
-  /** Real time of the detonation. Unit: ms */
-  private startRealTime = 0;
-  /** Unit: s (simulation time) */
-  private duration = 0;
-  private isActive: boolean = false;
-  /** Close-range blast; volume follows camera distance while playing. */
-  private audio: HTMLAudioElement | null = null;
-  private readonly baseVolume = 1;
-  private position: THREE.Vector3 | null = null;
-
-  constructor(
-    private readonly scene: THREE.Scene,
-    /** Yield, burst height, size and length of the detonation. */
-    public options: NuclearExplosionOptions = {}
-  ) {}
-
-  private updateVolume() {
-    if (!this.position || !this.audio) return;
-    this.audio.volume =
-      this.baseVolume * getDistanceVolume(this.position, EXPLOSION_FALLOFF);
-  }
-
-  /**
-   * @param simTime Current simulation time. Unit: s
-   * @param options Overrides the effect's `options` for this detonation.
-   */
-  start(
-    position: THREE.Vector3,
-    normal: THREE.Vector3,
-    simTime: number,
-    options: NuclearExplosionOptions = this.options
-  ) {
-    this.startSimTime = simTime;
-    this.startRealTime = performance.now();
-    this.isActive = true;
-    this.position = position.clone();
-
-    // Close by: full blast with distance falloff.
-    // Beyond the falloff range: always play the distant rumble instead.
-    const isDistant =
-      getListenerDistance(this.position) >= EXPLOSION_FALLOFF.maxDistance;
-    // Each explosion gets a random variant
-    const sound = createAudio(
-      pickRandom(
-        isDistant ? DISTANT_EXPLOSION_VARIANTS : NUKE_EXPLOSION_VARIANTS
-      )
-    );
-    sound.addEventListener('ended', () => releaseAudio(sound), { once: true });
-
-    if (isDistant) {
-      sound.volume = this.baseVolume;
-    } else {
-      this.audio = sound;
-      this.updateVolume();
-    }
-    sound.play().catch((error) => {
-      releaseAudio(sound);
-      console.warn('Failed to play explosion sound:', error);
-    });
-
-    this.visual?.remove();
-    this.visual = new NuclearExplosion(this.scene, options);
-    this.duration = this.visual.durationS;
-    this.visual.start(position, normal);
-  }
-
-  /**
-   * Advance the effect. It runs on simulation time, so it follows the time
-   * multiplier and freezes while paused.
-   * @param simTime Current simulation time. Unit: s
-   */
-  update(simTime: number) {
-    // Keep adjusting while the sound plays (it may outlast the visual effect)
-    if (this.audio && !this.audio.paused) this.updateVolume();
-
-    if (!this.isActive) return;
-
-    const elapsed = Math.max(0, simTime - this.startSimTime);
-    if (elapsed >= this.duration) {
-      this.remove();
-      return;
-    }
-
-    const realElapsed = (performance.now() - this.startRealTime) / 1000;
-    this.visual?.update(elapsed, realElapsed);
-  }
-
-  remove() {
-    this.isActive = false;
-    this.visual?.remove();
-    this.visual = null;
-  }
-
-  get active(): boolean {
-    return this.isActive;
-  }
 }
 
 // class VectorHistory {
