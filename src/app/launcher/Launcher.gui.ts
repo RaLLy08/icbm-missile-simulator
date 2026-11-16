@@ -162,7 +162,15 @@ export default class LauncherGui {
 
     const bounds = this.calculationBounds;
 
+    calculationFolder.addBlade({ view: 'title', title: 'Payload Mass', unit: 'kg' });
+    const payloadBinding = calculationFolder.addBinding(this, 'payloadMass', {
+      label: 'value',
+      min: 1,
+      step: 10,
+    });
+
     this.guidanceBindings = [
+      payloadBinding,
       ...this.addRangeBindings(
         calculationFolder,
         bounds.startInclineAfterAltitude,
