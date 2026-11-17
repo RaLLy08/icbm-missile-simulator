@@ -11,7 +11,6 @@
     "prettier:fix": "prettier . --write",
     "prettier:check": "prettier . --check"
   },
-  "author": "chinmayrozekar (github.com/chinmayrozekar), RaLLy08 (github.com/RaLLy08)",
   "license": "ISC",
   "description": "",
   "dependencies": {
